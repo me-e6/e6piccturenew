@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "404596333772",
+    "project_id": "e6piccturenew",
+    "storage_bucket": "e6piccturenew.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:404596333772:android:b84aefa62a06f602657669",
+        "android_client_info": {
+          "package_name": "com.example.e6piccturenew"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAap6cT0TDYE7xn8SOWgPux23VPNjVQbkg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

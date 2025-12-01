@@ -1,0 +1,81 @@
+class UserModel {
+  final String uid;
+  final String email;
+  final String name;
+  final String type; // citizen/officer
+  final String photoUrl;
+
+  final List<String> followersList;
+  final List<String> followingList;
+
+  final int followersCount;
+  final int followingCount;
+
+  UserModel({
+    required this.uid,
+    required this.email,
+    required this.name,
+    required this.type,
+    required this.photoUrl,
+    required this.followersList,
+    required this.followingList,
+    required this.followersCount,
+    required this.followingCount,
+  });
+
+  // ---------------------- COPYWITH ----------------------
+  UserModel copyWith({
+    String? uid,
+    String? email,
+    String? name,
+    String? type,
+    String? photoUrl,
+    List<String>? followersList,
+    List<String>? followingList,
+    int? followersCount,
+    int? followingCount,
+  }) {
+    return UserModel(
+      uid: uid ?? this.uid,
+      email: email ?? this.email,
+      name: name ?? this.name,
+      type: type ?? this.type,
+      photoUrl: photoUrl ?? this.photoUrl,
+      followersList: followersList ?? this.followersList,
+      followingList: followingList ?? this.followingList,
+      followersCount: followersCount ?? this.followersCount,
+      followingCount: followingCount ?? this.followingCount,
+    );
+  }
+
+  // ---------------------- FIRESTORE MAP ----------------------
+  factory UserModel.fromMap(Map<String, dynamic> map) {
+    return UserModel(
+      uid: map["uid"] ?? "",
+      email: map["email"] ?? "",
+      name: map["name"] ?? "",
+      type: map["type"] ?? "citizen",
+      photoUrl: map["photoUrl"] ?? "",
+
+      followersList: List<String>.from(map["followersList"] ?? []),
+      followingList: List<String>.from(map["followingList"] ?? []),
+
+      followersCount: map["followersCount"] ?? 0,
+      followingCount: map["followingCount"] ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      "uid": uid,
+      "email": email,
+      "name": name,
+      "type": type,
+      "photoUrl": photoUrl,
+      "followersList": followersList,
+      "followingList": followingList,
+      "followersCount": followersCount,
+      "followingCount": followingCount,
+    };
+  }
+}
