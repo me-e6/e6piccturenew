@@ -1,0 +1,66 @@
+name: Flutter CI
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  build:
+    name: Build Android APK & Run Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Cache flutter for faster builds
+      - name: Cache Flutter
+        uses: actions/cache@v3
+        with:
+          path: ${{ runner.tool_cache }}/flutter
+          key: flutter-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            flutter-${{ runner.os }}-
+
+      # Install Flutter
+      - name: Install Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+
+      # Install dependencies
+      - name: Run flutter pub get
+        run: flutter pub get
+
+      # Static Code Analysis
+      - name: Run Flutter Analyze
+        run: flutter analyze
+
+      # Unit Tests
+      - name: Run Tests
+        run: flutter test
+
+      # Build APK
+      - name: Build Android APK
+        run: flutter build apk --debug
+
+      # Build AAB (release)
+      - name: Build Android App Bundle (AAB)
+        run: flutter build appbundle --release
+
+      # Upload artifacts for download
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-aab
+          path: build/app/outputs/bundle/release/app-release.aab
