@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.e6piccturenew">
     <application
         android:label="e6piccturenew"
         android:name="${applicationName}"
