@@ -1,16 +1,29 @@
 # Flutter / Dart
 .dart_tool/
 .packages
+.pub-cache/
 .pub/
+
+# Build outputs
 build/
+android/app/build/
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
 
 # Android
-android/.gradle/
-android/local.properties
-android/key.properties
-*.jks
+.gradle/
+.cxx/
+*.apk
+*.aab
 
 # iOS
-ios/Pods/
-ios/.symlinks/
-ios/Flutter/ephemeral/
+Pods/
+DerivedData/
+
+# IDE
+.idea/
+.vscode/
+
+# Keystore (never commit)
+*.jks
+key.properties
