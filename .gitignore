@@ -1,24 +1,16 @@
-# Flutter
+# Flutter / Dart
 .dart_tool/
-.build/
 .packages
-.pub-cache/
-pubspec.lock
+.pub/
+build/
 
 # Android
-android/app/build/
+android/.gradle/
+android/local.properties
+android/key.properties
 *.jks
-google-services.json
 
 # iOS
 ios/Pods/
-ios/Runner/GeneratedPluginRegistrant.*
-ios/Flutter/App.framework
-
-# User data
-*.log
-*.tmp
-
-# Env files
-.env
-.key
+ios/.symlinks/
+ios/Flutter/ephemeral/
