@@ -50,7 +50,7 @@ class CreatePostService {
 
         // OWNER SNAPSHOT (GAZETTER SUPPORT)
         "ownerName": ownerName,
-        "ownerVerified": isVerified,
+        "isVerifiedOwner": isVerified,
 
         // MEDIA
         "imageUrls": uploadedUrls,

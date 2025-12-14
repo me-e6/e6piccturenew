@@ -43,14 +43,14 @@ Required fields:
 - postId: string
 - authorId: string
 - imageUrls: array<string> (min 1)
-- imageUrl: string (legacy)
+- imageUrl: string
 - isRepost: boolean
 - likeCount: number
 - replyCount: number
 - quoteReplyCount: number
 - isRemoved: boolean
 - createdAt: timestamp
-- ownVerified: boolean
+- isownVerified: boolean
 
 ---
 

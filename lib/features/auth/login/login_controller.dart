@@ -83,20 +83,32 @@ class LoginController extends ChangeNotifier {
   Future<void> loginWithGoogle(BuildContext context) async {
     _setLoading(true);
 
-    // Returns: "success" or a Firebase error code or "cancelled-by-user"
-    final result = await _service.googleSignIn();
+    try {
+      final user = await _service.googleSignIn();
 
-    _setLoading(false);
+      _setLoading(false);
 
-    if (result == "success") {
+      // User cancelled Google account chooser
+      if (user == null) {
+        _showMessage(context, "Google login cancelled");
+        return;
+      }
+
+      // Critical: email must exist
+      if (user.email == null || user.email!.isEmpty) {
+        await user.delete(); // clean up partial user
+        _showMessage(context, "No email selected for Google account");
+        return;
+      }
+
       _showMessage(context, "Google Login Successful!");
 
       Future.delayed(const Duration(milliseconds: 400), () {
         Navigator.pushReplacementNamed(context, "/home");
       });
-    } else {
-      final friendly = LoginErrorMapper.map(result);
-      _showMessage(context, friendly);
+    } catch (e) {
+      _setLoading(false);
+      _showMessage(context, "Google login failed. Please try again.");
     }
   }
 

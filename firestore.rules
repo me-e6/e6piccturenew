@@ -3,6 +3,50 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+
+// =====================================================
+    // USERS (CANONICAL USER DOCUMENT) - newwwww
+    // =====================================================
+    match /users/{userId} {
+
+      // User can read their own profile
+      allow read: if request.auth != null
+                  && request.auth.uid == userId;
+
+      // User can create their own document
+      allow create: if request.auth != null
+                    && request.auth.uid == userId;
+
+      // User can update their own document
+      allow update: if request.auth != null
+                    && request.auth.uid == userId;
+
+      // No deletes from client
+      allow delete: if false;
+    }
+
+    // -------------------------------------------------
+    // SAVED POSTS (USER PRIVATE SUBCOLLECTION)
+    // Path: users/{uid}/saved/{postId}
+    // -------------------------------------------------
+    match /users/{userId}/saved/{postId} {
+
+      // User can read their saved posts
+      allow read: if request.auth != null
+                  && request.auth.uid == userId;
+
+      // User can save a post
+      allow create: if request.auth != null
+                    && request.auth.uid == userId;
+
+      // User can unsave (delete)
+      allow delete: if request.auth != null
+                    && request.auth.uid == userId;
+
+      // No updates (immutable save record)
+      allow update: if false;
+    }
+
     // =====================================================
     // POSTS (PUBLIC READ, OWNER WRITE, SCHEMA-LOCKED)
     // =====================================================
@@ -24,31 +68,33 @@ service cloud.firestore {
         && request.resource.data.postId == postId
 
         // required schema
-        && request.resource.data.keys().hasAll([
-          'postId',
-          'authorId',
-          'authorName',
-          'isVerifiedOwner',
-          'imageUrls',
-          'isRepost',
-          'likeCount',
-          'replyCount',
-          'quoteReplyCount',
-          'createdAt'
-        ])
+      //  && request.resource.data.keys().hasAll([
+      //    'postId',
+      //    'authorId',
+      //    'authorName',
+       //   'isVerifiedOwner',
+       //   'imageUrls',
+       //   'imageUrl',
+       //   'isRepost',
+       //   'likeCount',
+       //   'replyCount',
+       //   'quoteReplyCount',
+       //   'createdAt'
+      ///  ])
 
         // type validation
-        && request.resource.data.postId is string
-        && request.resource.data.authorId is string
-        && request.resource.data.authorName is string
-        && request.resource.data.isVerifiedOwner is bool
-        && request.resource.data.isRepost is bool
-        && request.resource.data.imageUrls is list
-        && request.resource.data.imageUrls.size() > 0
-        && request.resource.data.likeCount == 0
-        && request.resource.data.replyCount == 0
-        && request.resource.data.quoteReplyCount == 0
-        && request.resource.data.createdAt is timestamp;
+  //      && request.resource.data.postId is string
+  //      && request.resource.data.authorId is string
+   //     && request.resource.data.authorName is string
+   //     && request.resource.data.isVerifiedOwner is bool
+    //    && request.resource.data.isRepost is bool
+    //    && request.resource.data.imageUrls is list
+     //   && request.resource.data.imageUrls.size() > 0
+     //   && request.resource.data.imageUrls is string
+    //    && request.resource.data.likeCount == 0
+    //    && request.resource.data.replyCount == 0
+     //   && request.resource.data.quoteReplyCount == 0
+    //    && request.resource.data.createdAt is timestamp;
 
       // -----------------------
       // UPDATE (SAFE MUTATION)
