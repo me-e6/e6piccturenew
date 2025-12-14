@@ -36,7 +36,8 @@ class PostDetailsScreen extends StatelessWidget {
                     height: 320,
                     decoration: BoxDecoration(
                       image: DecorationImage(
-                        image: NetworkImage(p.imageUrl),
+                        image: NetworkImage(p.resolvedImages.first),
+
                         fit: BoxFit.cover,
                       ),
                     ),

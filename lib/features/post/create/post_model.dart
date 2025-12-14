@@ -3,34 +3,46 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class PostModel {
   final String postId;
   final String uid;
-  final String imageUrl;
 
-  // Repost info
+  // MULTI-IMAGE
+  final List<String> imageUrls;
+
   final bool isRepost;
   final String? originalOwnerUid;
   final String? originalOwnerName;
   final String? repostedByUid;
   final String? repostedByName;
 
-  // Meta
   final DateTime createdAt;
 
-  // Engagement – these are per-user flags (not stored directly in doc)
+  // -------------------------
+  // VERIFIED / GAZETTER
+  // -------------------------
+  final bool isVerifiedOwner;
+
+  // ENGAGEMENT COUNTS
   int likeCount;
+  int replyCount;
+  int quoteReplyCount;
+
+  // PER-USER FLAGS
   bool hasLiked;
   bool hasSaved;
 
   PostModel({
     required this.postId,
     required this.uid,
-    required this.imageUrl,
+    required this.imageUrls,
     required this.isRepost,
+    required this.createdAt,
+    required this.isVerifiedOwner,
     this.originalOwnerUid,
     this.originalOwnerName,
     this.repostedByUid,
     this.repostedByName,
-    required this.createdAt,
     this.likeCount = 0,
+    this.replyCount = 0,
+    this.quoteReplyCount = 0,
     this.hasLiked = false,
     this.hasSaved = false,
   });
@@ -39,44 +51,31 @@ class PostModel {
     final data = doc.data() as Map<String, dynamic>;
 
     final rawCreatedAt = data["createdAt"];
-    DateTime created;
-    if (rawCreatedAt is Timestamp) {
-      created = rawCreatedAt.toDate();
-    } else if (rawCreatedAt is DateTime) {
-      created = rawCreatedAt;
-    } else {
-      created = DateTime.now();
-    }
+    final created = rawCreatedAt is Timestamp
+        ? rawCreatedAt.toDate()
+        : DateTime.now();
 
     return PostModel(
-      postId: (data["postId"] as String?) ?? doc.id,
-      uid: (data["uid"] as String?) ?? "",
-      imageUrl: (data["imageUrl"] as String?) ?? "",
-      isRepost: (data["isRepost"] as bool?) ?? false,
-      originalOwnerUid: data["originalOwnerUid"] as String?,
-      originalOwnerName: data["originalOwnerName"] as String?,
-      repostedByUid: data["repostedByUid"] as String?,
-      repostedByName: data["repostedByName"] as String?,
+      postId: data["postId"] ?? doc.id,
+      uid: data["uid"] ?? "",
+      imageUrls: List<String>.from(data["imageUrls"] ?? []),
+      isRepost: data["isRepost"] ?? false,
+
+      // ✅ VERIFIED OWNER
+      isVerifiedOwner: data["isVerifiedOwner"] ?? false,
+
+      originalOwnerUid: data["originalOwnerUid"],
+      originalOwnerName: data["originalOwnerName"],
+      repostedByUid: data["repostedByUid"],
+      repostedByName: data["repostedByName"],
+
       createdAt: created,
-      likeCount: (data["likeCount"] as int?) ?? 0,
-      // hasLiked/hasSaved are runtime-only flags (not read from Firestore)
-      hasLiked: false,
-      hasSaved: false,
+      likeCount: data["likeCount"] ?? 0,
+      replyCount: data["replyCount"] ?? 0,
+      quoteReplyCount: data["quoteReplyCount"] ?? 0,
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      "postId": postId,
-      "uid": uid,
-      "imageUrl": imageUrl,
-      "isRepost": isRepost,
-      "originalOwnerUid": originalOwnerUid,
-      "originalOwnerName": originalOwnerName,
-      "repostedByUid": repostedByUid,
-      "repostedByName": repostedByName,
-      "createdAt": createdAt,
-      "likeCount": likeCount,
-    };
-  }
+  // SAFE IMAGE ACCESS
+  List<String> get resolvedImages => imageUrls;
 }

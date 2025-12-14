@@ -18,155 +18,178 @@ class CreatePostScreen extends StatelessWidget {
               backgroundColor: const Color(0xFFC56A45),
               elevation: 0,
               title: const Text(
-                "Create Post",
+                "New Post",
                 style: TextStyle(color: Colors.white),
               ),
               centerTitle: true,
             ),
 
-            body: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // IMAGE PREVIEW BOX
-                    GestureDetector(
-                      onTap: () => controller.pickImage(),
-                      child: Container(
-                        height: 240,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE8E2D2),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: const Color(0xFFC56A45),
-                            width: 1.5,
-                          ),
-                        ),
-                        child: controller.selectedImage == null
-                            ? Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: const [
-                                  Icon(
-                                    Icons.add_a_photo,
-                                    size: 48,
-                                    color: Color(0xFF6C7A4C),
-                                  ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    "Tap to select image",
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: Color(0xFF2F2F2F),
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : ClipRRect(
-                                borderRadius: BorderRadius.circular(16),
-                                child: Image.file(
-                                  File(controller.selectedImage!.path),
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                      ),
-                    ),
+            body: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // --------------------------------------------------
+                  // IMAGE GRID PREVIEW
+                  // --------------------------------------------------
+                  _ImageGridPreview(controller: controller),
 
-                    const SizedBox(height: 24),
+                  const SizedBox(height: 20),
 
-                    // DESCRIPTION FIELD
-                    TextField(
-                      controller: controller.descController,
-                      maxLines: 4,
-                      decoration: InputDecoration(
-                        labelText: "Describe the issue",
-                        filled: true,
-                        fillColor: const Color(0xFFE8E2D2),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                  // --------------------------------------------------
+                  // ACTION BUTTONS (GALLERY / CAMERA)
+                  // --------------------------------------------------
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.photo_library),
+                          label: const Text("Gallery"),
+                          onPressed: controller.pickImagesFromGallery,
                         ),
                       ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // OFFICER DROPDOWN
-                    Text(
-                      "Tag an Officer (optional)",
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: const Color(0xFF2F2F2F),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8E2D2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: controller.selectedOfficerId,
-                          hint: const Text("Select Officer"),
-                          items: controller.officerList
-                              .map<DropdownMenuItem<String>>((officer) {
-                                return DropdownMenuItem(
-                                  value: officer["uid"],
-                                  child: Text(officer["name"]),
-                                );
-                              })
-                              .toList(),
-                          onChanged: (value) {
-                            controller.setOfficer(value);
-                          },
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.camera_alt),
+                          label: const Text("Camera"),
+                          onPressed: controller.takePhoto,
                         ),
                       ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // --------------------------------------------------
+                  // CAPTION
+                  // --------------------------------------------------
+                  TextField(
+                    controller: controller.descController,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      hintText: "Write a caption...",
+                      filled: true,
+                      fillColor: const Color(0xFFE8E2D2),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
+                  ),
 
-                    const SizedBox(height: 32),
+                  const SizedBox(height: 32),
 
-                    // POST BUTTON
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: controller.isLoading
-                            ? null
-                            : () => controller.createPost(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFC56A45),
-                          disabledBackgroundColor: const Color(0xFFB08573),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
+                  // --------------------------------------------------
+                  // POST BUTTON
+                  // --------------------------------------------------
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: controller.isLoading
+                          ? null
+                          : () => controller.createPost(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFC56A45),
+                        disabledBackgroundColor: const Color(0xFFB08573),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                        child: controller.isLoading
-                            ? const CircularProgressIndicator(
+                      ),
+                      child: controller.isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                              "Post",
+                              style: TextStyle(
+                                fontSize: 18,
                                 color: Colors.white,
-                              )
-                            : const Text(
-                                "Post",
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  color: Colors.white,
-                                ),
                               ),
-                      ),
+                            ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           );
         },
       ),
+    );
+  }
+}
+
+// ============================================================
+// IMAGE GRID PREVIEW WIDGET
+// ============================================================
+
+class _ImageGridPreview extends StatelessWidget {
+  final CreatePostController controller;
+
+  const _ImageGridPreview({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    if (controller.selectedImages.isEmpty) {
+      return Container(
+        height: 200,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: const Color(0xFFE8E2D2),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFC56A45)),
+        ),
+        child: const Center(
+          child: Text(
+            "No images selected",
+            style: TextStyle(color: Color(0xFF6C7A4C), fontSize: 16),
+          ),
+        ),
+      );
+    }
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: controller.selectedImages.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+      ),
+      itemBuilder: (context, index) {
+        final img = controller.selectedImages[index];
+
+        return Stack(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.file(
+                File(img.path),
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+              ),
+            ),
+
+            // REMOVE BUTTON
+            Positioned(
+              top: 6,
+              right: 6,
+              child: GestureDetector(
+                onTap: () => controller.removeImageAt(index),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.black54,
+                  ),
+                  padding: const EdgeInsets.all(4),
+                  child: const Icon(Icons.close, color: Colors.white, size: 16),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

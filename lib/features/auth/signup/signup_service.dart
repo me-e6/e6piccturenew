@@ -5,44 +5,63 @@ class SignupService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Main function to sign up user
+  /// EMAIL + PASSWORD SIGNUP
+  /// ----------------------
+  /// Identity rules enforced here:
+  /// - All users start as `citizen`
+  /// - No role selection by user
+  /// - Account state starts as `active`
   Future<String> signupUser({
     required String name,
     required String email,
     required String password,
-    required String userType,
   }) async {
     try {
-      // 1. Firebase Auth - Create user
-      UserCredential cred = await _auth.createUserWithEmailAndPassword(
+      // 1. Create Firebase Auth user
+      final UserCredential cred = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      final uid = cred.user?.uid;
-      if (uid == null) return "unknown-error";
+      final User? user = cred.user;
+      if (user == null) return "unknown-error";
 
-      // 2. Save user profile in Firestore
-      await _firestore.collection("users").doc(uid).set({
-        "uid": uid,
-        "name": name,
+      final DocumentReference userRef = _firestore
+          .collection("users")
+          .doc(user.uid);
+
+      final FieldValue now = FieldValue.serverTimestamp();
+
+      // 2. Create canonical Firestore user document
+      await userRef.set({
+        // Identity
+        "uid": user.uid,
         "email": email,
-        "userType": userType,
-        "createdAt": FieldValue.serverTimestamp(),
-        "profileImage": null, // future extension
-        "followers": [],
-        "following": [],
+        "displayName": name,
+        "photoUrl": user.photoURL ?? "",
+
+        // RBAC + STATE (STEP 1)
+        "role": "citizen",
+        "state": "active",
+        "isVerified": false,
+        "jurisdictionId": null,
+
+        // Social counters (scalable)
+        "followersCount": 0,
+        "followingCount": 0,
+
+        // Audit
+        "createdAt": now,
+        "updatedAt": now,
       });
 
       return "success";
     } on FirebaseAuthException catch (e) {
-      // Handle Firebase Auth errors cleanly
       if (e.code == "email-already-in-use") return "email-already-in-use";
       if (e.code == "invalid-email") return "invalid-email";
       if (e.code == "weak-password") return "weak-password";
       return "auth-error";
-    } catch (e) {
-      // Anything else
+    } catch (_) {
       return "unknown-error";
     }
   }

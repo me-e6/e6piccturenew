@@ -1,88 +1,91 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../post/create/post_model.dart';
-import 'user_model.dart';
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
+import '../post/create/post_model.dart';
+import 'user_model.dart';
+
 class ProfileService {
-  final _db = FirebaseFirestore.instance;
+  // --------------------------------------------------
+  // FIRESTORE & STORAGE
+  // --------------------------------------------------
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  // ---------------- GET USER ----------------
-  Future<UserModel> getUser(String uid) async {
-    final doc = await _db.collection("users").doc(uid).get();
-
-    if (!doc.exists) {
-      return UserModel(
-        uid: uid,
-        email: "",
-        name: "",
-        type: "citizen",
-        photoUrl: "",
-        followersList: [],
-        followingList: [],
-        followersCount: 0,
-        followingCount: 0,
-      );
-    }
-
+  // --------------------------------------------------
+  // FETCH USER
+  // --------------------------------------------------
+  Future<UserModel?> getUser(String uid) async {
+    final doc = await _firestore.collection('users').doc(uid).get();
+    if (!doc.exists) return null;
     return UserModel.fromMap(doc.data()!);
   }
 
-  // ---------------- GET USER POSTS ----------------
+  // --------------------------------------------------
+  // FETCH POSTS
+  // --------------------------------------------------
   Future<List<PostModel>> getUserPosts(String uid) async {
-    try {
-      final q = await _db
-          .collection("posts")
-          .where("uid", isEqualTo: uid)
-          .orderBy("createdAt", descending: true)
-          .get();
+    final snap = await _firestore
+        .collection('posts')
+        .where('uid', isEqualTo: uid)
+        .orderBy('createdAt', descending: true)
+        .get();
 
-      return q.docs.map((d) => PostModel.fromDocument(d)).toList();
-    } catch (e) {
-      print("🔥 Error loading user posts: $e");
-      return [];
-    }
+    return snap.docs.map((d) => PostModel.fromDocument(d)).toList();
   }
 
-  // ---------------- GET USER REPOSTS ----------------
   Future<List<PostModel>> getUserReposts(String uid) async {
-    try {
-      final q = await _db
-          .collection("posts")
-          .where("uid", isEqualTo: uid)
-          .where("isRepost", isEqualTo: true)
-          .orderBy("createdAt", descending: true)
-          .get();
+    final snap = await _firestore
+        .collection('posts')
+        .where('repostedByUid', isEqualTo: uid)
+        .orderBy('createdAt', descending: true)
+        .get();
 
-      return q.docs.map((d) => PostModel.fromDocument(d)).toList();
-    } catch (e) {
-      print("🔥 Error loading reposts: $e");
-      return [];
-    }
+    return snap.docs.map((d) => PostModel.fromDocument(d)).toList();
   }
 
   Future<List<PostModel>> getSavedPosts(String uid) async {
-    return [];
+    final savedSnap = await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('saved')
+        .get();
+
+    if (savedSnap.docs.isEmpty) return [];
+
+    final ids = savedSnap.docs.map((d) => d.id).toList();
+
+    final postsSnap = await _firestore
+        .collection('posts')
+        .where(FieldPath.documentId, whereIn: ids)
+        .get();
+
+    return postsSnap.docs.map((d) => PostModel.fromDocument(d)).toList();
   }
 
-  // ---------------- UPLOAD PHOTO ----------------
+  // --------------------------------------------------
+  // UPDATE PROFILE PHOTO
+  // --------------------------------------------------
   Future<String?> updateProfilePhoto(String uid, File file) async {
-    try {
-      final ref = FirebaseStorage.instance
-          .ref()
-          .child("users")
-          .child(uid)
-          .child("profile_${DateTime.now().millisecondsSinceEpoch}.jpg");
+    final ref = _storage.ref().child('profiles').child('$uid.jpg');
+    await ref.putFile(file);
+    final url = await ref.getDownloadURL();
 
-      await ref.putFile(file);
-      final url = await ref.getDownloadURL();
+    await _firestore.collection('users').doc(uid).update({'photoUrl': url});
 
-      await _db.collection("users").doc(uid).update({"photoUrl": url});
+    return url;
+  }
 
-      return url;
-    } catch (e) {
-      print("🔥 Profile photo update error: $e");
-      return null;
-    }
+  // --------------------------------------------------
+  // 🔐 ADMIN — TOGGLE GAZETTER (VERIFIED)
+  // --------------------------------------------------
+  Future<void> toggleGazetter({
+    required String targetUid,
+    required bool makeVerified,
+  }) async {
+    await _firestore.collection('users').doc(targetUid).update({
+      'isVerified': makeVerified,
+      'verifiedLabel': makeVerified ? 'Gazetter' : '',
+    });
   }
 }

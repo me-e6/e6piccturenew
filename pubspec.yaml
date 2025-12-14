@@ -30,12 +30,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
+  shared_preferences: ^2.2.2
   flutter_riverpod: ^3.0.3
   provider: ^6.0.0
   responsive_framework: ^1.5.1
   video_player: ^2.8.1
-  share_plus: ^7.2.0
+  share_plus: ^7.2.1
   image_picker: ^0.8.7+5
   uuid: ^3.0.7
   timeago: ^3.2.2
@@ -127,3 +127,7 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+fonts:
+  - family: Inter
+    fonts:
+      - asset: assets/fonts/Inter-Regular.ttf

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'profile_controller.dart';
 import 'user_model.dart';
 import '../post/create/post_model.dart';
 import '../post/details/post_details_screen.dart';
 import '../follow/follow_controller.dart'; // NEW
+import '../admin/admin_user_controller.dart';
 
 class ProfileScreen extends StatelessWidget {
   final String uid;
@@ -22,6 +24,7 @@ class ProfileScreen extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => FollowController()..checkFollowing(uid),
         ),
+        ChangeNotifierProvider(create: (_) => AdminUserController()),
       ],
       child: Consumer2<ProfileController, FollowController>(
         builder: (context, controller, follow, _) {
@@ -112,16 +115,36 @@ class _ProfileHeader extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          Text(
-            user.name,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF2F2F2F),
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                user.name,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF2F2F2F),
+                ),
+              ),
+
+              // ---------------- GAZETTER BADGE ----------------
+              if (user.isVerified) ...[
+                const SizedBox(width: 6),
+                const Icon(Icons.verified, color: Colors.blueAccent, size: 20),
+                const SizedBox(width: 4),
+                const Text(
+                  "Gazetter",
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.blueAccent,
+                  ),
+                ),
+              ],
+            ],
           ),
 
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
 
           Container(
             padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
@@ -148,9 +171,80 @@ class _ProfileHeader extends StatelessWidget {
           ),
 
           const SizedBox(height: 18),
+          if (controller.isAdminViewing) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: 220,
+              height: 42,
+              child: ElevatedButton.icon(
+                icon: Icon(
+                  user.isVerified ? Icons.verified : Icons.verified_outlined,
+                  color: Colors.white,
+                ),
+                label: Text(
+                  user.isVerified ? "Revoke Gazetter" : "Grant Gazetter",
+                  style: const TextStyle(color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: user.isVerified
+                      ? Colors.redAccent
+                      : Colors.green,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+                onPressed: controller.toggleGazetterStatus,
+              ),
+            ),
+          ],
 
           // ---------------- FOLLOW BUTTON -----------------
           if (!isOwnProfile) _buildFollowButton(follow),
+          if (controller.isAdminViewing) // <- boolean from ProfileController
+            Consumer<AdminUserController>(
+              builder: (_, admin, __) {
+                return Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: SizedBox(
+                    height: 42,
+                    width: 220,
+                    child: ElevatedButton(
+                      onPressed: admin.isProcessing
+                          ? null
+                          : () {
+                              admin.toggleGazetter(
+                                targetUid: targetUid,
+                                currentStatus: user.isVerified,
+                              );
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: user.isVerified
+                            ? Colors.redAccent
+                            : Colors.blueAccent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                      child: admin.isProcessing
+                          ? const CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            )
+                          : Text(
+                              user.isVerified
+                                  ? "Revoke Gazetter"
+                                  : "Grant Gazetter",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                    ),
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );
@@ -309,7 +403,7 @@ class _TabContent extends StatelessWidget {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: Image.network(post.imageUrl, fit: BoxFit.cover),
+            child: Image.network(post.resolvedImages.first, fit: BoxFit.cover),
           ),
         );
       },

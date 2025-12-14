@@ -1,0 +1,53 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    /*
+    ─────────────────────────────────────────────
+    POSTS IMAGES
+    Path: posts/{uid}/{filename}
+    ─────────────────────────────────────────────
+    */
+    match /posts/{userId}/{fileName} {
+
+      //  READ
+      allow read: if true;
+
+      // WRITE (UPLOAD)
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+
+        // File size ≤ 5MB
+        && request.resource.size < 5 * 1024 * 1024
+
+        // Only images
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    /*
+    ─────────────────────────────────────────────
+    PROFILE PHOTOS
+    Path: profile/{uid}/avatar.jpg
+    ─────────────────────────────────────────────
+    */
+    match /profile/{userId}/{fileName} {
+
+      allow read: if true;
+
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    /*
+    ─────────────────────────────────────────────
+    BLOCK EVERYTHING ELSE
+    ─────────────────────────────────────────────
+    */
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

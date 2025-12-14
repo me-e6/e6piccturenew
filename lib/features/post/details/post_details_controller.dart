@@ -42,7 +42,7 @@ class PostDetailsController extends ChangeNotifier {
 
     await _service.repost(
       post.postId,
-      post.imageUrl,
+      post.resolvedImages.first,
       post.uid,
       post.originalOwnerName ?? "",
     );

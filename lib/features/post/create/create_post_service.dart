@@ -8,64 +8,83 @@ class CreatePostService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Fetch list of officers (userType = "officer")
-  Future<List<Map<String, dynamic>>> fetchOfficerList() async {
-    try {
-      final query = await _firestore
-          .collection("users")
-          .where("userType", isEqualTo: "officer")
-          .get();
-
-      return query.docs.map((doc) {
-        return {"uid": doc.id, "name": doc["name"] ?? "Officer"};
-      }).toList();
-    } catch (e) {
-      return [];
-    }
-  }
-
-  // Upload Image & Create Post Document
+  // --------------------------------------------------
+  // CREATE POST (SINGLE OR MULTI IMAGE)
+  // --------------------------------------------------
   Future<String> createPost({
-    required File image,
+    required List<File> images,
     required String description,
-    required String? officerId,
   }) async {
     try {
       final uid = _auth.currentUser?.uid;
       if (uid == null) return "auth-error";
 
-      // 1. Upload Image
-      final imageUrl = await _uploadImage(uid, image);
+      final userDoc = await _firestore.collection('users').doc(uid).get();
 
-      if (imageUrl == null) return "storage-error";
+      final bool isVerified = userDoc.data()?['isVerified'] ?? false;
+      final String ownerName = userDoc.data()?['name'] ?? '';
 
-      // 2. Create Firestore Document
-      await _firestore.collection("posts").add({
+      if (images.isEmpty) return "no-images";
+
+      // --------------------------------------------------
+      // STEP 1: UPLOAD ALL IMAGES
+      // --------------------------------------------------
+      final List<String> uploadedUrls = [];
+
+      for (final image in images) {
+        final url = await _uploadSingleImage(uid, image);
+        if (url == null) {
+          return "storage-error";
+        }
+        uploadedUrls.add(url);
+      }
+
+      // --------------------------------------------------
+      // STEP 2: WRITE FIRESTORE ONCE (AUTHORITATIVE SNAPSHOT)
+      // --------------------------------------------------
+      final postRef = _firestore.collection("posts").doc();
+
+      await postRef.set({
+        "postId": postRef.id,
         "uid": uid,
-        "description": description,
-        "imageUrl": imageUrl,
-        "officerId": officerId,
-        "status": "open",
+
+        // OWNER SNAPSHOT (GAZETTER SUPPORT)
+        "ownerName": ownerName,
+        "ownerVerified": isVerified,
+
+        // MEDIA
+        "imageUrls": uploadedUrls,
+        "imageUrl": uploadedUrls.first, // legacy fallback
+        // SOCIAL POST
+        "isRepost": false,
+
+        // ENGAGEMENT COUNTERS
+        "likeCount": 0,
+        "replyCount": 0,
+        "quoteReplyCount": 0,
+
         "createdAt": FieldValue.serverTimestamp(),
       });
 
       return "success";
-    } catch (e) {
+    } catch (_) {
       return "error";
     }
   }
 
-  // Upload image to Firebase Storage
-  Future<String?> _uploadImage(String uid, File image) async {
+  // --------------------------------------------------
+  // UPLOAD SINGLE IMAGE
+  // --------------------------------------------------
+  Future<String?> _uploadSingleImage(String uid, File image) async {
     try {
-      final fileName = "${DateTime.now().millisecondsSinceEpoch}.jpg";
+      final fileName =
+          "${DateTime.now().millisecondsSinceEpoch}_${image.path.split('/').last}";
 
       final ref = _storage.ref().child("posts").child(uid).child(fileName);
 
-      final uploadTask = await ref.putFile(image);
-
-      return await uploadTask.ref.getDownloadURL();
-    } catch (e) {
+      final taskSnapshot = await ref.putFile(image);
+      return await taskSnapshot.ref.getDownloadURL();
+    } catch (_) {
       return null;
     }
   }

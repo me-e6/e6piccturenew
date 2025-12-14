@@ -37,7 +37,11 @@ class SearchResultTile extends StatelessWidget {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: Image.network(post!.imageUrl, height: 140, fit: BoxFit.cover),
+          child: Image.network(
+            post!.resolvedImages.first,
+            height: 140,
+            fit: BoxFit.cover,
+          ),
         ),
       );
     }

@@ -55,7 +55,7 @@ class SignupController extends ChangeNotifier {
       name: name,
       email: email,
       password: password,
-      userType: userType,
+      // userType: userType,
     );
 
     _setLoading(false);

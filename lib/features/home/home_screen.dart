@@ -1,34 +1,59 @@
-import 'package:e6piccturenew/features/settingsbreadcrumb/settings_snapout_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'home_controller.dart';
+
+import 'home_controller_v2.dart';
+import '../feed/day_feed_controller.dart';
+
 import '../post/create/post_model.dart';
 import '../post/details/post_details_screen.dart';
+import '../settingsbreadcrumb/settings_snapout_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => HomeController(),
-      child: Consumer<HomeController>(
-        builder: (context, controller, _) {
+    return MultiProvider(
+      providers: [
+        // --------------------------------------------------
+        // DAY FEED CONTROLLER (SOURCE OF TRUTH)
+        // --------------------------------------------------
+        ChangeNotifierProvider<DayFeedController>(
+          create: (_) => DayFeedController(
+            followingUids: const [], // TODO: inject from auth/profile
+          )..loadInitialFeed(),
+        ),
+
+        // --------------------------------------------------
+        // HOME CONTROLLER v2 (PROXY PROVIDER - FIXED)
+        // --------------------------------------------------
+        ChangeNotifierProxyProvider<DayFeedController, HomeControllerV2>(
+          create: (_) => HomeControllerV2(
+            dayFeedController: DayFeedController(followingUids: const []),
+          ),
+          update: (_, dayFeedController, __) =>
+              HomeControllerV2(dayFeedController: dayFeedController),
+        ),
+      ],
+      child: Consumer<HomeControllerV2>(
+        builder: (context, homeController, _) {
           return Scaffold(
             backgroundColor: const Color(0xFFF5EDE3),
 
-            // ⭐ Correct position
+            // --------------------------------------------------
+            // SETTINGS SNAP-OUT
+            // --------------------------------------------------
             endDrawer: const SettingsSnapOutScreen(),
 
+            // --------------------------------------------------
+            // APP BAR
+            // --------------------------------------------------
             appBar: AppBar(
               backgroundColor: const Color(0xFFF5EDE3),
               elevation: 6,
               automaticallyImplyLeading: false,
-
-              // ⭐ Keep ONLY logo + search here
               title: Row(
                 children: [
-                  // LOGO LEFT
                   GestureDetector(
                     onTap: () => Navigator.pushNamed(context, "/company"),
                     child: Container(
@@ -43,23 +68,17 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-
-                  const SizedBox(width: 5),
-
-                  // ⭐ Company Name Text (Brand Label)
+                  const SizedBox(width: 6),
                   const Text(
                     "Picctture",
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                       letterSpacing: .8,
-                      color: Color(
-                        0xFF6C7A4C,
-                      ), // same accent color as search icon
+                      color: Color(0xFF6C7A4C),
                     ),
                   ),
                   const Spacer(),
-                  // SEARCH BAR
                   GestureDetector(
                     onTap: () => Navigator.pushNamed(context, "/search"),
                     child: const Icon(
@@ -70,15 +89,12 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ],
               ),
-
-              // ⭐ Menu Icon goes here
               actions: [
                 Builder(
                   builder: (context) {
                     return IconButton(
                       icon: const Icon(
                         Icons.menu,
-                        //color: Color(0xFFC56A45),
                         color: Color(0xFF6C7A4C),
                         size: 28,
                       ),
@@ -91,71 +107,97 @@ class HomeScreen extends StatelessWidget {
               ],
             ),
 
-            // BODY (unchanged)
-            body: controller.isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFFC56A45)),
-                  )
-                : NotificationListener<ScrollNotification>(
-                    onNotification: (scroll) {
-                      if (scroll.metrics.pixels ==
-                              scroll.metrics.maxScrollExtent &&
-                          !controller.isMoreLoading) {
-                        controller.loadMore();
-                      }
-                      return false;
+            // --------------------------------------------------
+            // BODY
+            // --------------------------------------------------
+            body: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                const SizedBox(height: 12),
+
+                // --------------------------------------------------
+                // DAY ALBUM CARD
+                // --------------------------------------------------
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.pushNamed(context, "/day-feed");
                     },
-                    child: RefreshIndicator(
-                      onRefresh: controller.refreshFeed,
-                      color: const Color(0xFFC56A45),
-                      child: ListView(
-                        padding: EdgeInsets.zero,
+                    child: Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6C7A4C),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 6,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (controller.isOffline)
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.red.shade100,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Text(
-                                "You're offline – showing cached posts",
-                                style: TextStyle(color: Colors.red),
-                              ),
+                          const Text(
+                            "Day Album",
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
-
-                          const SizedBox(height: 10),
-
-                          ListView.builder(
-                            padding: const EdgeInsets.all(16),
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount:
-                                controller.feedPosts.length +
-                                (controller.isMoreLoading ? 1 : 0),
-                            itemBuilder: (context, i) {
-                              if (i < controller.feedPosts.length) {
-                                final post = controller.feedPosts[i];
-                                return _PostCard(post: post);
-                              }
-
-                              return const Padding(
-                                padding: EdgeInsets.all(20),
-                                child: Center(
-                                  child: CircularProgressIndicator(
-                                    color: Color(0xFFC56A45),
-                                  ),
-                                ),
-                              );
-                            },
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            homeController.dayAlbumMessage,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.white70,
+                            ),
                           ),
                         ],
                       ),
                     ),
                   ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // --------------------------------------------------
+                // SUGGESTED USERS (STUB)
+                // --------------------------------------------------
+                SizedBox(
+                  height: 120,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    scrollDirection: Axis.horizontal,
+                    itemBuilder: (_, i) => Container(
+                      width: 90,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8E2D2),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          "Suggested",
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ),
+                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    itemCount: 5,
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // --------------------------------------------------
+                // LEGACY FEED (TEMPORARY)
+                // --------------------------------------------------
+                const SizedBox(height: 40),
+              ],
+            ),
           );
         },
       ),
@@ -163,9 +205,9 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-//
-// ---------------- POST CARD UI -----------------
-//
+// ---------------------------------------------------------------------------
+// POST CARD (UNCHANGED)
+// ---------------------------------------------------------------------------
 
 class _PostCard extends StatelessWidget {
   final PostModel post;
@@ -200,15 +242,13 @@ class _PostCard extends StatelessWidget {
                 top: Radius.circular(18),
               ),
               child: Image.network(
-                post.imageUrl,
+                post.resolvedImages.first,
                 height: 280,
                 width: double.infinity,
                 fit: BoxFit.cover,
               ),
             ),
-
             const SizedBox(height: 10),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Text(
@@ -218,9 +258,7 @@ class _PostCard extends StatelessWidget {
                 style: const TextStyle(fontSize: 14, color: Color(0xFF6C7A4C)),
               ),
             ),
-
             const SizedBox(height: 6),
-
             Padding(
               padding: const EdgeInsets.only(left: 14, right: 14, bottom: 14),
               child: Row(
