@@ -1,42 +1,86 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ---------------- POSTS ----------------
+    // =====================================================
+    // POSTS (PUBLIC READ, OWNER WRITE, SCHEMA-LOCKED)
+    // =====================================================
     match /posts/{postId} {
 
-      // Anyone can read posts
+      // -----------------------
+      // PUBLIC READ
+      // -----------------------
       allow read: if true;
 
-      // Only authenticated users can create posts
-      allow create: if request.auth != null;
+      // -----------------------
+      // CREATE (STRICT)
+      // -----------------------
+      allow create: if request.auth != null
+        // ownership
+        && request.auth.uid == request.resource.data.authorId
 
-      // Updates allowed for:
-      // 1) Post owner (engagement counters)
-      // 2) Admin (Gazetter toggle, moderation)
+        // immutable identity
+        && request.resource.data.postId == postId
+
+        // required schema
+        && request.resource.data.keys().hasAll([
+          'postId',
+          'authorId',
+          'authorName',
+          'isVerifiedOwner',
+          'imageUrls',
+          'isRepost',
+          'likeCount',
+          'replyCount',
+          'quoteReplyCount',
+          'createdAt'
+        ])
+
+        // type validation
+        && request.resource.data.postId is string
+        && request.resource.data.authorId is string
+        && request.resource.data.authorName is string
+        && request.resource.data.isVerifiedOwner is bool
+        && request.resource.data.isRepost is bool
+        && request.resource.data.imageUrls is list
+        && request.resource.data.imageUrls.size() > 0
+        && request.resource.data.likeCount == 0
+        && request.resource.data.replyCount == 0
+        && request.resource.data.quoteReplyCount == 0
+        && request.resource.data.createdAt is timestamp;
+
+      // -----------------------
+      // UPDATE (SAFE MUTATION)
+      // -----------------------
       allow update: if request.auth != null
-        && (
-          request.auth.uid == resource.data.uid
-          ||
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
-        );
-    }
+        // only author
+        && request.auth.uid == resource.data.authorId
 
-    // ---------------- USERS ----------------
-    match /users/{userId} {
+        // freeze identity fields forever
+        && request.resource.data.authorId == resource.data.authorId
+        && request.resource.data.postId == resource.data.postId
+        && request.resource.data.authorName == resource.data.authorName
+        && request.resource.data.isVerifiedOwner == resource.data.isVerifiedOwner
+        && request.resource.data.createdAt == resource.data.createdAt
 
-      // Anyone can read profiles
-      allow read: if true;
+        // allow only these fields to change
+        && request.resource.data.diff(resource.data).changedKeys()
+          .hasOnly([
+            'likeCount',
+            'replyCount',
+            'quoteReplyCount'
+          ])
 
-      // Updates allowed for:
-      // 1) Self (profile updates)
-      // 2) Admin (Gazetter / admin flags)
-      allow update: if request.auth != null
-        && (
-          request.auth.uid == userId
-          ||
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
-        );
+        // counters must remain sane
+        && request.resource.data.likeCount >= 0
+        && request.resource.data.replyCount >= 0
+        && request.resource.data.quoteReplyCount >= 0;
+
+      // -----------------------
+      // DELETE (DISABLED)
+      // -----------------------
+      allow delete: if false;
     }
   }
 }

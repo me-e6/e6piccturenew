@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "e6piccturenew"
-  }
+    "default": "e6piccturenew",
+    "e6piccture_v0.3.6": "e6piccturenew"
+  },
+  "targets": {},
+  "etags": {}
 }

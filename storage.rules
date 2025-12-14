@@ -3,51 +3,55 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    /*
-    ─────────────────────────────────────────────
-    POSTS IMAGES
-    Path: posts/{uid}/{filename}
-    ─────────────────────────────────────────────
-    */
-    match /posts/{userId}/{fileName} {
-
-      //  READ
-      allow read: if true;
-
-      // WRITE (UPLOAD)
-      allow write: if request.auth != null
-        && request.auth.uid == userId
-
-        // File size ≤ 5MB
-        && request.resource.size < 5 * 1024 * 1024
-
-        // Only images
-        && request.resource.contentType.matches('image/.*');
-    }
-
-    /*
-    ─────────────────────────────────────────────
-    PROFILE PHOTOS
-    Path: profile/{uid}/avatar.jpg
-    ─────────────────────────────────────────────
-    */
+    // -----------------------
+    // PROFILE PHOTOS
+    // Path: /profile/{uid}/avatar.jpg
+    // -----------------------
     match /profile/{userId}/{fileName} {
 
+      // Anyone can read profile photos
       allow read: if true;
 
+      // Only owner can upload/update
       allow write: if request.auth != null
-        && request.auth.uid == userId
-        && request.resource.size < 2 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*');
+                   && request.auth.uid == userId
+                   && isValidImage()
+                   && isSmallEnough();
     }
 
-    /*
-    ─────────────────────────────────────────────
-    BLOCK EVERYTHING ELSE
-    ─────────────────────────────────────────────
-    */
+    // -----------------------
+    // POST IMAGES
+    // Path: /posts/{uid}/{filename}
+    // -----------------------
+    match /posts/{userId}/{fileName} {
+
+      // Public read for feeds
+      allow read: if true;
+
+      // Only owner can upload
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && isValidImage()
+                   && isSmallEnough();
+    }
+
+    // -----------------------
+    // DEFAULT DENY
+    // -----------------------
     match /{allPaths=**} {
       allow read, write: if false;
     }
   }
+}
+
+// -----------------------
+//  HELPERS
+// -----------------------
+function isValidImage() {
+  return request.resource.contentType.matches('image/.*');
+}
+
+function isSmallEnough() {
+  // 10 MB max
+  return request.resource.size < 10 * 1024 * 1024;
 }

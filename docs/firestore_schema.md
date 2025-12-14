@@ -1,3 +1,18 @@
+# Collections Freeze
+
+/users
+/posts
+/follows
+/saved
+/search_index (if used)
+
+# Principles (freeze these)
+
+-Client can read public data
+-Client can write only own data
+-Admin-only fields are server/admin writable
+-No dynamic schemas allowed
+
 # Firestore Canonical Schema (Frozen)
 
 ## users/{uid}
@@ -13,6 +28,12 @@ Required fields:
 - followersCount: number
 - followingCount: number
 - createdAt: timestamp
+- updatedAt: timestamp
+- jurisdictionId: String
+- photoUrl: String
+- displayName: String
+- role: String
+- state: String
 
 ---
 
@@ -20,7 +41,7 @@ Required fields:
 
 Required fields:
 - postId: string
-- uid: string
+- authorId: string
 - imageUrls: array<string> (min 1)
 - imageUrl: string (legacy)
 - isRepost: boolean
@@ -29,6 +50,7 @@ Required fields:
 - quoteReplyCount: number
 - isRemoved: boolean
 - createdAt: timestamp
+- ownVerified: boolean
 
 ---
 

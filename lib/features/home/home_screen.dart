@@ -252,12 +252,11 @@ class _PostCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Text(
-                post.isRepost
-                    ? "RePic by ${post.repostedByName ?? 'User'}"
-                    : "Posted by ${post.originalOwnerName ?? 'User'}",
+                "Posted by ${post.authorName}",
                 style: const TextStyle(fontSize: 14, color: Color(0xFF6C7A4C)),
               ),
             ),
+
             const SizedBox(height: 6),
             Padding(
               padding: const EdgeInsets.only(left: 14, right: 14, bottom: 14),

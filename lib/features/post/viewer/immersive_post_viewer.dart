@@ -92,9 +92,7 @@ class _ImmersivePostView extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            controller.post.originalOwnerName ??
-                                controller.post.repostedByName ??
-                                "User",
+                            controller.post.authorName ?? "User",
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 14,

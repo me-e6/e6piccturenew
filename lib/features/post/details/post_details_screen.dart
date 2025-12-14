@@ -50,15 +50,14 @@ class PostDetailsScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (p.isRepost && p.originalOwnerName != null)
-                          Text(
-                            "Re-pic from ${p.originalOwnerName}",
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF6C7A4C),
-                            ),
+                        Text(
+                          "Posted by ${p.authorName ?? 'User'}",
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF6C7A4C),
                           ),
+                        ),
 
                         const SizedBox(height: 8),
 

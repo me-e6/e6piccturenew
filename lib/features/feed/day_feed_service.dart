@@ -49,7 +49,7 @@ class DayFeedService {
 
     final snapshot = await _firestore
         .collection('posts')
-        .where('uid', whereIn: _chunk(followingUids))
+        .where('authorId', whereIn: _chunk(followingUids))
         .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(since))
         .where('isRemoved', isEqualTo: false)
         .count()
@@ -68,12 +68,14 @@ class DayFeedService {
     required DateTime since,
   }) {
     if (followingUids.isEmpty) {
-      return _firestore.collection('posts').where('uid', isEqualTo: '__none__');
+      return _firestore
+          .collection('posts')
+          .where('authorId', isEqualTo: '__none__');
     }
 
     return _firestore
         .collection('posts')
-        .where('uid', whereIn: _chunk(followingUids))
+        .where('authorId', whereIn: _chunk(followingUids))
         .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(since))
         .where('isRemoved', isEqualTo: false)
         .orderBy('createdAt', descending: true);

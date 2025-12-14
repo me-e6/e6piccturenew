@@ -27,7 +27,7 @@ class ProfileService {
   Future<List<PostModel>> getUserPosts(String uid) async {
     final snap = await _firestore
         .collection('posts')
-        .where('uid', isEqualTo: uid)
+        .where('authorId', isEqualTo: uid)
         .orderBy('createdAt', descending: true)
         .get();
 

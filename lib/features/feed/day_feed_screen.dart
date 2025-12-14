@@ -134,9 +134,7 @@ class _PostCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      post.isRepost
-                          ? "RePic by ${post.repostedByName ?? 'User'}"
-                          : "Posted by ${post.originalOwnerName ?? 'User'}",
+                      "Posted by ${post.authorName}",
                       style: const TextStyle(
                         fontSize: 14,
                         color: Color(0xFF6C7A4C),

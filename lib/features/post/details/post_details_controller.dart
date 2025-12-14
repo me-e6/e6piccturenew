@@ -43,8 +43,8 @@ class PostDetailsController extends ChangeNotifier {
     await _service.repost(
       post.postId,
       post.resolvedImages.first,
-      post.uid,
-      post.originalOwnerName ?? "",
+      post.authorId,
+      post.authorName,
     );
 
     isProcessing = false;

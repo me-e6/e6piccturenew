@@ -22,7 +22,7 @@ class CreatePostService {
       final userDoc = await _firestore.collection('users').doc(uid).get();
 
       final bool isVerified = userDoc.data()?['isVerified'] ?? false;
-      final String ownerName = userDoc.data()?['name'] ?? '';
+      final String ownerName = userDoc.data()?['displayName'] ?? '';
 
       if (images.isEmpty) return "no-images";
 
@@ -46,7 +46,7 @@ class CreatePostService {
 
       await postRef.set({
         "postId": postRef.id,
-        "uid": uid,
+        "authorId": uid,
 
         // OWNER SNAPSHOT (GAZETTER SUPPORT)
         "ownerName": ownerName,

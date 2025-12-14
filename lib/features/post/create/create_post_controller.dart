@@ -63,58 +63,6 @@ class CreatePostController extends ChangeNotifier {
   // --------------------------------------------------
   // CREATE POST
   // --------------------------------------------------
-  /* Future<String> createPost(BuildContext context) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      _showMessage(context, "Please login again.");
-      return "not-authenticated";
-    }
-
-    if (selectedImages.isEmpty) {
-      _showMessage(context, "Please select at least one image.");
-      return "no-images";
-    }
-
-    final description = descController.text.trim();
-    if (description.isEmpty) {
-      _showMessage(context, "Please enter a caption.");
-      return "no-description";
-    }
-
-    _setLoading(true);
-
-    final guardResult = await _guard.checkMutationAllowed(user.uid);
-    if (guardResult != GuardResult.allowed) {
-      _setLoading(false);
-      _showMessage(context, "Action not allowed.");
-      return guardResult.name;
-    }
-
-    final result = await _service.createPost(
-      images: selectedImages.map((x) => File(x.path)).toList(),
-      description: description,
-    );
-
-    _setLoading(false);
-
-    if (result == "success") {
-      _showMessage(context, "Post uploaded successfully!");
-
-      selectedImages.clear();
-      descController.clear();
-
-      notifyListeners();
-
-      Future.delayed(const Duration(milliseconds: 400), () {
-        Navigator.pushReplacementNamed(context, "/home");
-      });
-
-      return "success";
-    }
-
-    _showMessage(context, "Something went wrong. Try again.");
-    return "error";
-  } */
 
   Future<String> createPost(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
