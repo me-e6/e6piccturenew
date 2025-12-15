@@ -1,3 +1,4 @@
+// lib/core/theme/theme_controller.dart
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -6,6 +7,8 @@ class ThemeController extends ChangeNotifier {
 
   ThemeMode _themeMode = ThemeMode.light;
   ThemeMode get themeMode => _themeMode;
+
+  bool get isDarkMode => _themeMode == ThemeMode.dark;
 
   ThemeController() {
     _loadTheme();
@@ -48,13 +51,13 @@ class ThemeController extends ChangeNotifier {
   }
 
   // --------------------------------------------------
-  // QUICK TOGGLES (FUTURE UI USE)
+  // QUICK TOGGLE (USED BY SNAP-OUT)
   // --------------------------------------------------
-  void toggleTheme() {
+  void toggleTheme() async {
     if (_themeMode == ThemeMode.light) {
-      setTheme(ThemeMode.dark);
+      await setTheme(ThemeMode.dark);
     } else {
-      setTheme(ThemeMode.light);
+      await setTheme(ThemeMode.light);
     }
   }
 }

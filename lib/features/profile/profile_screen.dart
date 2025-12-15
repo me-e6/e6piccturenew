@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
+import '../../core/widgets/app_scaffold.dart';
 
 import 'profile_controller.dart';
 import 'user_model.dart';
+
 import '../post/create/post_model.dart';
 import '../post/details/post_details_screen.dart';
-import '../follow/follow_controller.dart'; // NEW
+
+import '../follow/follow_controller.dart';
 import '../admin/admin_user_controller.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -29,29 +32,33 @@ class ProfileScreen extends StatelessWidget {
       child: Consumer2<ProfileController, FollowController>(
         builder: (context, controller, follow, _) {
           if (controller.isLoading || controller.user == null) {
-            return const Scaffold(
-              backgroundColor: Color(0xFFF5EDE3),
-              body: Center(
-                child: CircularProgressIndicator(color: Color(0xFFC56A45)),
-              ),
+            return const AppScaffold(
+              body: Center(child: CircularProgressIndicator()),
             );
           }
 
           final user = controller.user!;
-          return Scaffold(
-            backgroundColor: const Color(0xFFF5EDE3),
+          final theme = Theme.of(context);
+          final scheme = theme.colorScheme;
+
+          return AppScaffold(
+            appBar: AppBar(title: Text(user.name), centerTitle: false),
             body: SingleChildScrollView(
               child: Column(
                 children: [
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 24),
+
                   _ProfileHeader(
                     user: user,
                     controller: controller,
                     follow: follow,
                     targetUid: uid,
                   ),
+
                   const SizedBox(height: 20),
+
                   _Tabs(controller: controller),
+
                   _TabContent(controller: controller),
                 ],
               ),
@@ -63,7 +70,9 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
-// ------------------- HEADER UI -----------------------
+// ---------------------------------------------------------------------------
+// PROFILE HEADER
+// ---------------------------------------------------------------------------
 
 class _ProfileHeader extends StatelessWidget {
   final UserModel user;
@@ -80,32 +89,32 @@ class _ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentUid = follow.currentUid; // SAFE getter
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    final currentUid = follow.currentUid;
     final isOwnProfile = currentUid == targetUid;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 18),
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFE8E2D2),
-        borderRadius: BorderRadius.circular(26),
-        boxShadow: const [
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
           BoxShadow(
-            color: Colors.black12,
+            color: scheme.shadow.withOpacity(0.15),
             blurRadius: 10,
-            offset: Offset(0, 4),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Column(
         children: [
-          // ---- PROFILE IMAGE (Tap to update photo for SELF ONLY) ----
           GestureDetector(
-            onTap: () {
-              if (isOwnProfile) controller.updatePhoto(user.uid);
-            },
+            onTap: isOwnProfile ? () => controller.updatePhoto(user.uid) : null,
             child: CircleAvatar(
-              radius: 45,
+              radius: 46,
               backgroundImage: user.photoUrl.isNotEmpty
                   ? NetworkImage(user.photoUrl)
                   : const AssetImage("assets/profile_placeholder.png")
@@ -118,26 +127,16 @@ class _ProfileHeader extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                user.name,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF2F2F2F),
-                ),
-              ),
-
-              // ---------------- GAZETTER BADGE ----------------
+              Text(user.name, style: theme.textTheme.titleLarge),
               if (user.isVerified) ...[
                 const SizedBox(width: 6),
-                const Icon(Icons.verified, color: Colors.blueAccent, size: 20),
+                const Icon(Icons.verified, size: 20),
                 const SizedBox(width: 4),
-                const Text(
+                Text(
                   "Gazetter",
-                  style: TextStyle(
-                    fontSize: 13,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.primary,
                     fontWeight: FontWeight.w600,
-                    color: Colors.blueAccent,
                   ),
                 ),
               ],
@@ -149,12 +148,14 @@ class _ProfileHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
             decoration: BoxDecoration(
-              color: const Color(0xFF6C7A4C),
+              color: scheme.primary,
               borderRadius: BorderRadius.circular(30),
             ),
             child: Text(
               user.type.toUpperCase(),
-              style: const TextStyle(color: Colors.white),
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: scheme.onPrimary,
+              ),
             ),
           ),
 
@@ -163,150 +164,126 @@ class _ProfileHeader extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _stat("Posts", controller.postCount),
-              _stat("RePics", controller.repostCount),
-              _stat("Followers", controller.followersCount),
-              _stat("Following", controller.followingCount),
+              _stat(context, "Posts", controller.postCount),
+              _stat(context, "RePics", controller.repostCount),
+              _stat(context, "Followers", controller.followersCount),
+              _stat(context, "Following", controller.followingCount),
             ],
           ),
 
           const SizedBox(height: 18),
-          if (controller.isAdminViewing) ...[
-            const SizedBox(height: 16),
-            SizedBox(
-              width: 220,
-              height: 42,
-              child: ElevatedButton.icon(
-                icon: Icon(
-                  user.isVerified ? Icons.verified : Icons.verified_outlined,
-                  color: Colors.white,
-                ),
-                label: Text(
-                  user.isVerified ? "Revoke Gazetter" : "Grant Gazetter",
-                  style: const TextStyle(color: Colors.white),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: user.isVerified
-                      ? Colors.redAccent
-                      : Colors.green,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                ),
-                onPressed: controller.toggleGazetterStatus,
-              ),
-            ),
-          ],
 
-          // ---------------- FOLLOW BUTTON -----------------
-          if (!isOwnProfile) _buildFollowButton(follow),
-          if (controller.isAdminViewing) // <- boolean from ProfileController
-            Consumer<AdminUserController>(
-              builder: (_, admin, __) {
-                return Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: SizedBox(
-                    height: 42,
-                    width: 220,
-                    child: ElevatedButton(
-                      onPressed: admin.isProcessing
-                          ? null
-                          : () {
-                              admin.toggleGazetter(
-                                targetUid: targetUid,
-                                currentStatus: user.isVerified,
-                              );
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: user.isVerified
-                            ? Colors.redAccent
-                            : Colors.blueAccent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      child: admin.isProcessing
-                          ? const CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            )
-                          : Text(
-                              user.isVerified
-                                  ? "Revoke Gazetter"
-                                  : "Grant Gazetter",
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                    ),
-                  ),
-                );
-              },
-            ),
+          if (!isOwnProfile)
+            _FollowButton(follow: follow, targetUid: targetUid),
+
+          if (controller.isAdminViewing)
+            _AdminVerifyButton(user: user, targetUid: targetUid),
         ],
       ),
     );
   }
 
-  Widget _buildFollowButton(FollowController follow) {
+  Widget _stat(BuildContext context, String label, int count) {
+    final theme = Theme.of(context);
+
+    return Column(
+      children: [
+        Text("$count", style: theme.textTheme.titleMedium),
+        Text(label, style: theme.textTheme.bodySmall),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// FOLLOW BUTTON
+// ---------------------------------------------------------------------------
+
+class _FollowButton extends StatelessWidget {
+  final FollowController follow;
+  final String targetUid;
+
+  const _FollowButton({required this.follow, required this.targetUid});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return SizedBox(
       height: 42,
       width: 160,
       child: ElevatedButton(
         onPressed: follow.isLoading
             ? null
-            : () {
-                if (follow.isFollowingUser) {
-                  follow.unfollow(targetUid);
-                } else {
-                  follow.follow(targetUid);
-                }
-              },
+            : () => follow.isFollowingUser
+                  ? follow.unfollow(targetUid)
+                  : follow.follow(targetUid),
         style: ElevatedButton.styleFrom(
           backgroundColor: follow.isFollowingUser
-              ? Colors.grey.shade500
-              : const Color(0xFFC56A45),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
-          ),
+              ? scheme.surfaceVariant
+              : scheme.primary,
         ),
         child: follow.isLoading
-            ? const SizedBox(
-                height: 16,
-                width: 16,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
-              )
+            ? const CircularProgressIndicator(strokeWidth: 2)
             : Text(
                 follow.isFollowingUser ? "Following" : "Follow",
-                style: const TextStyle(color: Colors.white, fontSize: 16),
+                style: TextStyle(color: scheme.onPrimary),
               ),
       ),
     );
   }
+}
 
-  Widget _stat(String label, int count) {
-    return Column(
-      children: [
-        Text(
-          "$count",
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF2F2F2F),
+// ---------------------------------------------------------------------------
+// ADMIN VERIFY BUTTON
+// ---------------------------------------------------------------------------
+
+class _AdminVerifyButton extends StatelessWidget {
+  final UserModel user;
+  final String targetUid;
+
+  const _AdminVerifyButton({required this.user, required this.targetUid});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AdminUserController>(
+      builder: (_, admin, __) {
+        final scheme = Theme.of(context).colorScheme;
+
+        return Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: SizedBox(
+            height: 42,
+            width: 220,
+            child: ElevatedButton(
+              onPressed: admin.isProcessing
+                  ? null
+                  : () => admin.toggleGazetter(
+                      targetUid: targetUid,
+                      currentStatus: user.isVerified,
+                    ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: user.isVerified
+                    ? scheme.error
+                    : scheme.primary,
+              ),
+              child: admin.isProcessing
+                  ? const CircularProgressIndicator(strokeWidth: 2)
+                  : Text(
+                      user.isVerified ? "Revoke Gazetter" : "Grant Gazetter",
+                      style: TextStyle(color: scheme.onPrimary),
+                    ),
+            ),
           ),
-        ),
-        Text(label, style: const TextStyle(fontSize: 12)),
-      ],
+        );
+      },
     );
   }
 }
 
-// ------------------- TABS -----------------------
+// ---------------------------------------------------------------------------
+// TABS
+// ---------------------------------------------------------------------------
 
 class _Tabs extends StatelessWidget {
   final ProfileController controller;
@@ -315,32 +292,34 @@ class _Tabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selected = controller.selectedTab;
+    final scheme = Theme.of(context).colorScheme;
 
     return Padding(
       padding: const EdgeInsets.only(top: 22),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _tab(controller, 0, "Posts", selected == 0),
-          _tab(controller, 1, "RePics", selected == 1),
-          _tab(controller, 2, "Saved", selected == 2),
+          _tab(context, "Posts", 0),
+          _tab(context, "RePics", 1),
+          _tab(context, "Saved", 2),
         ],
       ),
     );
   }
 
-  Widget _tab(ProfileController c, int index, String label, bool active) {
+  Widget _tab(BuildContext context, String label, int index) {
+    final active = controller.selectedTab == index;
+    final scheme = Theme.of(context).colorScheme;
+
     return GestureDetector(
-      onTap: () => c.setTab(index),
+      onTap: () => controller.setTab(index),
       child: Column(
         children: [
           Text(
             label,
             style: TextStyle(
-              fontSize: 16,
-              color: const Color(0xFF2F2F2F),
               fontWeight: active ? FontWeight.bold : FontWeight.normal,
+              color: active ? scheme.primary : scheme.onSurface,
             ),
           ),
           const SizedBox(height: 4),
@@ -348,7 +327,7 @@ class _Tabs extends StatelessWidget {
             height: 4,
             width: 50,
             decoration: BoxDecoration(
-              color: active ? const Color(0xFFC56A45) : Colors.transparent,
+              color: active ? scheme.primary : Colors.transparent,
               borderRadius: BorderRadius.circular(10),
             ),
           ),
@@ -358,7 +337,9 @@ class _Tabs extends StatelessWidget {
   }
 }
 
-// ------------------- TAB CONTENT -----------------------
+// ---------------------------------------------------------------------------
+// TAB CONTENT
+// ---------------------------------------------------------------------------
 
 class _TabContent extends StatelessWidget {
   final ProfileController controller;
@@ -369,12 +350,15 @@ class _TabContent extends StatelessWidget {
   Widget build(BuildContext context) {
     List<PostModel> list;
 
-    if (controller.selectedTab == 0) {
-      list = controller.userPosts;
-    } else if (controller.selectedTab == 1) {
-      list = controller.reposts;
-    } else {
-      list = controller.savedPosts;
+    switch (controller.selectedTab) {
+      case 1:
+        list = controller.reposts;
+        break;
+      case 2:
+        list = controller.savedPosts;
+        break;
+      default:
+        list = controller.userPosts;
     }
 
     if (list.isEmpty) {

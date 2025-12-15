@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '.././follow/follow_controller.dart';
-
+import '../../core/widgets/app_scaffold.dart';
 import 'app_search_controller.dart';
-import '.././profile/profile_screen.dart';
-import '.././post/details/post_details_screen.dart';
+import '../follow/follow_controller.dart';
+import '../profile/profile_screen.dart';
+import '../post/details/post_details_screen.dart';
 
 class SearchScreen extends StatelessWidget {
   const SearchScreen({super.key});
@@ -15,18 +15,21 @@ class SearchScreen extends StatelessWidget {
       create: (_) => AppSearchController(),
       child: Consumer<AppSearchController>(
         builder: (context, controller, _) {
-          return Scaffold(
-            backgroundColor: const Color(0xFFF5EDE3),
+          final theme = Theme.of(context);
+          final scheme = theme.colorScheme;
+
+          return AppScaffold(
+            // --------------------------------------------------
+            // APP BAR WITH SEARCH FIELD
+            // --------------------------------------------------
             appBar: AppBar(
-              backgroundColor: const Color(0xFFE8E2D2),
-              elevation: 0,
               title: TextField(
                 autofocus: true,
                 onChanged: controller.search,
                 decoration: InputDecoration(
                   hintText: "Search users or posts...",
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: scheme.surfaceContainerHighest,
                   prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -35,15 +38,19 @@ class SearchScreen extends StatelessWidget {
                 ),
               ),
             ),
+
+            // --------------------------------------------------
+            // BODY
+            // --------------------------------------------------
             body: controller.isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFFC56A45)),
-                  )
+                ? const Center(child: CircularProgressIndicator())
                 : SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // -------- FILTER CHIPS --------
+                        // --------------------------------------------------
+                        // FILTER CHIPS
+                        // --------------------------------------------------
                         Padding(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,
@@ -53,21 +60,25 @@ class SearchScreen extends StatelessWidget {
                             spacing: 8,
                             children: [
                               _filterChip(
+                                context,
                                 label: "All",
                                 filter: SearchFilter.all,
                                 controller: controller,
                               ),
                               _filterChip(
+                                context,
                                 label: "Followers",
                                 filter: SearchFilter.followers,
                                 controller: controller,
                               ),
                               _filterChip(
+                                context,
                                 label: "Following",
                                 filter: SearchFilter.following,
                                 controller: controller,
                               ),
                               _filterChip(
+                                context,
                                 label: "Mutual",
                                 filter: SearchFilter.mutual,
                                 controller: controller,
@@ -76,27 +87,22 @@ class SearchScreen extends StatelessWidget {
                           ),
                         ),
 
-                        // -------- USER RESULTS --------
+                        // --------------------------------------------------
+                        // USER RESULTS
+                        // --------------------------------------------------
                         if (controller.userResults.isNotEmpty)
-                          const Padding(
-                            padding: EdgeInsets.only(
+                          Padding(
+                            padding: const EdgeInsets.only(
                               left: 16,
                               top: 12,
                               bottom: 4,
                             ),
                             child: Text(
                               "Users",
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF2F2F2F),
-                              ),
+                              style: theme.textTheme.titleMedium,
                             ),
                           ),
 
-                        // ------------------------------------------------------
-                        // UPDATED USER LIST WITH FOLLOW BUTTON
-                        // ------------------------------------------------------
                         ListView.builder(
                           itemCount: controller.userResults.length,
                           shrinkWrap: true,
@@ -118,7 +124,6 @@ class SearchScreen extends StatelessWidget {
                                                 )
                                                 as ImageProvider,
                                     ),
-
                                     title: Text(user.name),
                                     subtitle: Text(user.email),
 
@@ -132,42 +137,23 @@ class SearchScreen extends StatelessWidget {
                                       );
                                     },
 
-                                    // ---------------- FOLLOW BUTTON ----------------
                                     trailing: SizedBox(
                                       width: 110,
                                       child: ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              follow.isFollowingUser
-                                              ? Colors.green.shade600
-                                              : const Color(0xFFC56A45),
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 8,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              10,
-                                            ),
-                                          ),
-                                        ),
-                                        onPressed: () {
-                                          if (follow.isFollowingUser) {
-                                            follow.unfollow(user.uid);
-                                          } else {
-                                            follow.follow(user.uid);
-                                          }
-                                        },
-                                        child: Text(
-                                          follow.isLoading
-                                              ? "..."
-                                              : follow.isFollowingUser
-                                              ? "Following"
-                                              : "Follow",
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
+                                        onPressed: follow.isLoading
+                                            ? null
+                                            : () {
+                                                follow.isFollowingUser
+                                                    ? follow.unfollow(user.uid)
+                                                    : follow.follow(user.uid);
+                                              },
+                                        child: follow.isLoading
+                                            ? const Text("...")
+                                            : Text(
+                                                follow.isFollowingUser
+                                                    ? "Following"
+                                                    : "Follow",
+                                              ),
                                       ),
                                     ),
                                   );
@@ -177,21 +163,19 @@ class SearchScreen extends StatelessWidget {
                           },
                         ),
 
-                        // -------- POST RESULTS --------
+                        // --------------------------------------------------
+                        // POST RESULTS
+                        // --------------------------------------------------
                         if (controller.postResults.isNotEmpty)
-                          const Padding(
-                            padding: EdgeInsets.only(
+                          Padding(
+                            padding: const EdgeInsets.only(
                               left: 16,
                               top: 20,
                               bottom: 8,
                             ),
                             child: Text(
                               "Posts",
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF2F2F2F),
-                              ),
+                              style: theme.textTheme.titleMedium,
                             ),
                           ),
 
@@ -238,21 +222,31 @@ class SearchScreen extends StatelessWidget {
     );
   }
 
-  Widget _filterChip({
+  // ---------------------------------------------------------------------------
+  // FILTER CHIP (THEME SAFE)
+  // ---------------------------------------------------------------------------
+
+  Widget _filterChip(
+    BuildContext context, {
     required String label,
     required SearchFilter filter,
     required AppSearchController controller,
   }) {
-    final bool selected = controller.activeFilter == filter;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    final selected = controller.activeFilter == filter;
+
     return ChoiceChip(
       label: Text(label),
       selected: selected,
       onSelected: (_) => controller.setFilter(filter),
-      selectedColor: const Color(0xFFC56A45),
+      selectedColor: scheme.primary,
+      backgroundColor: scheme.surfaceContainerHighest,
       labelStyle: TextStyle(
-        color: selected ? Colors.white : const Color(0xFF2F2F2F),
+        color: selected ? scheme.onPrimary : scheme.onSurface,
+        fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
       ),
-      backgroundColor: const Color(0xFFE8E2D2),
     );
   }
 }

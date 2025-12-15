@@ -13,56 +13,76 @@ class RepliesListScreen extends StatelessWidget {
       create: (_) => RepliesListController(postId),
       child: Consumer<RepliesListController>(
         builder: (context, c, _) {
+          final theme = Theme.of(context);
+          final scheme = theme.colorScheme;
+
           return Scaffold(
-            backgroundColor: const Color(0xFFF5EDE3),
-            appBar: AppBar(
-              title: const Text("Replies"),
-              backgroundColor: const Color(0xFFF5EDE3),
-              elevation: 4,
-            ),
-            body: c.isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFFC56A45)),
-                  )
-                : c.replies.isEmpty
-                ? const Center(
+            // ❌ No backgroundColor override
+            appBar: AppBar(title: const Text("Replies"), elevation: 1),
+
+            body: Builder(
+              builder: (_) {
+                if (c.isLoading) {
+                  return Center(
+                    child: CircularProgressIndicator(color: scheme.primary),
+                  );
+                }
+
+                if (c.replies.isEmpty) {
+                  return Center(
                     child: Text(
                       "No replies yet",
-                      style: TextStyle(fontSize: 16),
+                      style: theme.textTheme.bodyMedium,
                     ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: c.replies.length,
-                    itemBuilder: (context, index) {
-                      final r = c.replies[index];
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE8E2D2),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(r.text, style: const TextStyle(fontSize: 15)),
-                            const SizedBox(height: 6),
-                            Text(
-                              r.createdAt.toLocal().toString(),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey.shade700,
-                              ),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: c.replies.length,
+                  itemBuilder: (context, index) {
+                    final r = c.replies[index];
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(r.text, style: theme.textTheme.bodyMedium),
+
+                          const SizedBox(height: 6),
+
+                          Text(
+                            _formatDate(r.createdAt),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
                             ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           );
         },
       ),
     );
+  }
+
+  // --------------------------------------------------
+  // DATE FORMATTER (NO UI LOGIC IN WIDGET TREE)
+  // --------------------------------------------------
+  String _formatDate(DateTime date) {
+    final local = date.toLocal();
+    return "${local.day}/${local.month}/${local.year} • "
+        "${local.hour.toString().padLeft(2, '0')}:"
+        "${local.minute.toString().padLeft(2, '0')}";
   }
 }

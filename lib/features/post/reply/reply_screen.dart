@@ -13,28 +13,74 @@ class ReplyScreen extends StatelessWidget {
       create: (_) => ReplyController(postId),
       child: Consumer<ReplyController>(
         builder: (context, c, _) {
+          final theme = Theme.of(context);
+          final scheme = theme.colorScheme;
+
           return Scaffold(
-            appBar: AppBar(title: const Text("Reply")),
+            // ❌ No backgroundColor override
+            appBar: AppBar(title: const Text("Reply"), elevation: 1),
+
             body: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // --------------------------------------------------
+                  // REPLY INPUT
+                  // --------------------------------------------------
                   TextField(
                     controller: c.textController,
                     maxLines: 4,
-                    decoration: const InputDecoration(
+                    style: theme.textTheme.bodyMedium,
+                    decoration: InputDecoration(
                       hintText: "Write your reply...",
-                      border: OutlineInputBorder(),
+                      filled: true,
+                      fillColor: scheme.surfaceContainerHighest,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
+
                   const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: c.isPosting
-                        ? null
-                        : () => c.submitReply(context),
-                    child: c.isPosting
-                        ? const CircularProgressIndicator()
-                        : const Text("Reply"),
+
+                  // --------------------------------------------------
+                  // SUBMIT BUTTON
+                  // --------------------------------------------------
+                  SizedBox(
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: c.isPosting
+                          ? null
+                          : () => c.submitReply(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: scheme.primary,
+                        foregroundColor: scheme.onPrimary,
+                        disabledBackgroundColor: scheme.primary.withOpacity(
+                          0.5,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: c.isPosting
+                          ? SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: scheme.onPrimary,
+                              ),
+                            )
+                          : const Text(
+                              "Reply",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                    ),
                   ),
                 ],
               ),

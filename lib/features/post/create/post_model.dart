@@ -69,7 +69,7 @@ class PostModel {
 
     return PostModel(
       postId: data['postId'] ?? doc.id,
-      authorId: data['authorId'] ?? '',
+      authorId: data['authorId'] as String,
       authorName: data['authorName'] as String,
       isVerifiedOwner: data['isVerifiedOwner'] ?? false,
       imageUrls: List<String>.from(data['imageUrls'] ?? const []),

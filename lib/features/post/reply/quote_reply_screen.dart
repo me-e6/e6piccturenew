@@ -15,56 +15,96 @@ class QuoteReplyScreen extends StatelessWidget {
       create: (_) => CreatePostController(),
       child: Consumer<CreatePostController>(
         builder: (context, c, _) {
+          final theme = Theme.of(context);
+          final scheme = theme.colorScheme;
+
           return Scaffold(
-            appBar: AppBar(title: const Text("Quote Reply")),
-            body: Padding(
+            appBar: AppBar(title: const Text("Quote Reply"), elevation: 1),
+
+            body: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // --------------------------------------------------
                   // QUOTED POST PREVIEW
+                  // --------------------------------------------------
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey),
+                      color: scheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: scheme.outlineVariant),
                     ),
-                    child: Image.network(
-                      post.resolvedImages.first,
-                      height: 120,
-                      fit: BoxFit.cover,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        post.resolvedImages.first,
+                        height: 140,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
 
                   const SizedBox(height: 16),
 
+                  // --------------------------------------------------
                   // CAPTION
+                  // --------------------------------------------------
                   TextField(
                     controller: c.descController,
                     maxLines: 4,
-                    decoration: const InputDecoration(
+                    style: theme.textTheme.bodyMedium,
+                    decoration: InputDecoration(
                       hintText: "Add your thoughts...",
-                      border: OutlineInputBorder(),
+                      filled: true,
+                      fillColor: scheme.surfaceContainerHighest,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
 
                   const SizedBox(height: 24),
 
-                  ElevatedButton(
-                    onPressed: () async {
-                      // 1️⃣ Create the quote post
-                      final result = await c.createPost(context);
+                  // --------------------------------------------------
+                  // POST QUOTE BUTTON
+                  // --------------------------------------------------
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: c.isLoading
+                          ? null
+                          : () async {
+                              // 1️⃣ Create the quote post
+                              final result = await c.createPost(context);
 
-                      // 2️⃣ Increment quoteReplyCount ONLY if post creation succeeded
-                      if (result == "success") {
-                        await FirebaseFirestore.instance
-                            .collection("posts")
-                            .doc(post.postId)
-                            .update({
-                              "quoteReplyCount": FieldValue.increment(1),
-                            });
-                      }
-                    },
-                    child: const Text("Post Quote"),
+                              // 2️⃣ Increment quoteReplyCount ONLY if success
+                              if (result == "success") {
+                                await FirebaseFirestore.instance
+                                    .collection("posts")
+                                    .doc(post.postId)
+                                    .update({
+                                      "quoteReplyCount": FieldValue.increment(
+                                        1,
+                                      ),
+                                    });
+                              }
+                            },
+                      child: c.isLoading
+                          ? SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: scheme.onPrimary,
+                              ),
+                            )
+                          : const Text("Post Quote"),
+                    ),
                   ),
                 ],
               ),

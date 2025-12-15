@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/widgets/app_scaffold.dart';
+import '../settingsbreadcrumb/settings_snapout_screen.dart';
+
 import 'home_controller_v2.dart';
 import '../feed/day_feed_controller.dart';
 
 import '../post/create/post_model.dart';
 import '../post/details/post_details_screen.dart';
-import '../settingsbreadcrumb/settings_snapout_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -16,16 +18,15 @@ class HomeScreen extends StatelessWidget {
     return MultiProvider(
       providers: [
         // --------------------------------------------------
-        // DAY FEED CONTROLLER (SOURCE OF TRUTH)
+        // DAY FEED CONTROLLER
         // --------------------------------------------------
         ChangeNotifierProvider<DayFeedController>(
-          create: (_) => DayFeedController(
-            followingUids: const [], // TODO: inject from auth/profile
-          )..loadInitialFeed(),
+          create: (_) =>
+              DayFeedController(followingUids: const [])..loadInitialFeed(),
         ),
 
         // --------------------------------------------------
-        // HOME CONTROLLER v2 (PROXY PROVIDER - FIXED)
+        // HOME CONTROLLER (PROXY)
         // --------------------------------------------------
         ChangeNotifierProxyProvider<DayFeedController, HomeControllerV2>(
           create: (_) => HomeControllerV2(
@@ -37,72 +38,55 @@ class HomeScreen extends StatelessWidget {
       ],
       child: Consumer<HomeControllerV2>(
         builder: (context, homeController, _) {
-          return Scaffold(
-            backgroundColor: const Color(0xFFF5EDE3),
+          final theme = Theme.of(context);
+          final scheme = theme.colorScheme;
 
+          return AppScaffold(
             // --------------------------------------------------
-            // SETTINGS SNAP-OUT
+            // SETTINGS SNAP-OUTendDrawer: const SettingsSnapOutScreen(),
             // --------------------------------------------------
             endDrawer: const SettingsSnapOutScreen(),
 
             // --------------------------------------------------
-            // APP BAR
+            // APP BAR (THEME-AWARE)
             // --------------------------------------------------
             appBar: AppBar(
-              backgroundColor: const Color(0xFFF5EDE3),
-              elevation: 6,
               automaticallyImplyLeading: false,
+              titleSpacing: 0,
               title: Row(
                 children: [
+                  const SizedBox(width: 12),
                   GestureDetector(
                     onTap: () => Navigator.pushNamed(context, "/company"),
-                    child: Container(
-                      height: 40,
-                      width: 40,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        image: DecorationImage(
-                          image: AssetImage("assets/logo/company_logo.png"),
-                          fit: BoxFit.cover,
-                        ),
+                    child: CircleAvatar(
+                      radius: 20,
+                      backgroundImage: const AssetImage(
+                        "assets/logo/company_logo.png",
                       ),
+                      backgroundColor: scheme.surface,
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  const Text(
-                    "Picctture",
-                    style: TextStyle(
-                      fontSize: 18,
+                  const SizedBox(width: 8),
+                  Text(
+                    "Piccture",
+                    style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
-                      letterSpacing: .8,
-                      color: Color(0xFF6C7A4C),
+                      letterSpacing: 0.8,
                     ),
                   ),
                   const Spacer(),
-                  GestureDetector(
-                    onTap: () => Navigator.pushNamed(context, "/search"),
-                    child: const Icon(
-                      Icons.search,
-                      size: 26,
-                      color: Color(0xFF6C7A4C),
-                    ),
+                  IconButton(
+                    icon: const Icon(Icons.search),
+                    onPressed: () => Navigator.pushNamed(context, "/search"),
                   ),
                 ],
               ),
               actions: [
                 Builder(
-                  builder: (context) {
-                    return IconButton(
-                      icon: const Icon(
-                        Icons.menu,
-                        color: Color(0xFF6C7A4C),
-                        size: 28,
-                      ),
-                      onPressed: () {
-                        Scaffold.of(context).openEndDrawer();
-                      },
-                    );
-                  },
+                  builder: (context) => IconButton(
+                    icon: const Icon(Icons.menu),
+                    onPressed: () => Scaffold.of(context).openEndDrawer(),
+                  ),
                 ),
               ],
             ),
@@ -121,39 +105,35 @@ class HomeScreen extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: GestureDetector(
-                    onTap: () {
-                      Navigator.pushNamed(context, "/day-feed");
-                    },
+                    onTap: () => Navigator.pushNamed(context, "/day-feed"),
                     child: Container(
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF6C7A4C),
+                        color: scheme.primary,
                         borderRadius: BorderRadius.circular(20),
-                        boxShadow: const [
+                        boxShadow: [
                           BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 6,
-                            offset: Offset(0, 4),
+                            color: scheme.shadow.withValues(alpha: 0.25),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
                           ),
                         ],
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             "Day Album",
-                            style: TextStyle(
-                              fontSize: 20,
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              color: scheme.onPrimary,
                               fontWeight: FontWeight.bold,
-                              color: Colors.white,
                             ),
                           ),
                           const SizedBox(height: 6),
                           Text(
                             homeController.dayAlbumMessage,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.white70,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: scheme.onPrimary.withValues(alpha: 0.85),
                             ),
                           ),
                         ],
@@ -175,13 +155,16 @@ class HomeScreen extends StatelessWidget {
                     itemBuilder: (_, i) => Container(
                       width: 90,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE8E2D2),
+                        color: scheme.surface,
                         borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: scheme.onSurface.withValues(alpha: 0.15),
+                        ),
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Text(
                           "Suggested",
-                          style: TextStyle(fontSize: 12),
+                          style: theme.textTheme.bodySmall,
                         ),
                       ),
                     ),
@@ -190,11 +173,6 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 24),
-
-                // --------------------------------------------------
-                // LEGACY FEED (TEMPORARY)
-                // --------------------------------------------------
                 const SizedBox(height: 40),
               ],
             ),
@@ -206,7 +184,7 @@ class HomeScreen extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// POST CARD (UNCHANGED)
+// POST CARD (THEME-SAFE, FUTURE-READY)
 // ---------------------------------------------------------------------------
 
 class _PostCard extends StatelessWidget {
@@ -216,6 +194,9 @@ class _PostCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
@@ -224,13 +205,13 @@ class _PostCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 18),
         decoration: BoxDecoration(
-          color: const Color(0xFFE8E2D2),
+          color: scheme.surface,
           borderRadius: BorderRadius.circular(18),
-          boxShadow: const [
+          boxShadow: [
             BoxShadow(
-              color: Colors.black12,
+              color: scheme.shadow.withValues(alpha: 0.15),
               blurRadius: 6,
-              offset: Offset(0, 3),
+              offset: const Offset(0, 3),
             ),
           ],
         ),
@@ -253,10 +234,11 @@ class _PostCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Text(
                 "Posted by ${post.authorName}",
-                style: const TextStyle(fontSize: 14, color: Color(0xFF6C7A4C)),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.primary,
+                ),
               ),
             ),
-
             const SizedBox(height: 6),
             Padding(
               padding: const EdgeInsets.only(left: 14, right: 14, bottom: 14),
@@ -267,13 +249,10 @@ class _PostCard extends StatelessWidget {
                     size: 22,
                     color: post.likeCount > 0
                         ? Colors.red
-                        : Colors.grey.shade600,
+                        : scheme.onSurface.withValues(alpha: 0.5),
                   ),
                   const SizedBox(width: 6),
-                  Text(
-                    "${post.likeCount}",
-                    style: const TextStyle(fontSize: 14),
-                  ),
+                  Text("${post.likeCount}", style: theme.textTheme.bodyMedium),
                 ],
               ),
             ),

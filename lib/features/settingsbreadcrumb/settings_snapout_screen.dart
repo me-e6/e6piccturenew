@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import '../profile/profile_screen.dart';
 import 'settings_services.dart';
+import '../../core/theme/theme_controller.dart';
 
 class SettingsSnapOutScreen extends StatelessWidget {
   const SettingsSnapOutScreen({super.key});
@@ -11,29 +13,66 @@ class SettingsSnapOutScreen extends StatelessWidget {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? "";
     final settingsService = SettingsService();
 
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     return Drawer(
-      backgroundColor: const Color(0xFFF5EDE3),
+      backgroundColor: scheme.surface,
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // --------------------------------------------------
+            // PROFILE HEADER
+            // --------------------------------------------------
             _profileHeader(context, uid),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
 
-            // MENU ITEMS
             _menuItem(context, Icons.settings, "Settings"),
             _menuItem(context, Icons.notifications, "Notifications"),
             _menuItem(context, Icons.lock, "Privacy"),
             _menuItem(context, Icons.people, "Your Connections"),
 
-            const Divider(),
+            Divider(color: scheme.outlineVariant),
 
             _menuItem(context, Icons.help, "Help"),
             _menuItem(context, Icons.info, "About"),
 
-            const Divider(),
+            Divider(color: scheme.outlineVariant),
 
+            // --------------------------------------------------
+            // DAY / NIGHT TOGGLE (SIMPLE, DIRECT UX)
+            // --------------------------------------------------
+            Consumer<ThemeController>(
+              builder: (context, themeController, _) {
+                final isDark = themeController.themeMode == ThemeMode.dark;
+
+                return ListTile(
+                  leading: Icon(
+                    isDark ? Icons.nightlight_round : Icons.wb_sunny,
+                    color: scheme.primary,
+                  ),
+                  title: Text(
+                    "Day / Night",
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  trailing: Switch(
+                    value: isDark,
+                    activeColor: scheme.primary,
+                    onChanged: (_) {
+                      themeController.toggleTheme();
+                    },
+                  ),
+                );
+              },
+            ),
+
+            // --------------------------------------------------
+            // LOGOUT
+            // --------------------------------------------------
             _menuItem(
               context,
               Icons.logout,
@@ -41,9 +80,7 @@ class SettingsSnapOutScreen extends StatelessWidget {
               isLogout: true,
               onLogout: () async {
                 Navigator.pop(context);
-
                 await settingsService.logout();
-
                 Navigator.pushNamedAndRemoveUntil(
                   context,
                   "/login",
@@ -57,11 +94,17 @@ class SettingsSnapOutScreen extends StatelessWidget {
     );
   }
 
+  // --------------------------------------------------
+  // PROFILE HEADER
+  // --------------------------------------------------
   Widget _profileHeader(BuildContext context, String uid) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.black12)),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: scheme.outlineVariant)),
       ),
       child: Row(
         children: [
@@ -76,10 +119,8 @@ class SettingsSnapOutScreen extends StatelessWidget {
               children: [
                 Text(
                   "Your Profile",
-                  style: TextStyle(
-                    fontSize: 18,
+                  style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.brown.shade800,
                   ),
                 ),
                 GestureDetector(
@@ -91,9 +132,11 @@ class SettingsSnapOutScreen extends StatelessWidget {
                       ),
                     );
                   },
-                  child: const Text(
+                  child: Text(
                     "View Profile >",
-                    style: TextStyle(color: Color(0xFF6C7A4C), fontSize: 14),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.primary,
+                    ),
                   ),
                 ),
               ],
@@ -104,6 +147,9 @@ class SettingsSnapOutScreen extends StatelessWidget {
     );
   }
 
+  // --------------------------------------------------
+  // MENU ITEM BUILDER (THEME SAFE)
+  // --------------------------------------------------
   Widget _menuItem(
     BuildContext context,
     IconData icon,
@@ -111,15 +157,15 @@ class SettingsSnapOutScreen extends StatelessWidget {
     bool isLogout = false,
     Future<void> Function()? onLogout,
   }) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     return ListTile(
-      leading: Icon(
-        icon,
-        color: isLogout ? Colors.red : const Color(0xFF6C7A4C),
-      ),
+      leading: Icon(icon, color: isLogout ? scheme.error : scheme.primary),
       title: Text(
         label,
-        style: TextStyle(
-          color: isLogout ? Colors.red : const Color(0xFF2F2F2F),
+        style: theme.textTheme.bodyLarge?.copyWith(
+          color: isLogout ? scheme.error : scheme.onSurface,
           fontWeight: isLogout ? FontWeight.bold : FontWeight.normal,
         ),
       ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '.././profile/widgets/verified_badge.dart';
 
+import '../profile/widgets/verified_badge.dart';
 import 'day_feed_controller.dart';
 import '../post/create/post_model.dart';
 import '../post/viewer/immersive_post_viewer.dart';
@@ -11,25 +11,18 @@ class DayFeedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5EDE3),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF5EDE3),
-        elevation: 6,
-        title: const Text(
-          "Day Feed",
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF6C7A4C),
-          ),
-        ),
-      ),
+      // ❌ NO hard-coded backgroundColor
+      appBar: AppBar(title: const Text("Day Feed"), elevation: 2),
+
       body: Consumer<DayFeedController>(
         builder: (context, controller, _) {
           if (controller.isLoading && controller.posts.isEmpty) {
-            return const Center(
-              child: CircularProgressIndicator(color: Color(0xFFC56A45)),
+            return Center(
+              child: CircularProgressIndicator(color: scheme.primary),
             );
           }
 
@@ -42,8 +35,8 @@ class DayFeedScreen extends StatelessWidget {
               return false;
             },
             child: RefreshIndicator(
+              color: scheme.primary,
               onRefresh: controller.refresh,
-              color: const Color(0xFFC56A45),
               child: ListView.builder(
                 padding: const EdgeInsets.all(16),
                 itemCount:
@@ -56,16 +49,13 @@ class DayFeedScreen extends StatelessWidget {
                     post.likeCount += controller.optimisticLikeDeltaFor(
                       post.postId,
                     );
-
                     return _PostCard(post: post);
                   }
 
-                  return const Padding(
-                    padding: EdgeInsets.all(20),
+                  return Padding(
+                    padding: const EdgeInsets.all(20),
                     child: Center(
-                      child: CircularProgressIndicator(
-                        color: Color(0xFFC56A45),
-                      ),
+                      child: CircularProgressIndicator(color: scheme.primary),
                     ),
                   );
                 },
@@ -79,7 +69,7 @@ class DayFeedScreen extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// POST CARD
+// POST CARD (THEME AWARE)
 // ---------------------------------------------------------------------------
 
 class _PostCard extends StatelessWidget {
@@ -89,6 +79,9 @@ class _PostCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
@@ -97,13 +90,13 @@ class _PostCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 18),
         decoration: BoxDecoration(
-          color: const Color(0xFFE8E2D2),
+          color: scheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(18),
-          boxShadow: const [
+          boxShadow: [
             BoxShadow(
-              color: Colors.black12,
+              color: Colors.black.withOpacity(0.08),
               blurRadius: 6,
-              offset: Offset(0, 3),
+              offset: const Offset(0, 3),
             ),
           ],
         ),
@@ -123,11 +116,9 @@ class _PostCard extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
 
-            // OWNER LABEL
-            const SizedBox(height: 10),
-
+            // OWNER ROW
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Row(
@@ -135,18 +126,14 @@ class _PostCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       "Posted by ${post.authorName}",
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFF6C7A4C),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: scheme.primary,
                         fontWeight: FontWeight.w500,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-
                   const SizedBox(width: 6),
-
-                  // ✅ Gazetter badge
                   VerifiedBadge(
                     isVerified: post.isVerifiedOwner,
                     iconSize: 14,
@@ -156,47 +143,40 @@ class _PostCard extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 6),
+            const SizedBox(height: 10),
 
-            const SizedBox(height: 6),
-
-            // ---------------- ENGAGEMENT ROW ----------------
+            // ENGAGEMENT ROW
             Padding(
               padding: const EdgeInsets.only(left: 14, right: 14, bottom: 14),
               child: Row(
                 children: [
-                  // LIKE
                   Icon(
                     Icons.favorite,
                     size: 20,
                     color: post.likeCount > 0
                         ? Colors.red
-                        : Colors.grey.shade600,
+                        : scheme.onSurfaceVariant,
                   ),
                   const SizedBox(width: 4),
-                  Text(
-                    "${post.likeCount}",
-                    style: const TextStyle(fontSize: 13),
-                  ),
+                  Text("${post.likeCount}", style: theme.textTheme.bodySmall),
 
                   const SizedBox(width: 14),
 
-                  // REPLY
-                  const Icon(Icons.reply, size: 18),
+                  Icon(Icons.reply, size: 18, color: scheme.onSurfaceVariant),
                   const SizedBox(width: 4),
-                  Text(
-                    "${post.replyCount}",
-                    style: const TextStyle(fontSize: 13),
-                  ),
+                  Text("${post.replyCount}", style: theme.textTheme.bodySmall),
 
                   const SizedBox(width: 14),
 
-                  // QUOTE
-                  const Icon(Icons.format_quote, size: 18),
+                  Icon(
+                    Icons.format_quote,
+                    size: 18,
+                    color: scheme.onSurfaceVariant,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     "${post.quoteReplyCount}",
-                    style: const TextStyle(fontSize: 13),
+                    style: theme.textTheme.bodySmall,
                   ),
                 ],
               ),

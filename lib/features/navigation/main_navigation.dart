@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../../core/widgets/app_scaffold.dart';
+
 import '../home/home_screen.dart';
 import '../post/create/create_post_screen.dart';
 import '../profile/profile_screen.dart';
@@ -18,7 +20,6 @@ class _MainNavigationState extends State<MainNavigation>
   late final String _currentUid;
   late final List<Widget> _screens;
 
-  // Plus menu controller
   bool _showMenu = false;
   late AnimationController _menuAnimation;
 
@@ -43,33 +44,33 @@ class _MainNavigationState extends State<MainNavigation>
   void _togglePlusMenu() {
     setState(() {
       _showMenu = !_showMenu;
-      if (_showMenu) {
-        _menuAnimation.forward();
-      } else {
-        _menuAnimation.reverse();
-      }
+      _showMenu ? _menuAnimation.forward() : _menuAnimation.reverse();
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Stack(
       children: [
-        Scaffold(
-          backgroundColor: const Color(0xFFF5EDE3),
+        AppScaffold(
           body: _screens[_currentIndex],
-
-          bottomNavigationBar: _buildNavBar(),
+          bottomNavigationBar: _buildNavBar(context),
         ),
 
+        // ------------------------------------------------
         // DIM BACKDROP
+        // ------------------------------------------------
         if (_showMenu)
           GestureDetector(
             onTap: _togglePlusMenu,
-            child: Container(color: Colors.black38),
+            child: Container(color: Colors.black54),
           ),
 
-        // POP-UP MENU
+        // ------------------------------------------------
+        // PLUS MENU
+        // ------------------------------------------------
         Positioned(
           bottom: 95,
           left: 0,
@@ -87,15 +88,17 @@ class _MainNavigationState extends State<MainNavigation>
   }
 
   // ------------------------------------------------
-  // BOTTOM NAVIGATION BAR
+  // BOTTOM NAV BAR (THEME-DRIVEN)
   // ------------------------------------------------
-  Widget _buildNavBar() {
+  Widget _buildNavBar(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 20, left: 20, right: 20),
       child: Container(
         height: 70,
         decoration: BoxDecoration(
-          color: const Color(0xFFE8E2D2),
+          color: scheme.surface,
           borderRadius: BorderRadius.circular(40),
           boxShadow: const [
             BoxShadow(
@@ -108,18 +111,23 @@ class _MainNavigationState extends State<MainNavigation>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _navItem(Icons.home, 0),
-            _navSearch(),
+            _navItem(context, Icons.home, 0),
 
-            _centerPlusButton(),
+            _navAction(
+              context,
+              Icons.search,
+              () => Navigator.pushNamed(context, "/search"),
+            ),
 
-            _navIconAction(Icons.favorite_border, () {
+            _centerPlusButton(context),
+
+            _navAction(context, Icons.favorite_border, () {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text("Likes coming soon")),
               );
             }),
 
-            _navItem(Icons.person, 2),
+            _navItem(context, Icons.person, 2),
           ],
         ),
       ),
@@ -127,50 +135,38 @@ class _MainNavigationState extends State<MainNavigation>
   }
 
   // ------------------------------------------------
-  // ICONS
+  // NAV ITEMS
   // ------------------------------------------------
-
-  Widget _navItem(IconData icon, int index) {
-    bool active = _currentIndex == index;
+  Widget _navItem(BuildContext context, IconData icon, int index) {
+    final scheme = Theme.of(context).colorScheme;
+    final active = _currentIndex == index;
 
     return GestureDetector(
-      onTap: () {
-        setState(() => _currentIndex = index);
-      },
+      onTap: () => setState(() => _currentIndex = index),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: active
-              ? const Color(0xFFC56A45).withOpacity(0.15)
-              : Colors.transparent,
+          color: active ? scheme.primary.withOpacity(0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Icon(
           icon,
           size: 28,
-          color: active ? const Color(0xFFC56A45) : const Color(0xFF6C7A4C),
+          color: active ? scheme.primary : scheme.onSurface.withOpacity(0.7),
         ),
       ),
     );
   }
 
-  Widget _navIconAction(IconData icon, VoidCallback onTap) {
+  Widget _navAction(BuildContext context, IconData icon, VoidCallback onTap) {
+    final scheme = Theme.of(context).colorScheme;
+
     return GestureDetector(
       onTap: onTap,
-      child: const Padding(
-        padding: EdgeInsets.all(10),
-        child: Icon(Icons.favorite_border, size: 28, color: Color(0xFF6C7A4C)),
-      ),
-    );
-  }
-
-  Widget _navSearch() {
-    return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, "/search"),
-      child: const Padding(
-        padding: EdgeInsets.all(10),
-        child: Icon(Icons.search, size: 28, color: Color(0xFF6C7A4C)),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Icon(icon, size: 28, color: scheme.onSurface),
       ),
     );
   }
@@ -178,7 +174,9 @@ class _MainNavigationState extends State<MainNavigation>
   // ------------------------------------------------
   // CENTER PLUS BUTTON
   // ------------------------------------------------
-  Widget _centerPlusButton() {
+  Widget _centerPlusButton(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return GestureDetector(
       onTap: _togglePlusMenu,
       child: AnimatedContainer(
@@ -186,9 +184,9 @@ class _MainNavigationState extends State<MainNavigation>
         height: 55,
         width: 55,
         decoration: BoxDecoration(
-          color: const Color(0xFFF5EDE3),
+          color: scheme.background,
           shape: BoxShape.circle,
-          border: Border.all(color: const Color(0xFFC56A45), width: 2),
+          border: Border.all(color: scheme.primary, width: 2),
           boxShadow: const [
             BoxShadow(
               color: Colors.black26,
@@ -197,21 +195,23 @@ class _MainNavigationState extends State<MainNavigation>
             ),
           ],
         ),
-        child: const Icon(Icons.add, size: 30, color: Color(0xFFC56A45)),
+        child: Icon(Icons.add, size: 30, color: scheme.primary),
       ),
     );
   }
 
   // ------------------------------------------------
-  // PLUS POP-UP MENU
+  // PLUS MENU
   // ------------------------------------------------
   Widget _buildPlusMenu(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Center(
       child: Container(
         width: 240,
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
         decoration: BoxDecoration(
-          color: const Color(0xFFE8E2D2),
+          color: scheme.surface,
           borderRadius: BorderRadius.circular(22),
           boxShadow: const [
             BoxShadow(
@@ -225,6 +225,7 @@ class _MainNavigationState extends State<MainNavigation>
           mainAxisSize: MainAxisSize.min,
           children: [
             _menuItem(
+              context,
               icon: Icons.camera_alt,
               label: "Take Photo",
               onTap: () {
@@ -232,10 +233,9 @@ class _MainNavigationState extends State<MainNavigation>
                 setState(() => _currentIndex = 1);
               },
             ),
-
             const SizedBox(height: 12),
-
             _menuItem(
+              context,
               icon: Icons.photo_library,
               label: "Upload Photo",
               onTap: () {
@@ -243,10 +243,9 @@ class _MainNavigationState extends State<MainNavigation>
                 setState(() => _currentIndex = 1);
               },
             ),
-
             const SizedBox(height: 12),
-
             _menuItem(
+              context,
               icon: Icons.qr_code_scanner,
               label: "Scan",
               onTap: () {
@@ -262,24 +261,25 @@ class _MainNavigationState extends State<MainNavigation>
     );
   }
 
-  Widget _menuItem({
+  Widget _menuItem(
+    BuildContext context, {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
   }) {
+    final scheme = Theme.of(context).colorScheme;
+
     return GestureDetector(
       onTap: onTap,
       child: Row(
         children: [
-          Icon(icon, size: 26, color: const Color(0xFF6C7A4C)),
+          Icon(icon, size: 26, color: scheme.primary),
           const SizedBox(width: 12),
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 16,
-              color: Color(0xFF2F2F2F),
-              fontWeight: FontWeight.w600,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
         ],
       ),
