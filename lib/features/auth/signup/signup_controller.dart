@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'signup_service.dart';
 import 'signup_errors.dart';
@@ -69,6 +71,7 @@ class SignupController extends ChangeNotifier {
       });
     } else {
       final friendly = SignupErrorMapper.map(result);
+      // ignore: use_build_context_synchronously
       _showMessage(context, friendly);
     }
   }

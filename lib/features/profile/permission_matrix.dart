@@ -1,12 +1,4 @@
-/// CENTRAL PERMISSION MATRIX
-/// -------------------------
-/// This file is the ONLY place where role-based
-/// permissions are defined.
-///
-/// Controllers ask: "Can I do X?"
-/// They do NOT ask: "Is user admin/officer?"
-///
-/// This keeps the system scalable and auditable.
+// Permission matrix defining user capabilities based on role and state.
 
 class PermissionMatrix {
   // --------------------------------------------------

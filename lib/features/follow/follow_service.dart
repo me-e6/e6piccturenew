@@ -1,78 +1,89 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class FollowService {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  FollowService({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
-  /// ------------------------------
-  /// FOLLOW USER
-  /// ------------------------------
-  Future<void> followUser(String targetUid) async {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) return;
+  final FirebaseFirestore _firestore;
 
-    final currentUid = currentUser.uid;
+  // --------------------------------------------------
+  // FOLLOW
+  // --------------------------------------------------
+  Future<void> follow({
+    required String currentUid,
+    required String targetUid,
+  }) async {
+    final batch = _firestore.batch();
+    final now = FieldValue.serverTimestamp();
 
-    final batch = _db.batch();
+    final currentUserRef = _firestore.collection('users').doc(currentUid);
+    final targetUserRef = _firestore.collection('users').doc(targetUid);
 
-    // Current user → Add target in followingList
-    final currentUserRef = _db.collection("users").doc(currentUid);
-    batch.update(currentUserRef, {
-      "followingList": FieldValue.arrayUnion([targetUid]),
-      "followingCount": FieldValue.increment(1),
+    batch.set(currentUserRef.collection('following').doc(targetUid), {
+      'createdAt': now,
     });
 
-    // Target user → Add current in followersList
-    final targetUserRef = _db.collection("users").doc(targetUid);
-    batch.update(targetUserRef, {
-      "followersList": FieldValue.arrayUnion([currentUid]),
-      "followersCount": FieldValue.increment(1),
+    batch.set(targetUserRef.collection('followers').doc(currentUid), {
+      'createdAt': now,
     });
+
+    batch.update(currentUserRef, {'followingCount': FieldValue.increment(1)});
+
+    batch.update(targetUserRef, {'followersCount': FieldValue.increment(1)});
 
     await batch.commit();
   }
 
-  /// ------------------------------
-  /// UNFOLLOW USER
-  /// ------------------------------
-  Future<void> unfollowUser(String targetUid) async {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) return;
+  // --------------------------------------------------
+  // UNFOLLOW
+  // --------------------------------------------------
+  Future<void> unfollow({
+    required String currentUid,
+    required String targetUid,
+  }) async {
+    final batch = _firestore.batch();
 
-    final currentUid = currentUser.uid;
+    final currentUserRef = _firestore.collection('users').doc(currentUid);
+    final targetUserRef = _firestore.collection('users').doc(targetUid);
 
-    final batch = _db.batch();
+    batch.delete(currentUserRef.collection('following').doc(targetUid));
 
-    // Current user → Remove target from followingList
-    final currentUserRef = _db.collection("users").doc(currentUid);
-    batch.update(currentUserRef, {
-      "followingList": FieldValue.arrayRemove([targetUid]),
-      "followingCount": FieldValue.increment(-1),
-    });
+    batch.delete(targetUserRef.collection('followers').doc(currentUid));
 
-    // Target user → Remove current from followersList
-    final targetUserRef = _db.collection("users").doc(targetUid);
-    batch.update(targetUserRef, {
-      "followersList": FieldValue.arrayRemove([currentUid]),
-      "followersCount": FieldValue.increment(-1),
-    });
+    batch.update(currentUserRef, {'followingCount': FieldValue.increment(-1)});
+
+    batch.update(targetUserRef, {'followersCount': FieldValue.increment(-1)});
 
     await batch.commit();
   }
 
-  /// ------------------------------
-  /// CHECK IF CURRENT USER FOLLOWS SOMEONE
-  /// ------------------------------
-  Future<bool> isFollowing(String targetUid) async {
-    final current = FirebaseAuth.instance.currentUser;
-    if (current == null) return false;
+  // --------------------------------------------------
+  // CHECK FOLLOWING
+  // --------------------------------------------------
+  Future<bool> isFollowing({
+    required String currentUid,
+    required String targetUid,
+  }) async {
+    final doc = await _firestore
+        .collection('users')
+        .doc(currentUid)
+        .collection('following')
+        .doc(targetUid)
+        .get();
 
-    final doc = await _db.collection("users").doc(current.uid).get();
+    return doc.exists;
+  }
 
-    final data = doc.data();
-    if (data == null) return false;
+  // --------------------------------------------------
+  // FETCH FOLLOWING IDS (FEED CRITICAL)
+  // --------------------------------------------------
+  Future<List<String>> getFollowingUids(String uid) async {
+    final snap = await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('following')
+        .get();
 
-    final list = List<String>.from(data["followingList"] ?? []);
-    return list.contains(targetUid);
+    return snap.docs.map((d) => d.id).toList();
   }
 }

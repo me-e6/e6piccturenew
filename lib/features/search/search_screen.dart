@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/widgets/app_scaffold.dart';
 import 'app_search_controller.dart';
 import '../follow/follow_controller.dart';
@@ -111,8 +112,7 @@ class SearchScreen extends StatelessWidget {
                             final user = controller.userResults[index];
 
                             return ChangeNotifierProvider(
-                              create: (_) =>
-                                  FollowController()..checkFollowing(user.uid),
+                              create: (_) => FollowController()..load(user.uid),
                               child: Consumer<FollowController>(
                                 builder: (context, follow, _) {
                                   return ListTile(
@@ -124,7 +124,9 @@ class SearchScreen extends StatelessWidget {
                                                 )
                                                 as ImageProvider,
                                     ),
-                                    title: Text(user.name),
+
+                                    // ✅ displayName is canonical
+                                    title: Text(user.displayName),
                                     subtitle: Text(user.email),
 
                                     onTap: () {
@@ -143,14 +145,23 @@ class SearchScreen extends StatelessWidget {
                                         onPressed: follow.isLoading
                                             ? null
                                             : () {
-                                                follow.isFollowingUser
-                                                    ? follow.unfollow(user.uid)
-                                                    : follow.follow(user.uid);
+                                                if (follow.isFollowing) {
+                                                  follow.unfollow(user.uid);
+                                                } else {
+                                                  follow.follow(user.uid);
+                                                }
                                               },
                                         child: follow.isLoading
-                                            ? const Text("...")
+                                            ? const SizedBox(
+                                                height: 16,
+                                                width: 16,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                    ),
+                                              )
                                             : Text(
-                                                follow.isFollowingUser
+                                                follow.isFollowing
                                                     ? "Following"
                                                     : "Follow",
                                               ),
@@ -223,9 +234,8 @@ class SearchScreen extends StatelessWidget {
   }
 
   // ---------------------------------------------------------------------------
-  // FILTER CHIP (THEME SAFE)
+  // FILTER CHIP
   // ---------------------------------------------------------------------------
-
   Widget _filterChip(
     BuildContext context, {
     required String label,

@@ -1,85 +1,68 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '.././profile/user_model.dart';
-import '.././post/create/post_model.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
+import '../profile/user_model.dart';
+import '../post/create/post_model.dart';
 
 class SearchService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // -------------------- FETCH CURRENT USER --------------------
+  // ---------------------------------------------------------------------------
+  // FETCH USER BY ID
+  // ---------------------------------------------------------------------------
   Future<UserModel?> getUserById(String uid) async {
     final doc = await _db.collection("users").doc(uid).get();
     if (!doc.exists) return null;
-    return UserModel.fromMap(doc.data()!);
+    return UserModel.fromDocument(doc);
   }
 
-  // -------------------- SEARCH USERS BY NAME --------------------
+  // ---------------------------------------------------------------------------
+  // SEARCH USERS (BY USERNAME OR DISPLAY NAME)
+  // ---------------------------------------------------------------------------
   Future<List<UserModel>> searchUsers(String query) async {
-    if (query.trim().isEmpty) return [];
+    final trimmed = query.trim().toLowerCase();
+    if (trimmed.isEmpty) return [];
 
+    // Prefer username (indexed, lowercase, unique)
     final snap = await _db
         .collection("users")
-        .where("name", isGreaterThanOrEqualTo: query)
-        .where("name", isLessThanOrEqualTo: "$query\uf8ff")
+        .where("username", isGreaterThanOrEqualTo: trimmed)
+        .where("username", isLessThanOrEqualTo: "$trimmed\uf8ff")
         .limit(20)
         .get();
 
-    return snap.docs.map((d) => UserModel.fromMap(d.data())).toList();
+    return snap.docs.map(UserModel.fromDocument).toList();
   }
 
-  // -------------------------
-  // GET MUTUAL FOLLOW LIST
-  // -------------------------
-  Future<List<String>> getMutualUserIds() async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-
-    final userDoc = await _db.collection("users").doc(uid).get();
-
-    if (!userDoc.exists) return [];
-
-    final data = userDoc.data()!;
-    final List followers = data["followers"] ?? [];
-    final List following = data["following"] ?? [];
-
-    // Mutual = intersection of both lists
-    final mutuals = followers
-        .where((id) => following.contains(id))
-        .map((id) => id.toString())
-        .toList();
-
-    // Always include yourself
-    if (!mutuals.contains(uid)) mutuals.add(uid);
-
-    return mutuals;
-  }
-
-  // -------------------- SEARCH POSTS BY USER NAME --------------------
+  // ---------------------------------------------------------------------------
+  // SEARCH POSTS BY AUTHOR USERNAME
+  // ---------------------------------------------------------------------------
   Future<List<PostModel>> searchPostsByUserName(String query) async {
-    if (query.trim().isEmpty) return [];
+    final trimmed = query.trim().toLowerCase();
+    if (trimmed.isEmpty) return [];
 
-    // 1) Find users whose name matches the query
+    // 1️⃣ Find matching users
     final userSnap = await _db
         .collection("users")
-        .where("name", isGreaterThanOrEqualTo: query)
-        .where("name", isLessThanOrEqualTo: "$query\uf8ff")
+        .where("username", isGreaterThanOrEqualTo: trimmed)
+        .where("username", isLessThanOrEqualTo: "$trimmed\uf8ff")
         .limit(20)
         .get();
 
     final userIds = userSnap.docs
-        .map((d) => d.data()["uid"] as String? ?? "")
+        .map((d) => d.id)
         .where((id) => id.isNotEmpty)
         .toList();
 
     if (userIds.isEmpty) return [];
 
-    // 2) Fetch posts from those users
+    // 2️⃣ Fetch posts by those users
     final postsSnap = await _db
         .collection("posts")
-        .where("uid", whereIn: userIds)
+        .where("authorId", whereIn: userIds)
         .orderBy("createdAt", descending: true)
         .limit(50)
         .get();
 
-    return postsSnap.docs.map((d) => PostModel.fromDocument(d)).toList();
+    return postsSnap.docs.map(PostModel.fromDocument).toList();
   }
 }

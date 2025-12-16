@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import 'search_service.dart';
 import '../profile/user_model.dart';
@@ -13,36 +12,16 @@ class AppSearchController extends ChangeNotifier {
   bool isLoading = false;
 
   List<UserModel> _allUserResults = [];
-  List<PostModel> postResults = [];
-
   List<UserModel> userResults = [];
+  List<PostModel> postResults = [];
 
   SearchFilter activeFilter = SearchFilter.all;
 
-  bool _currentUserLoaded = false;
-  List<String> _followersIds = [];
-  List<String> _followingIds = [];
-
-  // ---------------- LOAD CURRENT USER RELATIONS ----------------
-  Future<void> _ensureCurrentUserLoaded() async {
-    if (_currentUserLoaded) return;
-
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final userModel = await _service.getUserById(user.uid);
-
-    if (userModel != null) {
-      _followersIds = userModel.followersList;
-      _followingIds = userModel.followingList;
-    }
-
-    _currentUserLoaded = true;
-  }
-
   // ---------------- SEARCH ----------------
   Future<void> search(String query) async {
-    if (query.trim().isEmpty) {
+    final trimmed = query.trim();
+
+    if (trimmed.isEmpty) {
       _allUserResults = [];
       userResults = [];
       postResults = [];
@@ -53,18 +32,23 @@ class AppSearchController extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
 
-    await _ensureCurrentUserLoaded();
+    try {
+      _allUserResults = await _service.searchUsers(trimmed);
+      postResults = await _service.searchPostsByUserName(trimmed);
 
-    _allUserResults = await _service.searchUsers(query);
-    postResults = await _service.searchPostsByUserName(query);
-
-    _applyFilter();
+      _applyFilter();
+    } catch (e) {
+      // Intentionally silent; UI reacts via empty state
+      _allUserResults = [];
+      userResults = [];
+      postResults = [];
+    }
 
     isLoading = false;
     notifyListeners();
   }
 
-  // ---------------- APPLY FILTER ----------------
+  // ---------------- FILTER ----------------
   void setFilter(SearchFilter filter) {
     activeFilter = filter;
     _applyFilter();
@@ -77,22 +61,12 @@ class AppSearchController extends ChangeNotifier {
         userResults = List<UserModel>.from(_allUserResults);
         break;
 
+      // Relationship-based filters are deferred
+      // They will be implemented later using FollowController / MutualController
       case SearchFilter.followers:
-        userResults = _allUserResults
-            .where((u) => _followersIds.contains(u.uid))
-            .toList();
-        break;
-
       case SearchFilter.following:
-        userResults = _allUserResults
-            .where((u) => _followingIds.contains(u.uid))
-            .toList();
-        break;
-
       case SearchFilter.mutual:
-        userResults = _allUserResults.where((u) {
-          return _followersIds.contains(u.uid) && _followingIds.contains(u.uid);
-        }).toList();
+        userResults = List<UserModel>.from(_allUserResults);
         break;
     }
   }

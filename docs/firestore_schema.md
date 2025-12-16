@@ -21,9 +21,13 @@ Required fields:
 - uid: string
 - email: string
 - name: string
+- username: string  # // @handle (UNIQUE, PUBLIC, LOWERCASE)
+- videoDpUrl: string | null
+- videoDpThumbUrl: string | null
+- bio: string
 - type: citizen | gazetter
 - isVerified: boolean
-- verifiedLabel: "Gazetter"
+- verifiedLabel: Gazetter
 - isAdmin: boolean
 - followersCount: number
 - followingCount: number
@@ -32,18 +36,25 @@ Required fields:
 - jurisdictionId: String
 - photoUrl: String
 - displayName: String
-- role: String
-- state: String
-
----
-
+- role: Citizen | gazetter | admin | superAdmin
+- state: active | suspended | readOnly | deleted
+## users/{uid}/followers/{followerUid}
+- uid: followerUid
+- followedAt: timestamp
+## users/{uid}/following/{targetUid}
+- uid: targetUid
+- followedAt: timestamp
+## usernames/{username}
+- uid: userUid
+- createdAt: timestamp
 ## posts/{postId}
-
 Required fields:
 - postId: string
 - authorId: string
 - imageUrls: array<string> (min 1)
+- videoUrl: string|null - Future proof
 - imageUrl: string
+- visibility: public | followers | mutuals | private
 - isRepost: boolean
 - likeCount: number
 - replyCount: number
@@ -51,19 +62,12 @@ Required fields:
 - isRemoved: boolean
 - createdAt: timestamp
 - isownVerified: boolean
-
----
-
 ## posts/{postId}/replies/{replyId}
-
 - replyId: string
 - postId: string
 - uid: string
 - text: string
 - createdAt: timestamp
-
----
-
 ## posts/{postId}/quotes/{quoteId}
 
 - quoteId: string

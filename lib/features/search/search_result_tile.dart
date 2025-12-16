@@ -20,7 +20,7 @@ class SearchResultTile extends StatelessWidget {
               : const AssetImage("assets/profile_placeholder.png")
                     as ImageProvider,
         ),
-        title: Text(user!.name),
+        title: Text(user!.displayName),
         subtitle: Text(user!.type),
         onTap: () => Navigator.push(
           context,

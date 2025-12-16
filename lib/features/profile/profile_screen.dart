@@ -24,9 +24,8 @@ class ProfileScreen extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => ProfileController()..loadProfile(uid),
         ),
-        ChangeNotifierProvider(
-          create: (_) => FollowController()..checkFollowing(uid),
-        ),
+        ChangeNotifierProvider(create: (_) => FollowController()..load(uid)),
+
         ChangeNotifierProvider(create: (_) => AdminUserController()),
       ],
       child: Consumer2<ProfileController, FollowController>(
@@ -38,11 +37,8 @@ class ProfileScreen extends StatelessWidget {
           }
 
           final user = controller.user!;
-          final theme = Theme.of(context);
-          final scheme = theme.colorScheme;
-
           return AppScaffold(
-            appBar: AppBar(title: Text(user.name), centerTitle: false),
+            appBar: AppBar(title: Text(user.displayName), centerTitle: false),
             body: SingleChildScrollView(
               child: Column(
                 children: [
@@ -103,7 +99,7 @@ class _ProfileHeader extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: scheme.shadow.withOpacity(0.15),
+            color: scheme.shadow.withValues(alpha: 0.15),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -127,7 +123,7 @@ class _ProfileHeader extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(user.name, style: theme.textTheme.titleLarge),
+              Text(user.displayName, style: theme.textTheme.titleLarge),
               if (user.isVerified) ...[
                 const SizedBox(width: 6),
                 const Icon(Icons.verified, size: 20),
@@ -215,19 +211,31 @@ class _FollowButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: follow.isLoading
             ? null
-            : () => follow.isFollowingUser
-                  ? follow.unfollow(targetUid)
-                  : follow.follow(targetUid),
+            : () {
+                if (follow.isFollowing) {
+                  follow.unfollow(targetUid);
+                } else {
+                  follow.follow(targetUid);
+                }
+              },
         style: ElevatedButton.styleFrom(
-          backgroundColor: follow.isFollowingUser
-              ? scheme.surfaceVariant
+          backgroundColor: follow.isFollowing
+              ? scheme.surfaceContainerHighest
               : scheme.primary,
         ),
         child: follow.isLoading
-            ? const CircularProgressIndicator(strokeWidth: 2)
+            ? const SizedBox(
+                height: 18,
+                width: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
             : Text(
-                follow.isFollowingUser ? "Following" : "Follow",
-                style: TextStyle(color: scheme.onPrimary),
+                follow.isFollowing ? "Following" : "Follow",
+                style: TextStyle(
+                  color: follow.isFollowing
+                      ? scheme.onSurface
+                      : scheme.onPrimary,
+                ),
               ),
       ),
     );
@@ -292,8 +300,6 @@ class _Tabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     return Padding(
       padding: const EdgeInsets.only(top: 22),
       child: Row(

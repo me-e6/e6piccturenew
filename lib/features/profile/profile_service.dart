@@ -18,7 +18,7 @@ class ProfileService {
   Future<UserModel?> getUser(String uid) async {
     final doc = await _firestore.collection('users').doc(uid).get();
     if (!doc.exists) return null;
-    return UserModel.fromMap(doc.data()!);
+    return UserModel.fromDocument(doc);
   }
 
   // --------------------------------------------------

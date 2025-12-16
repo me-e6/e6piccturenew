@@ -9,11 +9,10 @@ class AppThemes {
     colorScheme: const ColorScheme.light(
       primary: Color(0xFF6C7A4C),
       secondary: Color(0xFFC56A45),
-      background: Color(0xFFF5EDE3),
+      surfaceContainer: Color(0xFFF5EDE3),
       surface: Color(0xFFE8E2D2),
       onPrimary: Colors.white,
       onSecondary: Colors.white,
-      onBackground: Colors.black87,
       onSurface: Colors.black87,
     ),
 
@@ -42,11 +41,10 @@ class AppThemes {
     colorScheme: const ColorScheme.dark(
       primary: Color(0xFF9DB28B),
       secondary: Color(0xFFD89A6A),
-      background: Color(0xFF121212),
+      surfaceContainer: Color(0xFF121212),
       surface: Color(0xFF1E1E1E),
       onPrimary: Colors.black,
       onSecondary: Colors.black,
-      onBackground: Colors.white70,
       onSurface: Colors.white70,
     ),
 

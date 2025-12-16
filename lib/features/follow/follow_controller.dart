@@ -1,204 +1,74 @@
-/* import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-
-import 'follow_service.dart';
-
-class FollowController extends ChangeNotifier {
-  final FollowService _service = FollowService();
-
-  bool isLoading = false;
-  bool isFollowingUser = false;
-
-  String? _currentUid;
-
-  // Public getter (useful in UI)
-  String get currentUid => _currentUid ?? "";
-
-  FollowController() {
-    _loadCurrentUser();
-  }
-
-  Future<void> _loadCurrentUser() async {
-    final user = FirebaseAuth.instance.currentUser;
-    _currentUid = user?.uid;
-    notifyListeners(); // Important so UI knows UID is ready
-  }
-
-  // ----------------------------------------------------
-  // CHECK IF CURRENT USER FOLLOWS "targetUid"
-  // ----------------------------------------------------
-  Future<void> checkFollowing(String targetUid) async {
-    if (_currentUid == null) {
-      await _loadCurrentUser();
-    }
-
-    isLoading = true;
-    notifyListeners();
-
-    final status = await _service.isFollowing(targetUid);
-    isFollowingUser = status;
-
-    isLoading = false;
-    notifyListeners();
-  }
-
-  // ----------------------------------------------------
-  // FOLLOW
-  // ----------------------------------------------------
-  Future<void> follow(String targetUid) async {
-    if (_currentUid == null) {
-      await _loadCurrentUser();
-    }
-    if (_currentUid == null) return;
-
-    isLoading = true;
-    notifyListeners();
-
-    await _service.followUser(targetUid);
-    isFollowingUser = true;
-
-    isLoading = false;
-    notifyListeners();
-  }
-
-  // ----------------------------------------------------
-  // UNFOLLOW
-  // ----------------------------------------------------
-  Future<void> unfollow(String targetUid) async {
-    if (_currentUid == null) {
-      await _loadCurrentUser();
-    }
-    if (_currentUid == null) return;
-
-    isLoading = true;
-    notifyListeners();
-
-    await _service.unfollowUser(targetUid);
-    isFollowingUser = false;
-
-    isLoading = false;
-    notifyListeners();
-  }
-}
- */
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
 import 'follow_service.dart';
-import '../user/services/account_state_guard.dart';
+
+enum FollowState { idle, loading }
 
 class FollowController extends ChangeNotifier {
-  final FollowService _service = FollowService();
-  final AccountStateGuard _guard = AccountStateGuard();
+  FollowController({FollowService? service})
+    : _service = service ?? FollowService();
 
-  bool isLoading = false;
-  bool isFollowingUser = false;
+  final FollowService _service;
 
-  String? _currentUid;
+  final String currentUid = FirebaseAuth.instance.currentUser!.uid;
 
-  // Public getter (safe for UI)
-  String get currentUid => _currentUid ?? "";
+  FollowState state = FollowState.idle;
+  bool _isFollowing = false;
 
-  FollowController() {
-    _loadCurrentUser();
-  }
+  // -------------------------
+  // PUBLIC GETTERS (CANONICAL)
+  // -------------------------
+  bool get isFollowing => _isFollowing;
+  bool get isLoading => state == FollowState.loading;
 
-  Future<void> _loadCurrentUser() async {
-    final user = FirebaseAuth.instance.currentUser;
-    _currentUid = user?.uid;
+  // --------------------------------------------------
+  // INIT / CHECK
+  // --------------------------------------------------
+  Future<void> load(String targetUid) async {
+    _isFollowing = await _service.isFollowing(
+      currentUid: currentUid,
+      targetUid: targetUid,
+    );
     notifyListeners();
   }
 
-  // ----------------------------------------------------
-  // CHECK IF CURRENT USER FOLLOWS "targetUid"
-  // (READ operation — no guard needed)
-  // ----------------------------------------------------
-  Future<void> checkFollowing(String targetUid) async {
-    if (_currentUid == null) {
-      await _loadCurrentUser();
-    }
-
-    isLoading = true;
-    notifyListeners();
-
-    isFollowingUser = await _service.isFollowing(targetUid);
-
-    isLoading = false;
-    notifyListeners();
-  }
-
-  // ----------------------------------------------------
+  // --------------------------------------------------
   // FOLLOW
-  // ----------------------------------------------------
-  Future<String> follow(String targetUid) async {
-    if (_currentUid == null) {
-      await _loadCurrentUser();
-    }
-    if (_currentUid == null) return "not-authenticated";
+  // --------------------------------------------------
+  Future<void> follow(String targetUid) async {
+    if (isLoading || _isFollowing) return;
 
-    isLoading = true;
+    state = FollowState.loading;
     notifyListeners();
 
-    // STEP 2 — Account State Enforcement
-    final guardResult = await _guard.checkMutationAllowed(_currentUid!);
-
-    if (guardResult != GuardResult.allowed) {
-      isLoading = false;
+    try {
+      await _service.follow(currentUid: currentUid, targetUid: targetUid);
+      _isFollowing = true;
+    } catch (e) {
+      debugPrint('Follow failed: $e');
+    } finally {
+      state = FollowState.idle;
       notifyListeners();
-      return _mapGuardResultToError(guardResult);
     }
-
-    await _service.followUser(targetUid);
-    isFollowingUser = true;
-
-    isLoading = false;
-    notifyListeners();
-    return "success";
   }
 
-  // ----------------------------------------------------
+  // --------------------------------------------------
   // UNFOLLOW
-  // ----------------------------------------------------
-  Future<String> unfollow(String targetUid) async {
-    if (_currentUid == null) {
-      await _loadCurrentUser();
-    }
-    if (_currentUid == null) return "not-authenticated";
+  // --------------------------------------------------
+  Future<void> unfollow(String targetUid) async {
+    if (isLoading || !_isFollowing) return;
 
-    isLoading = true;
+    state = FollowState.loading;
     notifyListeners();
 
-    // STEP 2 — Account State Enforcement
-    final guardResult = await _guard.checkMutationAllowed(_currentUid!);
-
-    if (guardResult != GuardResult.allowed) {
-      isLoading = false;
+    try {
+      await _service.unfollow(currentUid: currentUid, targetUid: targetUid);
+      _isFollowing = false;
+    } catch (e) {
+      debugPrint('Unfollow failed: $e');
+    } finally {
+      state = FollowState.idle;
       notifyListeners();
-      return _mapGuardResultToError(guardResult);
-    }
-
-    await _service.unfollowUser(targetUid);
-    isFollowingUser = false;
-
-    isLoading = false;
-    notifyListeners();
-    return "success";
-  }
-
-  // ----------------------------------------------------
-  // GUARD RESULT MAPPING (UI-AGNOSTIC)
-  // ----------------------------------------------------
-  String _mapGuardResultToError(GuardResult result) {
-    switch (result) {
-      case GuardResult.readOnly:
-        return "account-read-only";
-      case GuardResult.suspended:
-        return "account-suspended";
-      case GuardResult.deleted:
-        return "account-deleted";
-      default:
-        return "action-not-allowed";
     }
   }
 }

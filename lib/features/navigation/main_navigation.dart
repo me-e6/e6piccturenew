@@ -50,7 +50,7 @@ class _MainNavigationState extends State<MainNavigation>
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    //final scheme = Theme.of(context).colorScheme;
 
     return Stack(
       children: [
@@ -147,13 +147,17 @@ class _MainNavigationState extends State<MainNavigation>
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: active ? scheme.primary.withOpacity(0.15) : Colors.transparent,
+          color: active
+              ? scheme.primary.withValues(alpha: 0.15)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Icon(
           icon,
           size: 28,
-          color: active ? scheme.primary : scheme.onSurface.withOpacity(0.7),
+          color: active
+              ? scheme.primary
+              : scheme.onSurface.withValues(alpha: 0.7),
         ),
       ),
     );
@@ -184,7 +188,7 @@ class _MainNavigationState extends State<MainNavigation>
         height: 55,
         width: 55,
         decoration: BoxDecoration(
-          color: scheme.background,
+          color: scheme.surfaceBright,
           shape: BoxShape.circle,
           border: Border.all(color: scheme.primary, width: 2),
           boxShadow: const [

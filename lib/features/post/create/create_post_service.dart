@@ -57,7 +57,8 @@ class CreatePostService {
         "imageUrl": uploadedUrls.first, // legacy fallback
         // SOCIAL POST
         "isRepost": false,
-
+        "isRemoved": false,
+        "visibility": "public", // or followers / mutuals / private
         // ENGAGEMENT COUNTERS
         "likeCount": 0,
         "replyCount": 0,

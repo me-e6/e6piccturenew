@@ -57,8 +57,8 @@ class ReplyScreen extends StatelessWidget {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: scheme.primary,
                         foregroundColor: scheme.onPrimary,
-                        disabledBackgroundColor: scheme.primary.withOpacity(
-                          0.5,
+                        disabledBackgroundColor: scheme.primary.withValues(
+                          alpha: 0.5,
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),

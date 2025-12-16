@@ -1,83 +1,140 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+/// ------------------------------------------------------------
+/// USER MODEL — CANONICAL /users/{uid}
+/// ------------------------------------------------------------
+/// Represents ONLY the user document.
+/// Relationship lists live in subcollections.
 class UserModel {
+  // -------------------------
+  // CORE IDENTITY
+  // -------------------------
   final String uid;
   final String email;
-  final String name;
-  final String type; // citizen / admin
-  final String photoUrl;
+  final String username; // @handle (unique, lowercase)
+  final String displayName;
 
-  // ✅ Gazetter
+  // -------------------------
+  // PROFILE
+  // -------------------------
+  final String photoUrl;
+  final String? videoDpUrl;
+  final String? videoDpThumbUrl;
+  final String bio;
+
+  // -------------------------
+  // ROLE / STATE
+  // -------------------------
+  final String role; // citizen | gazetter | admin | superAdmin
+  final String type; // citizen | gazetter (UI-facing)
   final bool isVerified;
   final String verifiedLabel;
+  final bool isAdmin;
+  final String state; // active | suspended | readOnly | deleted
+  final String? jurisdictionId;
 
-  final List<String> followersList;
-  final List<String> followingList;
-
+  // -------------------------
+  // SOCIAL COUNTERS
+  // -------------------------
   final int followersCount;
   final int followingCount;
+
+  // -------------------------
+  // AUDIT
+  // -------------------------
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
   UserModel({
     required this.uid,
     required this.email,
-    required this.name,
-    required this.type,
+    required this.username,
+    required this.displayName,
     required this.photoUrl,
+    required this.bio,
+    required this.role,
+    required this.type,
     required this.isVerified,
     required this.verifiedLabel,
-    required this.followersList,
-    required this.followingList,
+    required this.isAdmin,
+    required this.state,
     required this.followersCount,
     required this.followingCount,
+    required this.createdAt,
+    required this.updatedAt,
+    this.videoDpUrl,
+    this.videoDpThumbUrl,
+    this.jurisdictionId,
   });
 
+  // ------------------------------------------------------------
+  // FIRESTORE → MODEL (DEFENSIVE, CANONICAL)
+  // ------------------------------------------------------------
+  factory UserModel.fromDocument(DocumentSnapshot doc) {
+    final raw = doc.data();
+    if (raw == null || raw is! Map<String, dynamic>) {
+      throw Exception('Invalid user document: ${doc.id}');
+    }
+
+    final data = raw;
+
+    DateTime _parseTs(dynamic v) =>
+        v is Timestamp ? v.toDate() : DateTime.now();
+
+    return UserModel(
+      uid: data['uid'] ?? doc.id,
+      email: data['email'] ?? '',
+      username: data['username'] ?? '',
+      displayName: data['displayName'] ?? '',
+      photoUrl: data['photoUrl'] ?? '',
+      videoDpUrl: data['videoDpUrl'],
+      videoDpThumbUrl: data['videoDpThumbUrl'],
+      bio: data['bio'] ?? '',
+      role: data['role'] ?? 'citizen',
+      type: data['type'] ?? 'citizen',
+      isVerified: data['isVerified'] ?? false,
+      verifiedLabel: data['verifiedLabel'] ?? '',
+      isAdmin: data['isAdmin'] ?? false,
+      state: data['state'] ?? 'active',
+      jurisdictionId: data['jurisdictionId'],
+      followersCount: data['followersCount'] ?? 0,
+      followingCount: data['followingCount'] ?? 0,
+      createdAt: _parseTs(data['createdAt']),
+      updatedAt: _parseTs(data['updatedAt']),
+    );
+  }
+
+  // ------------------------------------------------------------
+  // COPY WITH (SAFE PROFILE UPDATES)
+  // ------------------------------------------------------------
   UserModel copyWith({
     String? photoUrl,
+    String? videoDpUrl,
+    String? videoDpThumbUrl,
+    String? bio,
     bool? isVerified,
     String? verifiedLabel,
   }) {
     return UserModel(
       uid: uid,
       email: email,
-      name: name,
-      type: type,
+      username: username,
+      displayName: displayName,
       photoUrl: photoUrl ?? this.photoUrl,
+      videoDpUrl: videoDpUrl ?? this.videoDpUrl,
+      videoDpThumbUrl: videoDpThumbUrl ?? this.videoDpThumbUrl,
+      bio: bio ?? this.bio,
+      role: role,
+      type: type,
       isVerified: isVerified ?? this.isVerified,
       verifiedLabel: verifiedLabel ?? this.verifiedLabel,
-      followersList: followersList,
-      followingList: followingList,
+      isAdmin: isAdmin,
+      state: state,
+      jurisdictionId: jurisdictionId,
       followersCount: followersCount,
       followingCount: followingCount,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
     );
-  }
-
-  factory UserModel.fromMap(Map<String, dynamic> map) {
-    return UserModel(
-      uid: map["uid"] ?? "",
-      email: map["email"] ?? "",
-      name: map["name"] ?? "",
-      type: map["type"] ?? "citizen",
-      photoUrl: map["photoUrl"] ?? "",
-      isVerified: map["isVerified"] ?? false,
-      verifiedLabel: map["verifiedLabel"] ?? "",
-      followersList: List<String>.from(map["followersList"] ?? []),
-      followingList: List<String>.from(map["followingList"] ?? []),
-      followersCount: map["followersCount"] ?? 0,
-      followingCount: map["followingCount"] ?? 0,
-    );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      "uid": uid,
-      "email": email,
-      "name": name,
-      "type": type,
-      "photoUrl": photoUrl,
-      "isVerified": isVerified,
-      "verifiedLabel": verifiedLabel,
-      "followersList": followersList,
-      "followingList": followingList,
-      "followersCount": followersCount,
-      "followingCount": followingCount,
-    };
   }
 }
