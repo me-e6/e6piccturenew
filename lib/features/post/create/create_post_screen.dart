@@ -1,10 +1,17 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/widgets/app_scaffold.dart';
 import 'create_post_controller.dart';
 
+/// ----------------------------------
+/// CreatePostScreen
+/// ----------------------------------
+/// v0.4.0 rules:
+/// - Image-only posts
+/// - Multi-image selection supported
+/// - No captions
+/// - No camera
+/// - Clean exit on success
 class CreatePostScreen extends StatelessWidget {
   const CreatePostScreen({super.key});
 
@@ -12,174 +19,94 @@ class CreatePostScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => CreatePostController(),
-      child: Consumer<CreatePostController>(
-        builder: (context, controller, _) {
-          final theme = Theme.of(context);
-          final scheme = theme.colorScheme;
-
-          return AppScaffold(
-            // --------------------------------------------------
-            // APP BAR (THEME-AWARE)
-            // --------------------------------------------------
-            appBar: AppBar(title: const Text("New Post"), centerTitle: true),
-
-            // --------------------------------------------------
-            // BODY
-            // --------------------------------------------------
-            body: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // --------------------------------------------------
-                  // IMAGE GRID PREVIEW
-                  // --------------------------------------------------
-                  _ImageGridPreview(controller: controller),
-
-                  const SizedBox(height: 20),
-
-                  // --------------------------------------------------
-                  // ACTION BUTTONS
-                  // --------------------------------------------------
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.photo_library),
-                          label: const Text("Gallery"),
-                          onPressed: controller.pickImagesFromGallery,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.camera_alt),
-                          label: const Text("Camera"),
-                          onPressed: controller.takePhoto,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // --------------------------------------------------
-                  // CAPTION
-                  // --------------------------------------------------
-                  TextField(
-                    controller: controller.descController,
-                    maxLines: 4,
-                    decoration: InputDecoration(
-                      hintText: "Write a caption...",
-                      filled: true,
-                      fillColor: scheme.surfaceContainerHighest,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // --------------------------------------------------
-                  // POST BUTTON
-                  // --------------------------------------------------
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: controller.isLoading
-                          ? null
-                          : () => controller.createPost(context),
-                      child: controller.isLoading
-                          ? const CircularProgressIndicator(strokeWidth: 2)
-                          : const Text("Post", style: TextStyle(fontSize: 18)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
+      child: Scaffold(
+        appBar: AppBar(title: const Text('New Post')),
+        body: const _CreatePostBody(),
       ),
     );
   }
 }
 
-// ============================================================
-// IMAGE GRID PREVIEW (THEME-SAFE)
-// ============================================================
-
-class _ImageGridPreview extends StatelessWidget {
-  final CreatePostController controller;
-
-  const _ImageGridPreview({required this.controller});
+class _CreatePostBody extends StatelessWidget {
+  const _CreatePostBody();
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final theme = Theme.of(context);
+    return Consumer<CreatePostController>(
+      builder: (context, controller, _) {
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Expanded(
+                child: controller.selectedImages.isEmpty
+                    ? _EmptyPickerState(onPick: controller.pickImages)
+                    : _SelectedImagesGrid(images: controller.selectedImages),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: controller.isUploading
+                    ? null
+                    : () async {
+                        final success = await controller.createPost();
 
-    if (controller.selectedImages.isEmpty) {
-      return Container(
-        height: 200,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: scheme.primary),
-        ),
-        child: Center(
-          child: Text(
-            "No images selected",
-            style: theme.textTheme.bodyMedium?.copyWith(color: scheme.primary),
+                        if (success && context.mounted) {
+                          Navigator.pop(context, true);
+                        }
+                      },
+                child: controller.isUploading
+                    ? const CircularProgressIndicator()
+                    : const Text('Post'),
+              ),
+            ],
           ),
-        ),
-      );
-    }
+        );
+      },
+    );
+  }
+}
 
+/// ----------------------------------
+/// Empty Picker State
+/// ----------------------------------
+class _EmptyPickerState extends StatelessWidget {
+  final VoidCallback onPick;
+
+  const _EmptyPickerState({required this.onPick});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: OutlinedButton.icon(
+        icon: const Icon(Icons.photo_library_outlined),
+        label: const Text('Select photos'),
+        onPressed: onPick,
+      ),
+    );
+  }
+}
+
+/// ----------------------------------
+/// Selected Images Grid
+/// ----------------------------------
+class _SelectedImagesGrid extends StatelessWidget {
+  final List<String> images;
+
+  const _SelectedImagesGrid({required this.images});
+
+  @override
+  Widget build(BuildContext context) {
     return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: controller.selectedImages.length,
+      itemCount: images.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
+        crossAxisSpacing: 6,
+        mainAxisSpacing: 6,
       ),
       itemBuilder: (context, index) {
-        final img = controller.selectedImages[index];
-
-        return Stack(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.file(
-                File(img.path),
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: double.infinity,
-              ),
-            ),
-
-            // REMOVE BUTTON
-            Positioned(
-              top: 6,
-              right: 6,
-              child: GestureDetector(
-                onTap: () => controller.removeImageAt(index),
-                child: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: scheme.scrim.withValues(alpha: 0.6),
-                  ),
-                  padding: const EdgeInsets.all(4),
-                  child: Icon(Icons.close, color: scheme.onPrimary, size: 16),
-                ),
-              ),
-            ),
-          ],
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.network(images[index], fit: BoxFit.cover),
         );
       },
     );

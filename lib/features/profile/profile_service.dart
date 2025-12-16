@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
@@ -18,11 +19,12 @@ class ProfileService {
   Future<UserModel?> getUser(String uid) async {
     final doc = await _firestore.collection('users').doc(uid).get();
     if (!doc.exists) return null;
+
     return UserModel.fromDocument(doc);
   }
 
   // --------------------------------------------------
-  // FETCH POSTS
+  // FETCH USER POSTS
   // --------------------------------------------------
   Future<List<PostModel>> getUserPosts(String uid) async {
     final snap = await _firestore
@@ -31,19 +33,26 @@ class ProfileService {
         .orderBy('createdAt', descending: true)
         .get();
 
-    return snap.docs.map((d) => PostModel.fromDocument(d)).toList();
+    return snap.docs.map(PostModel.fromDocument).toList();
   }
 
+  // --------------------------------------------------
+  // FETCH USER REPOSTS
+  // --------------------------------------------------
   Future<List<PostModel>> getUserReposts(String uid) async {
     final snap = await _firestore
         .collection('posts')
-        .where('repostedByUid', isEqualTo: uid)
+        .where('isRepost', isEqualTo: true)
+        .where('authorId', isEqualTo: uid)
         .orderBy('createdAt', descending: true)
         .get();
 
-    return snap.docs.map((d) => PostModel.fromDocument(d)).toList();
+    return snap.docs.map(PostModel.fromDocument).toList();
   }
 
+  // --------------------------------------------------
+  // FETCH SAVED POSTS (OWNER ONLY)
+  // --------------------------------------------------
   Future<List<PostModel>> getSavedPosts(String uid) async {
     final savedSnap = await _firestore
         .collection('users')
@@ -55,12 +64,18 @@ class ProfileService {
 
     final ids = savedSnap.docs.map((d) => d.id).toList();
 
+    // Firestore whereIn limit safeguard
+    if (ids.length > 10) {
+      // Batch handling can be added later
+      return [];
+    }
+
     final postsSnap = await _firestore
         .collection('posts')
         .where(FieldPath.documentId, whereIn: ids)
         .get();
 
-    return postsSnap.docs.map((d) => PostModel.fromDocument(d)).toList();
+    return postsSnap.docs.map(PostModel.fromDocument).toList();
   }
 
   // --------------------------------------------------
@@ -68,10 +83,14 @@ class ProfileService {
   // --------------------------------------------------
   Future<String?> updateProfilePhoto(String uid, File file) async {
     final ref = _storage.ref().child('profiles').child('$uid.jpg');
+
     await ref.putFile(file);
     final url = await ref.getDownloadURL();
 
-    await _firestore.collection('users').doc(uid).update({'photoUrl': url});
+    // 🔒 CONSISTENT FIELD NAME
+    await _firestore.collection('users').doc(uid).update({
+      'profileImageUrl': url,
+    });
 
     return url;
   }

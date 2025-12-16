@@ -60,8 +60,8 @@ class PicctureApp extends StatelessWidget {
               "/home": (_) => const MainNavigation(),
 
               // FEED
-              // "/day-feed": (_) => const DayFeedScreen(),
-              '/day-feed': (_) => const DayFeedProbeScreen(),
+              "/day-feed": (_) => const DayFeedScreen(),
+              //'/day-feed': (_) => const DayFeedProbeScreen(),
               // POST
               "/create-post": (_) => const CreatePostScreen(),
 

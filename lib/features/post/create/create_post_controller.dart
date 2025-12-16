@@ -1,139 +1,64 @@
-// ignore_for_file: use_build_context_synchronously
-
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'create_post_service.dart';
-import '../../user/services/account_state_guard.dart';
 
 class CreatePostController extends ChangeNotifier {
-  final CreatePostService _service;
-  final AccountStateGuard _guard = AccountStateGuard();
+  final CreatePostService _service = CreatePostService();
+  final ImagePicker _picker = ImagePicker();
 
-  CreatePostController({CreatePostService? testService})
-    : _service = testService ?? CreatePostService();
+  /// Local image paths (UI-safe)
+  final List<String> selectedImages = [];
 
-  // --------------------------------------------------
-  // IMAGES
-  // --------------------------------------------------
-  final List<XFile> selectedImages = [];
+  bool isUploading = false;
 
-  // --------------------------------------------------
-  // DESCRIPTION
-  // --------------------------------------------------
-  final TextEditingController descController = TextEditingController();
+  // ------------------------------------------------------------
+  // PICK IMAGES (GALLERY ONLY)
+  // ------------------------------------------------------------
+  Future<void> pickImages() async {
+    try {
+      final List<XFile> files = await _picker.pickMultiImage();
 
-  // --------------------------------------------------
-  // UI STATE
-  // --------------------------------------------------
-  bool isLoading = false;
+      if (files.isEmpty) return;
 
-  // --------------------------------------------------
-  // IMAGE PICKERS
-  // --------------------------------------------------
-  Future<void> pickImagesFromGallery() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickMultiImage();
-
-    if (picked.isNotEmpty) {
       selectedImages
         ..clear()
-        ..addAll(picked);
+        ..addAll(files.map((f) => f.path));
+
       notifyListeners();
+    } catch (_) {
+      // UI-safe: ignore picker failures
     }
   }
 
-  Future<void> takePhoto() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.camera);
-
-    if (picked != null) {
-      selectedImages
-        ..clear()
-        ..add(picked);
-      notifyListeners();
-    }
-  }
-
-  void removeImageAt(int index) {
-    selectedImages.removeAt(index);
-    notifyListeners();
-  }
-
-  // --------------------------------------------------
+  // ------------------------------------------------------------
   // CREATE POST
-  // --------------------------------------------------
+  // ------------------------------------------------------------
+  Future<bool> createPost() async {
+    if (selectedImages.isEmpty || isUploading) return false;
 
-  Future<String> createPost(BuildContext context) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      _showMessage(context, "Please login again.");
-      return "not-authenticated";
-    }
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return false;
 
-    if (selectedImages.isEmpty) {
-      _showMessage(context, "Please select at least one image.");
-      return "no-images";
-    }
-
-    final description = descController.text.trim();
-    if (description.isEmpty) {
-      _showMessage(context, "Please enter a caption.");
-      return "no-description";
-    }
-
-    _setLoading(true);
+    isUploading = true;
+    notifyListeners();
 
     try {
-      final guardResult = await _guard.checkMutationAllowed(user.uid);
-      if (guardResult != GuardResult.allowed) {
-        _showMessage(context, "Action not allowed.");
-        return guardResult.name;
-      }
+      final imageFiles = selectedImages.map((p) => File(p)).toList();
 
-      final result = await _service.createPost(
-        images: selectedImages.map((x) => File(x.path)).toList(),
-        description: description,
-      );
+      await _service.createImagePost(authorId: uid, images: imageFiles);
 
-      if (result == "success") {
-        _showMessage(context, "Post uploaded successfully!");
-
-        selectedImages.clear();
-        descController.clear();
-        notifyListeners();
-
-        Future.delayed(const Duration(milliseconds: 400), () {
-          Navigator.pushReplacementNamed(context, "/home");
-        });
-
-        return "success";
-      }
-
-      _showMessage(context, "Something went wrong. Try again.");
-      return "error";
-    } catch (e, st) {
-      debugPrint("Create post failed: $e");
-      debugPrintStack(stackTrace: st);
-
-      _showMessage(context, "Upload failed. Please try again.");
-      return "exception";
+      // Reset state on success
+      selectedImages.clear();
+      return true;
+    } catch (_) {
+      return false;
     } finally {
-      _setLoading(false);
+      isUploading = false;
+      notifyListeners();
     }
-  }
-
-  // --------------------------------------------------
-  // HELPERS
-  // --------------------------------------------------
-  void _setLoading(bool value) {
-    isLoading = value;
-    notifyListeners();
-  }
-
-  void _showMessage(BuildContext context, String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 }

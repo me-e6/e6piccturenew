@@ -73,13 +73,20 @@ class PostModel {
   });
 
   // ------------------------------------------------------------
-  // FIRESTORE → MODEL (DEFENSIVE, NON-BREAKING)
+  // ALIAS FACTORY (LEGACY-SAFE)
   // ------------------------------------------------------------
   factory PostModel.fromDocument(DocumentSnapshot doc) {
+    return PostModel.fromFirestore(doc);
+  }
+
+  // ------------------------------------------------------------
+  // FIRESTORE → MODEL (CANONICAL, GENERIC-SAFE)
+  // ------------------------------------------------------------
+  factory PostModel.fromFirestore(DocumentSnapshot doc) {
     final raw = doc.data();
 
     if (raw == null || raw is! Map<String, dynamic>) {
-      throw Exception('Invalid post document: ${doc.id}');
+      throw StateError('Post document ${doc.id} has invalid data');
     }
 
     final Map<String, dynamic> data = raw;
@@ -104,28 +111,19 @@ class PostModel {
         : PostVisibility.public;
 
     return PostModel(
-      postId: (data['postId'] as String?) ?? doc.id,
-
-      authorId: (data['authorId'] as String?) ?? '',
-
-      // Never force-cast strings from Firestore
-      authorName: (data['authorName'] as String?) ?? 'Unknown',
-
-      isVerifiedOwner: (data['isVerifiedOwner'] as bool?) ?? false,
-
+      postId: data['postId'] as String? ?? doc.id,
+      authorId: data['authorId'] as String? ?? '',
+      authorName: data['authorName'] as String? ?? 'Unknown',
+      isVerifiedOwner: data['isVerifiedOwner'] as bool? ?? false,
       visibility: visibility,
-
       imageUrls:
           (data['imageUrls'] as List?)?.whereType<String>().toList() ??
           const [],
-
-      isRepost: (data['isRepost'] as bool?) ?? false,
-
-      likeCount: (data['likeCount'] as int?) ?? 0,
-      replyCount: (data['replyCount'] as int?) ?? 0,
-      quoteReplyCount: (data['quoteReplyCount'] as int?) ?? 0,
-
+      isRepost: data['isRepost'] as bool? ?? false,
       createdAt: createdAt,
+      likeCount: data['likeCount'] as int? ?? 0,
+      replyCount: data['replyCount'] as int? ?? 0,
+      quoteReplyCount: data['quoteReplyCount'] as int? ?? 0,
     );
   }
 

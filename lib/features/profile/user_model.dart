@@ -18,9 +18,16 @@ class UserModel {
   // PROFILE
   // -------------------------
   final String photoUrl;
+  final String? profileImageUrl;
   final String? videoDpUrl;
   final String? videoDpThumbUrl;
   final String bio;
+  // ------------------------------------------------------------
+  // UI ALIAS (CANONICAL HANDLE)
+  // ------------------------------------------------------------
+  /// `handle` is the canonical UI identifier.
+  /// Maps to existing username / displayName safely.
+  String get handle => username.isNotEmpty ? username : displayName;
 
   // -------------------------
   // ROLE / STATE
@@ -34,10 +41,11 @@ class UserModel {
   final String? jurisdictionId;
 
   // -------------------------
-  // SOCIAL COUNTERS
+  // SOCIAL GRAPH
   // -------------------------
   final int followersCount;
   final int followingCount;
+  final int mutualCount;
 
   // -------------------------
   // AUDIT
@@ -51,6 +59,7 @@ class UserModel {
     required this.username,
     required this.displayName,
     required this.photoUrl,
+    required this.profileImageUrl,
     required this.bio,
     required this.role,
     required this.type,
@@ -60,6 +69,7 @@ class UserModel {
     required this.state,
     required this.followersCount,
     required this.followingCount,
+    required this.mutualCount,
     required this.createdAt,
     required this.updatedAt,
     this.videoDpUrl,
@@ -87,6 +97,7 @@ class UserModel {
       username: data['username'] ?? '',
       displayName: data['displayName'] ?? '',
       photoUrl: data['photoUrl'] ?? '',
+      profileImageUrl: data['profileImageUrl'],
       videoDpUrl: data['videoDpUrl'],
       videoDpThumbUrl: data['videoDpThumbUrl'],
       bio: data['bio'] ?? '',
@@ -99,6 +110,7 @@ class UserModel {
       jurisdictionId: data['jurisdictionId'],
       followersCount: data['followersCount'] ?? 0,
       followingCount: data['followingCount'] ?? 0,
+      mutualCount: data['mutualCount'] ?? 0,
       createdAt: _parseTs(data['createdAt']),
       updatedAt: _parseTs(data['updatedAt']),
     );
@@ -110,6 +122,7 @@ class UserModel {
   UserModel copyWith({
     String? photoUrl,
     String? videoDpUrl,
+    String? profileImageUrl,
     String? videoDpThumbUrl,
     String? bio,
     bool? isVerified,
@@ -121,6 +134,7 @@ class UserModel {
       username: username,
       displayName: displayName,
       photoUrl: photoUrl ?? this.photoUrl,
+      profileImageUrl: profileImageUrl ?? profileImageUrl,
       videoDpUrl: videoDpUrl ?? this.videoDpUrl,
       videoDpThumbUrl: videoDpThumbUrl ?? this.videoDpThumbUrl,
       bio: bio ?? this.bio,
@@ -133,6 +147,7 @@ class UserModel {
       jurisdictionId: jurisdictionId,
       followersCount: followersCount,
       followingCount: followingCount,
+      mutualCount: mutualCount,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );

@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/widgets/app_scaffold.dart';
-import '../settingsbreadcrumb/settings_snapout_screen.dart';
 import '../feed/day_feed_controller.dart';
+import '../feed/day_feed_service.dart';
 import '../feed/day_feed_screen.dart';
+import '../settingsbreadcrumb/settings_snapout_screen.dart';
 import 'home_controller_v2.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -18,7 +19,11 @@ class HomeScreen extends StatelessWidget {
         // SINGLE DayFeedController (SOURCE OF TRUTH)
         // --------------------------------------------------
         ChangeNotifierProvider(
-          create: (_) => DayFeedController()..loadInitial(),
+          create: (_) {
+            final controller = DayFeedController(DayFeedService());
+            controller.init();
+            return controller;
+          },
         ),
 
         // --------------------------------------------------
@@ -48,12 +53,7 @@ class _HomeView extends StatelessWidget {
 
     return AppScaffold(
       // --------------------------------------------------
-      // RIGHT SNAP-OUT DRAWER (RESTORED)
-      // --------------------------------------------------
-      endDrawer: const SettingsSnapOutScreen(),
-
-      // --------------------------------------------------
-      // APP BAR (LOGO RESTORED)
+      // APP BAR (NO endDrawer — SNAP-OUT VIA NAVIGATION)
       // --------------------------------------------------
       appBar: AppBar(
         title: Row(
@@ -69,11 +69,15 @@ class _HomeView extends StatelessWidget {
               icon: const Icon(Icons.search),
               onPressed: () => Navigator.pushNamed(context, "/search"),
             ),
-            Builder(
-              builder: (context) => IconButton(
-                icon: const Icon(Icons.menu),
-                onPressed: () => Scaffold.of(context).openEndDrawer(),
-              ),
+            IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const SettingsSnapOutScreen(),
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -86,7 +90,6 @@ class _HomeView extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: GestureDetector(
           onTap: () {
-            // Empty-state guard (NO CRASH)
             if (dayFeed.totalPostCount == 0) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -96,9 +99,6 @@ class _HomeView extends StatelessWidget {
               return;
             }
 
-            // --------------------------------------------------
-            // SAFE PROVIDER-AWARE NAVIGATION
-            // --------------------------------------------------
             Navigator.push(
               context,
               MaterialPageRoute(

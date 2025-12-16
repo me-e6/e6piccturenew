@@ -1,49 +1,76 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import '../post/create/post_model.dart';
 import 'engagement_service.dart';
 
 class EngagementController extends ChangeNotifier {
-  final EngagementService _service = EngagementService();
+  final EngagementService _service;
 
-  bool isProcessing = false;
+  EngagementController({EngagementService? service})
+    : _service = service ?? EngagementService();
 
-  Future<void> reply({required String postId, required String text}) async {
-    _setLoading(true);
-    await _service.replyToPost(postId: postId, text: text);
-    _setLoading(false);
-  }
+  // ------------------------------------------------------------
+  // LIKE
+  // ------------------------------------------------------------
+  Future<void> likePost(PostModel post) async {
+    if (post.hasLiked) return;
 
-  Future<void> quoteReply({
-    required String postId,
-    required String text,
-    required Map<String, dynamic> quotedPostSnapshot,
-  }) async {
-    _setLoading(true);
-    await _service.quoteReply(
-      postId: postId,
-      text: text,
-      quotedPostSnapshot: quotedPostSnapshot,
-    );
-    _setLoading(false);
-  }
-
-  Future<void> bookmark(String postId, {required bool isBookmarked}) async {
-    _setLoading(true);
-    if (isBookmarked) {
-      await _service.removeBookmark(postId);
-    } else {
-      await _service.bookmarkPost(postId);
-    }
-    _setLoading(false);
-  }
-
-  Future<void> deletePost(String postId) async {
-    _setLoading(true);
-    await _service.deletePost(postId);
-    _setLoading(false);
-  }
-
-  void _setLoading(bool value) {
-    isProcessing = value;
+    // Optimistic update
+    post.hasLiked = true;
+    post.likeCount += 1;
     notifyListeners();
+
+    try {
+      await _service.likePost(post.postId);
+    } catch (_) {
+      // rollback
+      post.hasLiked = false;
+      post.likeCount -= 1;
+      notifyListeners();
+    }
+  }
+
+  // ------------------------------------------------------------
+  // DISLIKE / UNLIKE
+  // ------------------------------------------------------------
+  Future<void> dislikePost(PostModel post) async {
+    if (!post.hasLiked) return;
+
+    post.hasLiked = false;
+    post.likeCount = post.likeCount > 0 ? post.likeCount - 1 : 0;
+    notifyListeners();
+
+    try {
+      await _service.unlikePost(post.postId);
+    } catch (_) {
+      post.hasLiked = true;
+      post.likeCount += 1;
+      notifyListeners();
+    }
+  }
+
+  // ------------------------------------------------------------
+  // SAVE / UNSAVE
+  // ------------------------------------------------------------
+  Future<void> savePost(PostModel post) async {
+    post.hasSaved = !post.hasSaved;
+    notifyListeners();
+
+    try {
+      await _service.savePost(post.postId, post.hasSaved);
+    } catch (_) {
+      post.hasSaved = !post.hasSaved;
+      notifyListeners();
+    }
+  }
+
+  // ------------------------------------------------------------
+  // SHARE (NO COUNTER MUTATION YET)
+  // ------------------------------------------------------------
+  Future<void> sharePost(PostModel post) async {
+    try {
+      await _service.sharePost(post.postId);
+    } catch (_) {
+      // silent fail (sharing is non-critical)
+    }
   }
 }

@@ -2,102 +2,64 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class EngagementService {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final _firestore = FirebaseFirestore.instance;
+  final _auth = FirebaseAuth.instance;
 
   String get _uid => _auth.currentUser!.uid;
 
-  // --------------------------------------------------
-  // DIRECT REPLY
-  // --------------------------------------------------
-  Future<void> replyToPost({
-    required String postId,
-    required String text,
-  }) async {
-    final postRef = _db.collection("posts").doc(postId);
-    final replyRef = postRef.collection("replies").doc();
+  // ------------------------------------------------------------
+  // LIKE
+  // ------------------------------------------------------------
+  Future<void> likePost(String postId) async {
+    final ref = _firestore.collection('posts').doc(postId);
 
-    await _db.runTransaction((tx) async {
-      tx.set(replyRef, {
-        "replyId": replyRef.id,
-        "postId": postId,
-        "authorUid": _uid,
-        "text": text,
-        "createdAt": FieldValue.serverTimestamp(),
-        "type": "direct",
+    await _firestore.runTransaction((tx) async {
+      tx.update(ref, {'likeCount': FieldValue.increment(1)});
+
+      tx.set(ref.collection('likes').doc(_uid), {
+        'likedAt': FieldValue.serverTimestamp(),
       });
-
-      tx.update(postRef, {"replyCount": FieldValue.increment(1)});
     });
   }
 
-  // --------------------------------------------------
-  // QUOTE REPLY (IMPLEMENTED NOW)
-  // --------------------------------------------------
-  Future<void> quoteReply({
-    required String postId,
-    required String text,
-    required Map<String, dynamic> quotedPostSnapshot,
-  }) async {
-    final postRef = _db.collection("posts").doc(postId);
-    final quoteRef = postRef.collection("quoteReplies").doc();
+  // ------------------------------------------------------------
+  // UNLIKE
+  // ------------------------------------------------------------
+  Future<void> unlikePost(String postId) async {
+    final ref = _firestore.collection('posts').doc(postId);
 
-    await _db.runTransaction((tx) async {
-      tx.set(quoteRef, {
-        "quoteId": quoteRef.id,
-        "postId": postId,
-        "authorUid": _uid,
-        "text": text,
-        "createdAt": FieldValue.serverTimestamp(),
-        "quotedPostSnapshot": quotedPostSnapshot,
-      });
+    await _firestore.runTransaction((tx) async {
+      tx.update(ref, {'likeCount': FieldValue.increment(-1)});
 
-      tx.update(postRef, {"quoteReplyCount": FieldValue.increment(1)});
+      tx.delete(ref.collection('likes').doc(_uid));
     });
   }
 
-  // --------------------------------------------------
-  // BOOKMARK
-  // --------------------------------------------------
-  Future<void> bookmarkPost(String postId) async {
-    final postRef = _db.collection("posts").doc(postId);
-    final bookmarkRef = postRef.collection("bookmarks").doc(_uid);
+  // ------------------------------------------------------------
+  // SAVE
+  // ------------------------------------------------------------
+  Future<void> savePost(String postId, bool save) async {
+    final ref = _firestore
+        .collection('users')
+        .doc(_uid)
+        .collection('savedPosts')
+        .doc(postId);
 
-    await _db.runTransaction((tx) async {
-      final snap = await tx.get(bookmarkRef);
-      if (!snap.exists) {
-        tx.set(bookmarkRef, {
-          "uid": _uid,
-          "createdAt": FieldValue.serverTimestamp(),
-        });
-        tx.update(postRef, {"bookmarkCount": FieldValue.increment(1)});
-      }
-    });
+    if (save) {
+      await ref.set({'savedAt': FieldValue.serverTimestamp()});
+    } else {
+      await ref.delete();
+    }
   }
 
-  Future<void> removeBookmark(String postId) async {
-    final postRef = _db.collection("posts").doc(postId);
-    final bookmarkRef = postRef.collection("bookmarks").doc(_uid);
-
-    await _db.runTransaction((tx) async {
-      final snap = await tx.get(bookmarkRef);
-      if (snap.exists) {
-        tx.delete(bookmarkRef);
-        tx.update(postRef, {"bookmarkCount": FieldValue.increment(-1)});
-      }
-    });
-  }
-
-  // --------------------------------------------------
-  // DELETE POST (SOFT DELETE)
-  // --------------------------------------------------
-  Future<void> deletePost(String postId) async {
-    final postRef = _db.collection("posts").doc(postId);
-
-    await postRef.update({
-      "isDeleted": true,
-      "deletedAt": FieldValue.serverTimestamp(),
-      "deletedBy": _uid,
+  // ------------------------------------------------------------
+  // SHARE (ANALYTICS HOOK)
+  // ------------------------------------------------------------
+  Future<void> sharePost(String postId) async {
+    await _firestore.collection('postShares').add({
+      'postId': postId,
+      'userId': _uid,
+      'sharedAt': FieldValue.serverTimestamp(),
     });
   }
 }

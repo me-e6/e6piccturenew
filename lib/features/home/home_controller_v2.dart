@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../feed/day_feed_controller.dart';
+import '../feed/day_feed_service.dart';
 
 class HomeControllerV2 extends ChangeNotifier {
   final DayFeedController _dayFeed;
@@ -26,5 +27,5 @@ class HomeControllerV2 extends ChangeNotifier {
 /// INTERNAL DUMMY — NEVER USED FOR REAL DATA
 /// ------------------------------------------------------------
 class _DummyDayFeedController extends DayFeedController {
-  _DummyDayFeedController() : super();
+  _DummyDayFeedController() : super(DayFeedService());
 }

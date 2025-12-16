@@ -143,7 +143,7 @@ class _ImmersivePostView extends StatelessWidget {
               child: Column(
                 children: [
                   // ---------------- LIKE ----------------
-                  _ActionIcon(
+                  /*   _ActionIcon(
                     icon: controller.post.hasLiked
                         ? Icons.favorite
                         : Icons.favorite_border,
@@ -158,7 +158,7 @@ class _ImmersivePostView extends StatelessWidget {
                       // 2️⃣ Viewer local state
                       controller.toggleLike();
                     },
-                  ),
+                  ), */
 
                   // LIVE LIKE COUNT
                   Text(

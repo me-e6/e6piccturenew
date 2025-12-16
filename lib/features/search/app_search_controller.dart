@@ -1,73 +1,42 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'search_service.dart';
 import '../profile/user_model.dart';
-import '../post/create/post_model.dart';
-
-enum SearchFilter { all, followers, following, mutual }
 
 class AppSearchController extends ChangeNotifier {
-  final SearchService _service = SearchService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  bool isLoading = false;
+  bool _isLoading = false;
+  List<UserModel> _results = [];
 
-  List<UserModel> _allUserResults = [];
-  List<UserModel> userResults = [];
-  List<PostModel> postResults = [];
+  bool get isLoading => _isLoading;
+  List<UserModel> get results => _results;
 
-  SearchFilter activeFilter = SearchFilter.all;
-
-  // ---------------- SEARCH ----------------
-  Future<void> search(String query) async {
-    final trimmed = query.trim();
+  Future<void> searchUsers(String query) async {
+    final trimmed = query.trim().toLowerCase();
 
     if (trimmed.isEmpty) {
-      _allUserResults = [];
-      userResults = [];
-      postResults = [];
+      _results = [];
       notifyListeners();
       return;
     }
 
-    isLoading = true;
+    _isLoading = true;
     notifyListeners();
 
     try {
-      _allUserResults = await _service.searchUsers(trimmed);
-      postResults = await _service.searchPostsByUserName(trimmed);
+      final snap = await _firestore
+          .collection('users')
+          .where('searchKeywords', arrayContains: trimmed)
+          .limit(20)
+          .get();
 
-      _applyFilter();
-    } catch (e) {
-      // Intentionally silent; UI reacts via empty state
-      _allUserResults = [];
-      userResults = [];
-      postResults = [];
+      _results = snap.docs.map((d) => UserModel.fromDocument(d)).toList();
+    } catch (_) {
+      _results = [];
     }
 
-    isLoading = false;
+    _isLoading = false;
     notifyListeners();
-  }
-
-  // ---------------- FILTER ----------------
-  void setFilter(SearchFilter filter) {
-    activeFilter = filter;
-    _applyFilter();
-    notifyListeners();
-  }
-
-  void _applyFilter() {
-    switch (activeFilter) {
-      case SearchFilter.all:
-        userResults = List<UserModel>.from(_allUserResults);
-        break;
-
-      // Relationship-based filters are deferred
-      // They will be implemented later using FollowController / MutualController
-      case SearchFilter.followers:
-      case SearchFilter.following:
-      case SearchFilter.mutual:
-        userResults = List<UserModel>.from(_allUserResults);
-        break;
-    }
   }
 }
