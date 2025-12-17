@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -7,11 +8,6 @@ import '../engagement/engagement_controller.dart';
 /// ---------------------------------------------------------------------------
 /// DAY ALBUM / MEMORY VIEWER
 /// ---------------------------------------------------------------------------
-/// - Read-only viewer for a Day Feed session
-/// - Supports entry from banner (index 0)
-/// - Supports entry from long-press (specific index)
-/// - Swipe-down to dismiss
-/// - Timeline dots indicate progress through posts
 class DayAlbumViewerScreen extends StatefulWidget {
   final List<PostModel> posts;
   final DateTime sessionStartedAt;
@@ -29,29 +25,36 @@ class DayAlbumViewerScreen extends StatefulWidget {
 }
 
 class _DayAlbumViewerScreenState extends State<DayAlbumViewerScreen> {
-  late final PageController _pageController;
-  int _currentIndex = 0;
+  late final PageController _postController;
 
-  double _dragOffset = 0;
-  static const double _dismissThreshold = 160;
+  int _currentPostIndex = 0;
+  double _dragOffset = 0.0;
+
+  static const double _dismissThreshold = 160.0;
+  static const double _maxDrag = 300.0;
 
   @override
   void initState() {
     super.initState();
-    _currentIndex = widget.initialIndex;
-    _pageController = PageController(initialPage: widget.initialIndex);
+    _currentPostIndex = widget.initialIndex;
+    _postController = PageController(initialPage: widget.initialIndex);
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _postController.dispose();
     super.dispose();
   }
 
+  double get _dragProgress => (_dragOffset / _maxDrag).clamp(0.0, 1.0);
+
   @override
   Widget build(BuildContext context) {
+    final scale = 1.0 - (_dragProgress * 0.05);
+    final backgroundOpacity = 1.0 - (_dragProgress * 0.35);
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.black.withOpacity(backgroundOpacity),
       body: SafeArea(
         child: GestureDetector(
           onVerticalDragUpdate: (details) {
@@ -67,42 +70,41 @@ class _DayAlbumViewerScreenState extends State<DayAlbumViewerScreen> {
             }
           },
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOut,
-            transform: Matrix4.translationValues(0, _dragOffset, 0),
-            child: Opacity(
-              opacity: 1 - (_dragOffset / 300).clamp(0.0, 0.4),
-              child: Stack(
-                children: [
-                  /// MAIN PAGE VIEW (POST LEVEL)
-                  PageView.builder(
-                    controller: _pageController,
-                    itemCount: widget.posts.length,
-                    onPageChanged: (index) {
-                      setState(() => _currentIndex = index);
-                    },
-                    itemBuilder: (context, index) {
-                      return ChangeNotifierProvider(
-                        create: (_) => EngagementController(),
-                        child: _MemoryPost(post: widget.posts[index]),
-                      );
-                    },
-                  ),
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            transform: Matrix4.identity()
+              ..translate(0.0, _dragOffset)
+              ..scale(scale),
+            child: Stack(
+              children: [
+                /// POST-LEVEL PAGE VIEW
+                PageView.builder(
+                  controller: _postController,
+                  itemCount: widget.posts.length,
+                  onPageChanged: (index) {
+                    setState(() => _currentPostIndex = index);
+                  },
+                  itemBuilder: (context, index) {
+                    return ChangeNotifierProvider(
+                      create: (_) => EngagementController(),
+                      child: _MemoryPost(post: widget.posts[index]),
+                    );
+                  },
+                ),
 
-                  /// TOP OVERLAY (INDEX + CLOSE)
-                  _TopOverlay(
-                    current: _currentIndex + 1,
-                    total: widget.posts.length,
-                    onClose: () => Navigator.pop(context),
-                  ),
+                /// TOP OVERLAY
+                _TopOverlay(
+                  current: _currentPostIndex + 1,
+                  total: widget.posts.length,
+                  onClose: () => Navigator.pop(context),
+                ),
 
-                  /// TIMELINE DOTS
-                  _TimelineDots(
-                    count: widget.posts.length,
-                    activeIndex: _currentIndex,
-                  ),
-                ],
-              ),
+                /// POST-LEVEL TIMELINE DOTS
+                _PostTimelineDots(
+                  count: widget.posts.length,
+                  activeIndex: _currentPostIndex,
+                ),
+              ],
             ),
           ),
         ),
@@ -112,45 +114,146 @@ class _DayAlbumViewerScreenState extends State<DayAlbumViewerScreen> {
 }
 
 /// ---------------------------------------------------------------------------
-/// SINGLE MEMORY POST
+/// MEMORY POST (IMAGE-LEVEL NAVIGATION)
 /// ---------------------------------------------------------------------------
-class _MemoryPost extends StatelessWidget {
+class _MemoryPost extends StatefulWidget {
   final PostModel post;
 
   const _MemoryPost({required this.post});
 
   @override
+  State<_MemoryPost> createState() => _MemoryPostState();
+}
+
+class _MemoryPostState extends State<_MemoryPost> {
+  late final PageController _imageController;
+
+  Timer? _autoAdvanceTimer;
+  bool _isUserInteracting = false;
+  int _currentImageIndex = 0;
+
+  static const Duration _autoAdvanceInterval = Duration(seconds: 3);
+
+  @override
+  void initState() {
+    super.initState();
+    _imageController = PageController();
+    _startAutoAdvance();
+  }
+
+  @override
+  void dispose() {
+    _autoAdvanceTimer?.cancel();
+    _imageController.dispose();
+    super.dispose();
+  }
+
+  void _startAutoAdvance() {
+    _autoAdvanceTimer?.cancel();
+
+    if (widget.post.imageUrls.length <= 1) return;
+
+    _autoAdvanceTimer = Timer.periodic(_autoAdvanceInterval, (_) {
+      if (_isUserInteracting) return;
+
+      if (_currentImageIndex < widget.post.imageUrls.length - 1) {
+        _imageController.nextPage(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      } else {
+        _autoAdvanceTimer?.cancel();
+      }
+    });
+  }
+
+  void _pauseAutoAdvance() {
+    _isUserInteracting = true;
+  }
+
+  void _resumeAutoAdvance() {
+    _isUserInteracting = false;
+  }
+
+  void _handleTap(BuildContext context, TapDownDetails details) {
+    if (widget.post.imageUrls.length <= 1) return;
+
+    final width = MediaQuery.of(context).size.width;
+    final dx = details.localPosition.dx;
+
+    _pauseAutoAdvance();
+
+    if (dx < width * 0.3 && _currentImageIndex > 0) {
+      _imageController.previousPage(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+      );
+    } else if (dx > width * 0.7 &&
+        _currentImageIndex < widget.post.imageUrls.length - 1) {
+      _imageController.nextPage(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final images = widget.post.imageUrls;
+
     return Column(
       children: [
+        /// IMAGE VIEWER WITH TAP ZONES
         Expanded(
-          child: PageView.builder(
-            itemCount: post.imageUrls.length,
-            itemBuilder: (context, index) {
-              return InteractiveViewer(
-                child: Image.network(
-                  post.imageUrls[index],
-                  fit: BoxFit.contain,
-                  loadingBuilder: (context, child, progress) {
-                    if (progress == null) return child;
-                    return const Center(
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    );
-                  },
-                  errorBuilder: (_, __, ___) {
-                    return const Center(
-                      child: Icon(Icons.broken_image, color: Colors.white),
-                    );
-                  },
-                ),
-              );
-            },
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapDown: (details) => _handleTap(context, details),
+            child: Listener(
+              onPointerDown: (_) => _pauseAutoAdvance(),
+              onPointerUp: (_) => _resumeAutoAdvance(),
+              onPointerCancel: (_) => _resumeAutoAdvance(),
+              child: PageView.builder(
+                controller: _imageController,
+                itemCount: images.length,
+                onPageChanged: (index) {
+                  setState(() => _currentImageIndex = index);
+                },
+                itemBuilder: (context, index) {
+                  return Image.network(
+                    images[index],
+                    fit: BoxFit.contain,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      );
+                    },
+                    errorBuilder: (_, __, ___) {
+                      return const Center(
+                        child: Icon(Icons.broken_image, color: Colors.white),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
           ),
         ),
 
+        /// IMAGE-LEVEL DOTS
+        if (images.length > 1)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: _ImageDots(
+              count: images.length,
+              activeIndex: _currentImageIndex,
+            ),
+          ),
+
         const SizedBox(height: 12),
 
-        _MemoryEngagementBar(post: post),
+        /// ENGAGEMENT BAR
+        _MemoryEngagementBar(post: widget.post),
 
         const SizedBox(height: 12),
       ],
@@ -159,7 +262,37 @@ class _MemoryPost extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------------------------
-/// TOP OVERLAY (INDEX + CLOSE)
+/// IMAGE DOTS
+/// ---------------------------------------------------------------------------
+class _ImageDots extends StatelessWidget {
+  final int count;
+  final int activeIndex;
+
+  const _ImageDots({required this.count, required this.activeIndex});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(count, (index) {
+        final isActive = index == activeIndex;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          width: isActive ? 8 : 5,
+          height: isActive ? 8 : 5,
+          decoration: BoxDecoration(
+            color: isActive ? Colors.white : Colors.white38,
+            shape: BoxShape.circle,
+          ),
+        );
+      }),
+    );
+  }
+}
+
+/// ---------------------------------------------------------------------------
+/// TOP OVERLAY
 /// ---------------------------------------------------------------------------
 class _TopOverlay extends StatelessWidget {
   final int current;
@@ -196,13 +329,13 @@ class _TopOverlay extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------------------------
-/// TIMELINE DOTS (POST-LEVEL)
+/// POST-LEVEL TIMELINE DOTS
 /// ---------------------------------------------------------------------------
-class _TimelineDots extends StatelessWidget {
+class _PostTimelineDots extends StatelessWidget {
   final int count;
   final int activeIndex;
 
-  const _TimelineDots({required this.count, required this.activeIndex});
+  const _PostTimelineDots({required this.count, required this.activeIndex});
 
   @override
   Widget build(BuildContext context) {
@@ -231,7 +364,7 @@ class _TimelineDots extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------------------------
-/// ENGAGEMENT BAR (MEMORY VIEW)
+/// ENGAGEMENT BAR
 /// ---------------------------------------------------------------------------
 class _MemoryEngagementBar extends StatelessWidget {
   final PostModel post;
@@ -257,14 +390,7 @@ class _MemoryEngagementBar extends StatelessWidget {
           },
         ),
         IconButton(
-          icon: const Icon(Icons.chat_bubble_outline, color: Colors.white),
-          onPressed: () {},
-        ),
-        IconButton(
-          icon: Icon(
-            post.hasSaved ? Icons.bookmark : Icons.bookmark_border,
-            color: Colors.white,
-          ),
+          icon: const Icon(Icons.bookmark_border, color: Colors.white),
           onPressed: () => engagement.savePost(post),
         ),
         IconButton(
