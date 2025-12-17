@@ -1,17 +1,16 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../feed/day_feed_controller.dart';
 import '../post/create/post_model.dart';
 import '../engagement/engagement_controller.dart';
-import '../follow/follow_controller.dart';
 import '../feed/day_album_viewer_screen.dart';
+import '../follow/follow_controller.dart';
 
 /// ---------------------------------------------------------------------------
 /// HOME SCREEN V3
 /// ---------------------------------------------------------------------------
-/// - DayFeedController is PROVIDED from MainNavigation
-/// - PostCard scopes FollowController + EngagementController per post
 class HomeScreenV3 extends StatelessWidget {
   const HomeScreenV3({super.key});
 
@@ -21,33 +20,23 @@ class HomeScreenV3 extends StatelessWidget {
     final state = feed.state;
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(icon: const Icon(Icons.menu), onPressed: () {}),
-        title: const Text(
-          'PICCTURE',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(icon: const Icon(Icons.search), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.more_horiz), onPressed: () {}),
-        ],
-      ),
+      appBar: _buildAppBar(),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: feed.refresh,
-          child: Column(
-            children: [
-              const SizedBox(height: 8),
-
-              _DayAlbumBanner(
-                count: feed.totalPostCount,
-                hasNewPosts: state.hasNewPosts,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: _DayAlbumBanner(
+                  count: feed.totalPostCount,
+                  hasNewPosts: state.hasNewPosts,
+                ),
               ),
 
-              const SizedBox(height: 12),
+              const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
-              Expanded(
+              SliverToBoxAdapter(
                 child: _PostCarousel(
                   posts: state.posts,
                   isLoading: state.isLoading,
@@ -55,11 +44,31 @@ class HomeScreenV3 extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 8),
+              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+              const SliverToBoxAdapter(child: _SuggestedUsersSection()),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  AppBar _buildAppBar() {
+    return AppBar(
+      elevation: 0,
+      leading: IconButton(icon: const Icon(Icons.menu), onPressed: () {}),
+      title: const Text(
+        'PICCTURE',
+        style: TextStyle(fontWeight: FontWeight.w600),
+      ),
+      centerTitle: true,
+      actions: [
+        IconButton(icon: const Icon(Icons.search), onPressed: () {}),
+        IconButton(icon: const Icon(Icons.more_horiz), onPressed: () {}),
+      ],
     );
   }
 }
@@ -90,7 +99,8 @@ class _DayAlbumBanner extends StatelessWidget {
             child: Text(
               hasNewPosts
                   ? 'New pictures available'
-                  : 'You have $count pictures to review today',
+                  : 'You have $count pictures to review in the last 24 hours.',
+              style: const TextStyle(fontSize: 14),
             ),
           ),
           TextButton(
@@ -133,76 +143,109 @@ class _PostCarousel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 48),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
     }
 
     if (errorMessage != null) {
-      return Center(
-        child: Text(errorMessage!, style: const TextStyle(color: Colors.red)),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 48),
+        child: Center(
+          child: Text(errorMessage!, style: const TextStyle(color: Colors.red)),
+        ),
       );
     }
 
     if (posts.isEmpty) {
-      return const Center(child: Text('No pictures yet today'));
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 48),
+        child: Center(child: Text('No pictures yet today')),
+      );
     }
 
-    return PageView.builder(
-      controller: PageController(viewportFraction: 0.96),
-      itemCount: posts.length,
-      itemBuilder: (context, index) {
-        final post = posts[index];
-
-        return MultiProvider(
-          providers: [
-            ChangeNotifierProvider(create: (_) => EngagementController()),
-            ChangeNotifierProvider(
-              create: (_) => FollowController()..load(post.authorId),
-            ),
-          ],
-          child: PostCard(post: post),
-        );
-      },
+    return SizedBox(
+      height: 500,
+      child: PageView.builder(
+        controller: PageController(viewportFraction: 0.94),
+        itemCount: posts.length,
+        itemBuilder: (_, index) {
+          return _PostCard(post: posts[index]);
+        },
+      ),
     );
   }
 }
 
 /// ---------------------------------------------------------------------------
-/// POST CARD (STABLE)
+/// POST CARD
 /// ---------------------------------------------------------------------------
-class PostCard extends StatefulWidget {
+class _PostCard extends StatefulWidget {
   final PostModel post;
 
-  const PostCard({super.key, required this.post});
+  const _PostCard({required this.post});
 
   @override
-  State<PostCard> createState() => _PostCardState();
+  State<_PostCard> createState() => _PostCardState();
 }
 
-class _PostCardState extends State<PostCard> {
+class _PostCardState extends State<_PostCard> {
+  late final PageController _imageController;
   int _imageIndex = 0;
 
   @override
+  void initState() {
+    super.initState();
+    _imageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _imageController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final post = widget.post;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 6),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _PostHeader(post: post),
-          const SizedBox(height: 8),
+          _PostHeader(post: widget.post),
 
-          _PostMedia(
-            images: post.imageUrls,
-            onChanged: (i) => setState(() => _imageIndex = i),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Stack(
+                alignment: Alignment.bottomCenter,
+                children: [
+                  PageView.builder(
+                    controller: _imageController,
+                    itemCount: widget.post.imageUrls.length,
+                    onPageChanged: (i) => setState(() => _imageIndex = i),
+                    itemBuilder: (_, index) {
+                      return Image.network(
+                        widget.post.imageUrls[index],
+                        fit: BoxFit.cover,
+                      );
+                    },
+                  ),
+                  if (widget.post.imageUrls.length > 1)
+                    Positioned(
+                      bottom: 10,
+                      child: _ImageDots(
+                        count: widget.post.imageUrls.length,
+                        activeIndex: _imageIndex,
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
 
-          if (post.imageUrls.length > 1)
-            _ImageDots(count: post.imageUrls.length, index: _imageIndex),
-
-          const SizedBox(height: 4),
-          _EngagementBar(post: post),
+          _EngagementBar(post: widget.post),
         ],
       ),
     );
@@ -210,7 +253,7 @@ class _PostCardState extends State<PostCard> {
 }
 
 /// ---------------------------------------------------------------------------
-/// POST HEADER
+/// POST HEADER (AUTHOR + VERIFIED + MENU)
 /// ---------------------------------------------------------------------------
 class _PostHeader extends StatelessWidget {
   final PostModel post;
@@ -219,71 +262,105 @@ class _PostHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final follow = context.watch<FollowController>();
+    final bool isOwner =
+        FirebaseAuth.instance.currentUser?.uid == post.authorId;
 
-    return Row(
-      children: [
-        const CircleAvatar(radius: 16),
-        const SizedBox(width: 8),
+    return ChangeNotifierProvider(
+      create: (_) {
+        final c = FollowController();
+        c.load(post.authorId); // 👈 REQUIRED
+        return c;
+      },
+      child: Builder(
+        builder: (context) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                const CircleAvatar(radius: 16),
+                const SizedBox(width: 8),
 
-        Expanded(
-          child: Text(
-            post.authorName,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-        ),
-
-        TextButton(
-          onPressed: follow.isLoading
-              ? null
-              : () {
-                  follow.isFollowing
-                      ? follow.follow(post.authorId)
-                      : follow.unfollow(post.authorId);
-                },
-          child: follow.isLoading
-              ? const SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(
-                  follow.isFollowing ? 'Following' : 'Follow',
-                  style: const TextStyle(fontSize: 12),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Text(
+                        post.authorName.isNotEmpty
+                            ? post.authorName
+                            : (isOwner ? 'You' : 'Unknown'),
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      if (post.isVerifiedOwner) ...[
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.verified,
+                          size: 16,
+                          color: Colors.blue,
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-        ),
-      ],
-    );
-  }
-}
+                const SizedBox(width: 12),
+                Consumer<FollowController>(
+                  builder: (_, follow, __) {
+                    if (isOwner) return const SizedBox.shrink();
 
-/// ---------------------------------------------------------------------------
-/// POST MEDIA (NO OVERFLOW)
-/// ---------------------------------------------------------------------------
-class _PostMedia extends StatelessWidget {
-  final List<String> images;
-  final ValueChanged<int> onChanged;
-
-  const _PostMedia({required this.images, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 360,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: PageView.builder(
-          itemCount: images.length,
-          onPageChanged: onChanged,
-          itemBuilder: (_, i) {
-            return Image.network(
-              images[i],
-              fit: BoxFit.cover,
-              width: double.infinity,
-            );
-          },
-        ),
+                    return TextButton(
+                      onPressed: follow.isFollowing
+                          ? () => follow.unfollow(post.authorId)
+                          : () => follow.follow(post.authorId),
+                      child: Text(
+                        follow.isFollowing ? 'Following' : 'Follow',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: follow.isFollowing
+                              ? Colors.grey
+                              : Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                // const SizedBox(width: 1),
+                Consumer<FollowController>(
+                  builder: (_, follow, __) {
+                    return PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert),
+                      onSelected: (value) {
+                        if (value == 'follow') {
+                          follow.follow(post.authorId);
+                        } else if (value == 'unfollow') {
+                          follow.unfollow(post.authorId);
+                        }
+                      },
+                      itemBuilder: (_) => [
+                        if (!isOwner)
+                          PopupMenuItem(
+                            value: follow.isFollowing ? 'unfollow' : 'follow',
+                            child: Text(
+                              follow.isFollowing ? 'Unfollow' : 'Follow',
+                            ),
+                          ),
+                        const PopupMenuItem(
+                          value: 'copy',
+                          child: Text('Copy link'),
+                        ),
+                        if (isOwner)
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Text(
+                              'Delete',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -294,29 +371,26 @@ class _PostMedia extends StatelessWidget {
 /// ---------------------------------------------------------------------------
 class _ImageDots extends StatelessWidget {
   final int count;
-  final int index;
+  final int activeIndex;
 
-  const _ImageDots({required this.count, required this.index});
+  const _ImageDots({required this.count, required this.activeIndex});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(
-          count,
-          (i) => Container(
-            width: 6,
-            height: 6,
-            margin: const EdgeInsets.symmetric(horizontal: 3),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: i == index ? Colors.blue : Colors.grey.shade400,
-            ),
+    return Row(
+      children: List.generate(count, (i) {
+        final active = i == activeIndex;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          width: active ? 7 : 5,
+          height: active ? 7 : 5,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: active ? Colors.white : Colors.white.withOpacity(0.4),
           ),
-        ),
-      ),
+        );
+      }),
     );
   }
 }
@@ -334,11 +408,11 @@ class _EngagementBar extends StatelessWidget {
     final engagement = context.watch<EngagementController>();
 
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         IconButton(
-          iconSize: 18,
           icon: Icon(
-            post.hasLiked ? Icons.favorite : Icons.favorite_border,
+            post.hasLiked ? Icons.thumb_up : Icons.thumb_up_off_alt,
             color: post.hasLiked ? Colors.red : null,
           ),
           onPressed: () {
@@ -348,16 +422,72 @@ class _EngagementBar extends StatelessWidget {
           },
         ),
         IconButton(
-          iconSize: 18,
-          icon: const Icon(Icons.chat_bubble_outline),
-          onPressed: () {},
+          icon: Icon(
+            post.hasLiked ? Icons.thumb_down : Icons.thumb_down_off_alt,
+            color: post.hasLiked ? Colors.red : null,
+          ),
+          onPressed: () {
+            post.hasLiked
+                ? engagement.dislikePost(post)
+                : engagement.likePost(post);
+          },
         ),
+        IconButton(icon: const Icon(Icons.repeat), onPressed: () {}),
+        // IconButton(icon: const Icon(Icons.edit), onPressed: () {}),
         IconButton(
-          iconSize: 18,
           icon: Icon(post.hasSaved ? Icons.bookmark : Icons.bookmark_border),
           onPressed: () => engagement.savePost(post),
         ),
+        IconButton(icon: const Icon(Icons.share), onPressed: () {}),
+        IconButton(
+          icon: const Icon(Icons.more_horiz),
+          onPressed: () => engagement.sharePost(post),
+        ),
       ],
+    );
+  }
+}
+
+/// ---------------------------------------------------------------------------
+/// SUGGESTED USERS
+/// ---------------------------------------------------------------------------
+class _SuggestedUsersSection extends StatelessWidget {
+  const _SuggestedUsersSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 120,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'Suggested for You',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: 5,
+              itemBuilder: (_, __) {
+                return Container(
+                  width: 120,
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Center(child: Text('User')),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
