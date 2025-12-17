@@ -17,6 +17,7 @@ class PostModel {
   final String postId;
   final String authorId;
   final String authorName;
+  final String? authorAvatarUrl;
 
   // -------------------------
   // VERIFIED / GAZETTER
@@ -60,6 +61,7 @@ class PostModel {
     required this.postId,
     required this.authorId,
     required this.authorName,
+    this.authorAvatarUrl,
     required this.isVerifiedOwner,
     required this.visibility,
     required this.imageUrls,

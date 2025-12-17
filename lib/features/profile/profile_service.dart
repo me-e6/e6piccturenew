@@ -10,8 +10,12 @@ class ProfileService {
   // --------------------------------------------------
   // FIRESTORE & STORAGE
   // --------------------------------------------------
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
+  final FirebaseFirestore _firestore;
+  final FirebaseStorage _storage;
+
+  ProfileService({FirebaseFirestore? firestore, FirebaseStorage? storage})
+    : _firestore = firestore ?? FirebaseFirestore.instance,
+      _storage = storage ?? FirebaseStorage.instance;
 
   // --------------------------------------------------
   // FETCH USER
@@ -64,11 +68,8 @@ class ProfileService {
 
     final ids = savedSnap.docs.map((d) => d.id).toList();
 
-    // Firestore whereIn limit safeguard
-    if (ids.length > 10) {
-      // Batch handling can be added later
-      return [];
-    }
+    // Firestore whereIn safeguard
+    if (ids.length > 10) return [];
 
     final postsSnap = await _firestore
         .collection('posts')
@@ -79,17 +80,25 @@ class ProfileService {
   }
 
   // --------------------------------------------------
-  // UPDATE PROFILE PHOTO
+  // UPDATE PROFILE PHOTO (DP)
   // --------------------------------------------------
-  Future<String?> updateProfilePhoto(String uid, File file) async {
-    final ref = _storage.ref().child('profiles').child('$uid.jpg');
+  Future<String?> updateProfilePhoto({
+    required String uid,
+    required File file,
+  }) async {
+    final ref = _storage
+        .ref()
+        .child('profile_pictures')
+        .child(uid)
+        .child('dp.jpg');
 
-    await ref.putFile(file);
+    await ref.putFile(file, SettableMetadata(contentType: 'image/jpeg'));
+
     final url = await ref.getDownloadURL();
 
-    // 🔒 CONSISTENT FIELD NAME
     await _firestore.collection('users').doc(uid).update({
       'profileImageUrl': url,
+      'updatedAt': FieldValue.serverTimestamp(),
     });
 
     return url;

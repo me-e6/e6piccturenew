@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -9,9 +9,22 @@ import '../post/create/post_model.dart';
 import 'user_model.dart';
 
 class ProfileController extends ChangeNotifier {
-  final ProfileService _service = ProfileService();
+  // ------------------------------------------------------------
+  // DEPENDENCIES
+  // ------------------------------------------------------------
+  final ProfileService _service;
+  final FirebaseAuth _auth;
+  final ImagePicker _picker = ImagePicker();
 
+  ProfileController({ProfileService? service, FirebaseAuth? auth})
+    : _service = service ?? ProfileService(),
+      _auth = auth ?? FirebaseAuth.instance;
+
+  // ------------------------------------------------------------
+  // STATE
+  // ------------------------------------------------------------
   bool isLoading = true;
+  bool isUpdatingPhoto = false;
 
   /// Profile being viewed
   UserModel? user;
@@ -29,7 +42,6 @@ class ProfileController extends ChangeNotifier {
   // LOAD PROFILE
   // ------------------------------------------------------------
   Future<void> loadProfile(String uid) async {
-    // Prevent redundant reloads
     if (user?.uid == uid && !isLoading) return;
 
     isLoading = true;
@@ -40,7 +52,7 @@ class ProfileController extends ChangeNotifier {
       user = await _service.getUser(uid);
 
       // Logged-in user
-      final currentUid = FirebaseAuth.instance.currentUser?.uid;
+      final currentUid = _auth.currentUser?.uid;
       if (currentUid != null) {
         currentUser = await _service.getUser(currentUid);
       }
@@ -55,8 +67,8 @@ class ProfileController extends ChangeNotifier {
       } else {
         savedPosts = [];
       }
-    } catch (e) {
-      // Fail-safe: clear data but avoid crash
+    } catch (_) {
+      // Fail-safe: clear lists but keep UI alive
       userPosts = [];
       reposts = [];
       savedPosts = [];
@@ -67,28 +79,31 @@ class ProfileController extends ChangeNotifier {
   }
 
   // ------------------------------------------------------------
-  // UPDATE PROFILE PHOTO
+  // UPDATE PROFILE PHOTO (DP)
   // ------------------------------------------------------------
-  Future<void> updatePhoto(String uid) async {
+  Future<void> updatePhoto() async {
+    if (isUpdatingPhoto || user == null) return;
+
+    final uid = _auth.currentUser?.uid;
+    if (uid == null || uid != user!.uid) return;
+
     try {
-      final picker = ImagePicker();
-      final picked = await picker.pickImage(source: ImageSource.gallery);
+      final picked = await _picker.pickImage(source: ImageSource.gallery);
 
       if (picked == null) return;
 
-      isLoading = true;
+      isUpdatingPhoto = true;
       notifyListeners();
 
       final file = File(picked.path);
-      final url = await _service.updateProfilePhoto(uid, file);
+      final url = await _service.updateProfilePhoto(uid: uid, file: file);
 
-      if (url != null && user != null) {
+      if (url != null) {
         user = user!.copyWith(profileImageUrl: url);
+        currentUser = currentUser?.copyWith(profileImageUrl: url);
       }
-    } catch (e) {
-      // Do not swallow silently — ensure UI recovers
     } finally {
-      isLoading = false;
+      isUpdatingPhoto = false;
       notifyListeners();
     }
   }
@@ -116,7 +131,7 @@ class ProfileController extends ChangeNotifier {
   Future<void> toggleGazetterStatus() async {
     if (user == null) return;
 
-    final bool newValue = !user!.isVerified;
+    final newValue = !user!.isVerified;
 
     await _service.toggleGazetter(targetUid: user!.uid, makeVerified: newValue);
 
@@ -141,7 +156,6 @@ class ProfileController extends ChangeNotifier {
   // ------------------------------------------------------------
   @override
   void dispose() {
-    // Future-proof: streams / listeners may be added later
     super.dispose();
   }
 }
