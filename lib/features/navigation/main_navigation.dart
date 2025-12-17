@@ -80,7 +80,7 @@ class _MainNavigationState extends State<MainNavigation>
             GestureDetector(
               onTap: _closePlus,
               behavior: HitTestBehavior.opaque,
-              child: Container(color: Colors.black.withOpacity(0.15)),
+              child: Container(color: Colors.black.withValues(alpha: 0.15)),
             ),
 
           /// BOTTOM NAV (BELOW PLUS)
@@ -224,7 +224,7 @@ class _PlusExpansion extends StatelessWidget {
                 boxShadow: [
                   BoxShadow(
                     blurRadius: 12,
-                    color: Colors.black.withOpacity(0.15),
+                    color: Colors.black.withValues(alpha: 0.15),
                   ),
                 ],
               ),

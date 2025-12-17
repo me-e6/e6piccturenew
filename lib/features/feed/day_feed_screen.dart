@@ -101,10 +101,10 @@ class _DayAlbumBanner extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: hasNewPosts
-              ? Colors.blue.withOpacity(0.1)
-              : Colors.grey.withOpacity(0.08),
+              ? Colors.blue.withValues(alpha: 0.1)
+              : Colors.grey.withValues(alpha: 0.08),
           border: Border(
-            bottom: BorderSide(color: Colors.grey.withOpacity(0.2)),
+            bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
           ),
         ),
         child: Row(
@@ -263,7 +263,7 @@ class _PostCardState extends State<_PostCard> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.6),
+          color: Colors.black.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(

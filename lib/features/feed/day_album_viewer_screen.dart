@@ -54,7 +54,7 @@ class _DayAlbumViewerScreenState extends State<DayAlbumViewerScreen> {
     final backgroundOpacity = 1.0 - (_dragProgress * 0.35);
 
     return Scaffold(
-      backgroundColor: Colors.black.withOpacity(backgroundOpacity),
+      backgroundColor: Colors.black.withValues(alpha: backgroundOpacity),
       body: SafeArea(
         child: GestureDetector(
           onVerticalDragUpdate: (details) {

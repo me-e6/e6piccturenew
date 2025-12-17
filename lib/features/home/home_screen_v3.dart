@@ -1,81 +1,65 @@
-/* import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../feed/day_feed_controller.dart';
 import '../post/create/post_model.dart';
 import '../engagement/engagement_controller.dart';
+import '../follow/follow_controller.dart';
 import '../feed/day_album_viewer_screen.dart';
 
 /// ---------------------------------------------------------------------------
 /// HOME SCREEN V3
 /// ---------------------------------------------------------------------------
-/// - Assumes DayFeedController is PROVIDED from above (MainNavigation)
-/// - Does NOT create its own controller
-/// - Reacts to banner + feed state only
+/// - DayFeedController is PROVIDED from MainNavigation
+/// - PostCard scopes FollowController + EngagementController per post
 class HomeScreenV3 extends StatelessWidget {
   const HomeScreenV3({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final controller = context.watch<DayFeedController>();
-    final state = controller.state;
+    final feed = context.watch<DayFeedController>();
+    final state = feed.state;
 
     return Scaffold(
-      appBar: _buildAppBar(),
+      appBar: AppBar(
+        leading: IconButton(icon: const Icon(Icons.menu), onPressed: () {}),
+        title: const Text(
+          'PICCTURE',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        centerTitle: true,
+        actions: [
+          IconButton(icon: const Icon(Icons.search), onPressed: () {}),
+          IconButton(icon: const Icon(Icons.more_horiz), onPressed: () {}),
+        ],
+      ),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: controller.refresh,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: SizedBox(
-              height:
-                  MediaQuery.of(context).size.height -
-                  kToolbarHeight -
-                  MediaQuery.of(context).padding.top -
-                  kBottomNavigationBarHeight,
-              child: Column(
-                children: [
-                  _DayAlbumBanner(
-                    count: controller.totalPostCount,
-                    hasNewPosts: state.hasNewPosts,
-                  ),
-                  const SizedBox(height: 12),
+          onRefresh: feed.refresh,
+          child: Column(
+            children: [
+              const SizedBox(height: 8),
 
-                  /// PRIMARY — DAY FEED
-                  Expanded(
-                    child: _PostCarousel(
-                      posts: state.posts,
-                      isLoading: state.isLoading,
-                      errorMessage: state.errorMessage,
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  /// SECONDARY — SUGGESTED USERS
-                  const _SuggestedUsersSection(),
-                ],
+              _DayAlbumBanner(
+                count: feed.totalPostCount,
+                hasNewPosts: state.hasNewPosts,
               ),
-            ),
+
+              const SizedBox(height: 12),
+
+              Expanded(
+                child: _PostCarousel(
+                  posts: state.posts,
+                  isLoading: state.isLoading,
+                  errorMessage: state.errorMessage,
+                ),
+              ),
+
+              const SizedBox(height: 8),
+            ],
           ),
         ),
       ),
-    );
-  }
-
-  AppBar _buildAppBar() {
-    return AppBar(
-      elevation: 0,
-      leading: IconButton(icon: const Icon(Icons.menu), onPressed: () {}),
-      title: const Text(
-        'PICCTURE',
-        style: TextStyle(fontWeight: FontWeight.w600),
-      ),
-      centerTitle: true,
-      actions: [
-        IconButton(icon: const Icon(Icons.search), onPressed: () {}),
-        IconButton(icon: const Icon(Icons.more_horiz), onPressed: () {}),
-      ],
     );
   }
 }
@@ -106,21 +90,20 @@ class _DayAlbumBanner extends StatelessWidget {
             child: Text(
               hasNewPosts
                   ? 'New pictures available'
-                  : 'You have $count pictures to review in the last 24 hours.',
-              style: const TextStyle(fontSize: 14),
+                  : 'You have $count pictures to review today',
             ),
           ),
           TextButton(
             onPressed: () {
-              final controller = context.read<DayFeedController>();
-              controller.markBannerSeen();
+              final feed = context.read<DayFeedController>();
+              feed.markBannerSeen();
 
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => DayAlbumViewerScreen(
-                    posts: controller.state.posts,
-                    sessionStartedAt: controller.state.sessionStartedAt,
+                    posts: feed.state.posts,
+                    sessionStartedAt: feed.state.sessionStartedAt,
                   ),
                 ),
               );
@@ -134,7 +117,7 @@ class _DayAlbumBanner extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------------------------
-/// POST CAROUSEL (POST-LEVEL PAGEVIEW)
+/// POST CAROUSEL
 /// ---------------------------------------------------------------------------
 class _PostCarousel extends StatelessWidget {
   final List<PostModel> posts;
@@ -164,12 +147,19 @@ class _PostCarousel extends StatelessWidget {
     }
 
     return PageView.builder(
-      controller: PageController(viewportFraction: 0.95),
+      controller: PageController(viewportFraction: 0.96),
       itemCount: posts.length,
       itemBuilder: (context, index) {
-        return ChangeNotifierProvider(
-          create: (_) => EngagementController(),
-          child: _PostCard(post: posts[index]),
+        final post = posts[index];
+
+        return MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => EngagementController()),
+            ChangeNotifierProvider(
+              create: (_) => FollowController()..load(post.authorId),
+            ),
+          ],
+          child: PostCard(post: post),
         );
       },
     );
@@ -177,53 +167,41 @@ class _PostCarousel extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------------------------
-/// POST CARD (IMAGE-LEVEL PAGEVIEW + ENGAGEMENT)
+/// POST CARD (STABLE)
 /// ---------------------------------------------------------------------------
-class _PostCard extends StatelessWidget {
+class PostCard extends StatefulWidget {
   final PostModel post;
 
-  const _PostCard({required this.post});
+  const PostCard({super.key, required this.post});
+
+  @override
+  State<PostCard> createState() => _PostCardState();
+}
+
+class _PostCardState extends State<PostCard> {
+  int _imageIndex = 0;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6),
-      child: Column(
-        children: [
-          /// FLEXIBLE IMAGE AREA
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: PageView.builder(
-                itemCount: post.imageUrls.length,
-                itemBuilder: (context, index) {
-                  return Image.network(
-                    post.imageUrls[index],
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, progress) {
-                      if (progress == null) return child;
-                      return Container(
-                        color: Colors.grey.shade300,
-                        child: const Center(
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      );
-                    },
-                    errorBuilder: (_, __, ___) {
-                      return Container(
-                        color: Colors.grey.shade300,
-                        child: const Center(child: Icon(Icons.broken_image)),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ),
+    final post = widget.post;
 
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _PostHeader(post: post),
           const SizedBox(height: 8),
 
-          /// ENGAGEMENT BAR
+          _PostMedia(
+            images: post.imageUrls,
+            onChanged: (i) => setState(() => _imageIndex = i),
+          ),
+
+          if (post.imageUrls.length > 1)
+            _ImageDots(count: post.imageUrls.length, index: _imageIndex),
+
+          const SizedBox(height: 4),
           _EngagementBar(post: post),
         ],
       ),
@@ -232,48 +210,48 @@ class _PostCard extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------------------------
-/// ENGAGEMENT BAR
+/// POST HEADER
 /// ---------------------------------------------------------------------------
-class _EngagementBar extends StatelessWidget {
+class _PostHeader extends StatelessWidget {
   final PostModel post;
 
-  const _EngagementBar({required this.post});
+  const _PostHeader({required this.post});
 
   @override
   Widget build(BuildContext context) {
-    final engagement = context.watch<EngagementController>();
+    final follow = context.watch<FollowController>();
 
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        IconButton(
-          icon: Icon(
-            post.hasLiked ? Icons.favorite : Icons.favorite_border,
-            color: post.hasLiked ? Colors.red : null,
+        const CircleAvatar(radius: 16),
+        const SizedBox(width: 8),
+
+        Expanded(
+          child: Text(
+            post.authorName,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w600),
           ),
-          onPressed: () {
-            post.hasLiked
-                ? engagement.dislikePost(post)
-                : engagement.likePost(post);
-          },
         ),
-        IconButton(
-          icon: const Icon(Icons.chat_bubble_outline),
-          onPressed: () {},
-        ),
-        IconButton(icon: const Icon(Icons.repeat), onPressed: () {}),
-        IconButton(icon: const Icon(Icons.edit), onPressed: () {}),
-        IconButton(
-          icon: Icon(post.hasSaved ? Icons.bookmark : Icons.bookmark_border),
-          onPressed: () {
-            engagement.savePost(post);
-          },
-        ),
-        IconButton(
-          icon: const Icon(Icons.more_horiz),
-          onPressed: () {
-            engagement.sharePost(post);
-          },
+
+        TextButton(
+          onPressed: follow.isLoading
+              ? null
+              : () {
+                  follow.isFollowing
+                      ? follow.follow(post.authorId)
+                      : follow.unfollow(post.authorId);
+                },
+          child: follow.isLoading
+              ? const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(
+                  follow.isFollowing ? 'Following' : 'Follow',
+                  style: const TextStyle(fontSize: 12),
+                ),
         ),
       ],
     );
@@ -281,305 +259,62 @@ class _EngagementBar extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------------------------
-/// SUGGESTED USERS (SECONDARY)
+/// POST MEDIA (NO OVERFLOW)
 /// ---------------------------------------------------------------------------
-class _SuggestedUsersSection extends StatelessWidget {
-  const _SuggestedUsersSection();
+class _PostMedia extends StatelessWidget {
+  final List<String> images;
+  final ValueChanged<int> onChanged;
+
+  const _PostMedia({required this.images, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 110,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              'Suggested for You',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: 5,
-              itemBuilder: (context, index) {
-                return Container(
-                  width: 120,
-                  margin: const EdgeInsets.symmetric(horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Center(child: Text('User')),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
- */
-
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:flutter/services.dart';
-
-import '../feed/day_feed_controller.dart';
-import '../post/create/post_model.dart';
-import '../engagement/engagement_controller.dart';
-import '../feed/day_album_viewer_screen.dart';
-
-/// ---------------------------------------------------------------------------
-/// HOME SCREEN V3
-/// ---------------------------------------------------------------------------
-/// - Assumes DayFeedController is PROVIDED from above (MainNavigation)
-/// - Does NOT create its own controller
-/// - Reacts to banner + feed state only
-class HomeScreenV3 extends StatelessWidget {
-  const HomeScreenV3({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final controller = context.watch<DayFeedController>();
-    final state = controller.state;
-
-    return Scaffold(
-      appBar: _buildAppBar(),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: controller.refresh,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: SizedBox(
-              height:
-                  MediaQuery.of(context).size.height -
-                  kToolbarHeight -
-                  MediaQuery.of(context).padding.top -
-                  kBottomNavigationBarHeight,
-              child: Column(
-                children: [
-                  _DayAlbumBanner(
-                    count: controller.totalPostCount,
-                    hasNewPosts: state.hasNewPosts,
-                  ),
-                  const SizedBox(height: 12),
-
-                  /// PRIMARY — DAY FEED
-                  Expanded(
-                    child: _PostCarousel(
-                      posts: state.posts,
-                      isLoading: state.isLoading,
-                      errorMessage: state.errorMessage,
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  /// SECONDARY — SUGGESTED USERS
-                  const _SuggestedUsersSection(),
-                ],
-              ),
-            ),
-          ),
+      height: 360,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: PageView.builder(
+          itemCount: images.length,
+          onPageChanged: onChanged,
+          itemBuilder: (_, i) {
+            return Image.network(
+              images[i],
+              fit: BoxFit.cover,
+              width: double.infinity,
+            );
+          },
         ),
       ),
     );
   }
-
-  AppBar _buildAppBar() {
-    return AppBar(
-      elevation: 0,
-      leading: IconButton(icon: const Icon(Icons.menu), onPressed: () {}),
-      title: const Text(
-        'PICCTURE',
-        style: TextStyle(fontWeight: FontWeight.w600),
-      ),
-      centerTitle: true,
-      actions: [
-        IconButton(icon: const Icon(Icons.search), onPressed: () {}),
-        IconButton(icon: const Icon(Icons.more_horiz), onPressed: () {}),
-      ],
-    );
-  }
 }
 
 /// ---------------------------------------------------------------------------
-/// DAY ALBUM BANNER
+/// IMAGE DOTS
 /// ---------------------------------------------------------------------------
-class _DayAlbumBanner extends StatelessWidget {
+class _ImageDots extends StatelessWidget {
   final int count;
-  final bool hasNewPosts;
+  final int index;
 
-  const _DayAlbumBanner({required this.count, required this.hasNewPosts});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.photo_library_outlined),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              hasNewPosts
-                  ? 'New pictures available'
-                  : 'You have $count pictures to review in the last 24 hours.',
-              style: const TextStyle(fontSize: 14),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              final controller = context.read<DayFeedController>();
-              controller.markBannerSeen();
-
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => DayAlbumViewerScreen(
-                    posts: controller.state.posts,
-                    sessionStartedAt: controller.state.sessionStartedAt,
-                  ),
-                ),
-              );
-            },
-            child: const Text('View'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// ---------------------------------------------------------------------------
-/// POST CAROUSEL (POST-LEVEL PAGEVIEW)
-/// ---------------------------------------------------------------------------
-class _PostCarousel extends StatelessWidget {
-  final List<PostModel> posts;
-  final bool isLoading;
-  final String? errorMessage;
-
-  const _PostCarousel({
-    required this.posts,
-    required this.isLoading,
-    required this.errorMessage,
-  });
+  const _ImageDots({required this.count, required this.index});
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-    }
-
-    if (errorMessage != null) {
-      return Center(
-        child: Text(errorMessage!, style: const TextStyle(color: Colors.red)),
-      );
-    }
-
-    if (posts.isEmpty) {
-      return const Center(child: Text('No pictures yet today'));
-    }
-
-    return PageView.builder(
-      controller: PageController(viewportFraction: 0.95),
-      itemCount: posts.length,
-      itemBuilder: (context, index) {
-        return ChangeNotifierProvider(
-          create: (_) => EngagementController(),
-          child: _PostCard(
-            post: posts[index],
-            postIndex: index,
-            allPosts: posts,
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// ---------------------------------------------------------------------------
-/// POST CARD (IMAGE-LEVEL PAGEVIEW + ENGAGEMENT + LONG PRESS)
-/// ---------------------------------------------------------------------------
-class _PostCard extends StatelessWidget {
-  final PostModel post;
-  final int postIndex;
-  final List<PostModel> allPosts;
-
-  const _PostCard({
-    required this.post,
-    required this.postIndex,
-    required this.allPosts,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final feedController = context.read<DayFeedController>();
-
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6),
-      child: GestureDetector(
-        onLongPress: () {
-          HapticFeedback.mediumImpact();
-
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => DayAlbumViewerScreen(
-                posts: allPosts,
-                sessionStartedAt: feedController.state.sessionStartedAt,
-                initialIndex: postIndex,
-              ),
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(
+          count,
+          (i) => Container(
+            width: 6,
+            height: 6,
+            margin: const EdgeInsets.symmetric(horizontal: 3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: i == index ? Colors.blue : Colors.grey.shade400,
             ),
-          );
-        },
-        child: Column(
-          children: [
-            /// IMAGE AREA
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: PageView.builder(
-                  itemCount: post.imageUrls.length,
-                  itemBuilder: (context, index) {
-                    return Image.network(
-                      post.imageUrls[index],
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, progress) {
-                        if (progress == null) return child;
-                        return Container(
-                          color: Colors.grey.shade300,
-                          child: const Center(
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        );
-                      },
-                      errorBuilder: (_, __, ___) {
-                        return Container(
-                          color: Colors.grey.shade300,
-                          child: const Center(child: Icon(Icons.broken_image)),
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            _EngagementBar(post: post),
-          ],
+          ),
         ),
       ),
     );
@@ -599,9 +334,9 @@ class _EngagementBar extends StatelessWidget {
     final engagement = context.watch<EngagementController>();
 
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         IconButton(
+          iconSize: 18,
           icon: Icon(
             post.hasLiked ? Icons.favorite : Icons.favorite_border,
             color: post.hasLiked ? Colors.red : null,
@@ -613,64 +348,16 @@ class _EngagementBar extends StatelessWidget {
           },
         ),
         IconButton(
+          iconSize: 18,
           icon: const Icon(Icons.chat_bubble_outline),
           onPressed: () {},
         ),
-        IconButton(icon: const Icon(Icons.repeat), onPressed: () {}),
-        IconButton(icon: const Icon(Icons.edit), onPressed: () {}),
         IconButton(
+          iconSize: 18,
           icon: Icon(post.hasSaved ? Icons.bookmark : Icons.bookmark_border),
           onPressed: () => engagement.savePost(post),
         ),
-        IconButton(
-          icon: const Icon(Icons.more_horiz),
-          onPressed: () => engagement.sharePost(post),
-        ),
       ],
-    );
-  }
-}
-
-/// ---------------------------------------------------------------------------
-/// SUGGESTED USERS (SECONDARY)
-/// ---------------------------------------------------------------------------
-class _SuggestedUsersSection extends StatelessWidget {
-  const _SuggestedUsersSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 110,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              'Suggested for You',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: 5,
-              itemBuilder: (context, index) {
-                return Container(
-                  width: 120,
-                  margin: const EdgeInsets.symmetric(horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Center(child: Text('User')),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
