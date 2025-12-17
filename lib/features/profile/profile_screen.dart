@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+/* import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/widgets/app_scaffold.dart';
@@ -395,6 +395,178 @@ class _TabContent extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             child: Image.network(post.resolvedImages.first, fit: BoxFit.cover),
           ),
+        );
+      },
+    );
+  }
+}
+ */
+
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../core/widgets/app_scaffold.dart';
+import '../post/create/post_model.dart';
+import '../follow/follow_controller.dart';
+
+class ProfileScreen extends StatelessWidget {
+  final String userId;
+
+  const ProfileScreen({super.key, required this.userId});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Profile'), centerTitle: true),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _ProfileHeader(userId: userId),
+            const Divider(height: 1),
+            Expanded(child: _UserPicturesGrid(userId: userId)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// ---------------------------------------------------------------------------
+/// PROFILE HEADER
+/// ---------------------------------------------------------------------------
+class _ProfileHeader extends StatelessWidget {
+  final String userId;
+
+  const _ProfileHeader({required this.userId});
+
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => FollowController(),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            /// AVATAR
+            CircleAvatar(
+              radius: 32,
+              backgroundColor: Colors.grey.shade300,
+              child: const Icon(Icons.person, size: 32),
+            ),
+
+            const SizedBox(width: 16),
+
+            /// NAME + FOLLOW
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: const [
+                      Text(
+                        'User',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(width: 6),
+                      Icon(Icons.verified, size: 16, color: Colors.blue),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  /// FOLLOW BUTTON
+                  Consumer<FollowController>(
+                    builder: (_, follow, __) {
+                      final isOwner =
+                          // follow.currentUid != null &&
+                          follow.currentUid == userId;
+
+                      if (isOwner) {
+                        return const SizedBox.shrink();
+                      }
+
+                      return OutlinedButton(
+                        onPressed: follow.isFollowing
+                            ? () => follow.unfollow(userId)
+                            : () => follow.follow(userId),
+                        child: Text(
+                          follow.isFollowing ? 'Following' : 'Follow',
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// ---------------------------------------------------------------------------
+/// USER PICTURES GRID
+/// ---------------------------------------------------------------------------
+class _UserPicturesGrid extends StatelessWidget {
+  final String userId;
+
+  const _UserPicturesGrid({required this.userId});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('posts')
+          .where('authorId', isEqualTo: userId)
+          .orderBy('createdAt', descending: true)
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+        }
+
+        if (snapshot.hasError) {
+          return const Center(child: Text('Failed to load pictures'));
+        }
+
+        final docs = snapshot.data?.docs ?? [];
+
+        if (docs.isEmpty) {
+          return const Center(child: Text('No pictures yet'));
+        }
+
+        final posts = docs.map((d) => PostModel.fromFirestore(d)).toList();
+
+        return GridView.builder(
+          padding: const EdgeInsets.all(4),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 4,
+            mainAxisSpacing: 4,
+          ),
+          itemCount: posts.length,
+          itemBuilder: (context, index) {
+            final post = posts[index];
+            final imageUrl = post.imageUrls.first;
+
+            return GestureDetector(
+              onTap: () {
+                // FUTURE: open DayAlbum / Memory Viewer
+              },
+              child: Container(
+                color: Colors.grey.shade200,
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
+                ),
+              ),
+            );
+          },
         );
       },
     );

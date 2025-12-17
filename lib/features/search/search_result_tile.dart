@@ -24,7 +24,7 @@ class SearchResultTile extends StatelessWidget {
         subtitle: Text(user!.type),
         onTap: () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => ProfileScreen(uid: user!.uid)),
+          MaterialPageRoute(builder: (_) => ProfileScreen(userId: user!.uid)),
         ),
       );
     }

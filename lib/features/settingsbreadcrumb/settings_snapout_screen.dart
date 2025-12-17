@@ -142,7 +142,7 @@ class SettingsSnapOutScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ProfileScreen(uid: uid),
+                        builder: (_) => ProfileScreen(userId: uid),
                       ),
                     );
                   },
