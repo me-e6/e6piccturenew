@@ -15,8 +15,7 @@ import 'features/post/create/create_post_screen.dart';
 // ---------------- SEARCH ----------------
 import 'features/search/search_screen.dart';
 import 'package:provider/provider.dart';
-
-import 'package:e6piccturenew/debug/day_feed_probe_screen.dart';
+import '/features/profile/video_dp_upload_screen.dart';
 
 class PicctureApp extends StatelessWidget {
   const PicctureApp({super.key});
@@ -58,12 +57,13 @@ class PicctureApp extends StatelessWidget {
 
               // MAIN APP
               "/home": (_) => const MainNavigation(),
+              '/video-dp-upload': (_) => const VideoDpUploadScreen(),
 
               // FEED
               "/day-feed": (_) => const DayFeedScreen(),
               //'/day-feed': (_) => const DayFeedProbeScreen(),
               // POST
-              "/create-post": (_) => const CreatePostScreen(),
+              "/create-post": (_) => const CreatePostScreen(files: const []),
 
               // SEARCH
               "/search": (_) => const SearchScreen(),

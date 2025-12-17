@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-import '../../../core/widgets/app_scaffold.dart';
 import 'signup_controller.dart';
 
 class SignupScreen extends StatelessWidget {
@@ -16,10 +14,9 @@ class SignupScreen extends StatelessWidget {
           final theme = Theme.of(context);
           final scheme = theme.colorScheme;
 
-          return AppScaffold(
-            // --------------------------------------------------
-            // No AppBar for signup (intentional, UX choice)
-            // --------------------------------------------------
+          return Scaffold(
+            appBar: null, // 🔒 NO APP BAR FOR AUTH SCREENS
+            resizeToAvoidBottomInset: true,
             body: SafeArea(
               child: Padding(
                 padding: const EdgeInsets.all(24),

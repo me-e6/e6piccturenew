@@ -3,10 +3,21 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
+
+import '../../core/theme/theme_controller.dart';
 import '../profile/profile_screen.dart';
 import 'settings_services.dart';
-import '../../core/theme/theme_controller.dart';
 
+/// ----------------------------------
+/// SettingsSnapOutScreen
+/// ----------------------------------
+/// Used as: Scaffold.endDrawer
+///
+/// ❌ No Stack
+/// ❌ No animation controller
+/// ❌ No snapout logic
+///
+/// ✅ Native Drawer overlay
 class SettingsSnapOutScreen extends StatelessWidget {
   const SettingsSnapOutScreen({super.key});
 
@@ -38,13 +49,13 @@ class SettingsSnapOutScreen extends StatelessWidget {
 
             Divider(color: scheme.outlineVariant),
 
-            _menuItem(context, Icons.help, "Help"),
-            _menuItem(context, Icons.info, "About"),
+            _menuItem(context, Icons.help_outline, "Help"),
+            _menuItem(context, Icons.info_outline, "About"),
 
             Divider(color: scheme.outlineVariant),
 
             // --------------------------------------------------
-            // DAY / NIGHT TOGGLE (SIMPLE, DIRECT UX)
+            // DAY / NIGHT TOGGLE
             // --------------------------------------------------
             Consumer<ThemeController>(
               builder: (context, themeController, _) {
@@ -63,7 +74,6 @@ class SettingsSnapOutScreen extends StatelessWidget {
                   ),
                   trailing: Switch(
                     value: isDark,
-                    focusColor: scheme.primary,
                     onChanged: (_) {
                       themeController.toggleTheme();
                     },
@@ -71,6 +81,8 @@ class SettingsSnapOutScreen extends StatelessWidget {
                 );
               },
             ),
+
+            const Spacer(),
 
             // --------------------------------------------------
             // LOGOUT
@@ -81,7 +93,7 @@ class SettingsSnapOutScreen extends StatelessWidget {
               "Log Out",
               isLogout: true,
               onLogout: () async {
-                Navigator.pop(context);
+                Navigator.pop(context); // close drawer
                 await settingsService.logout();
                 Navigator.pushNamedAndRemoveUntil(
                   context,
@@ -150,7 +162,7 @@ class SettingsSnapOutScreen extends StatelessWidget {
   }
 
   // --------------------------------------------------
-  // MENU ITEM BUILDER (THEME SAFE)
+  // MENU ITEM
   // --------------------------------------------------
   Widget _menuItem(
     BuildContext context,
@@ -175,7 +187,7 @@ class SettingsSnapOutScreen extends StatelessWidget {
         if (isLogout && onLogout != null) {
           await onLogout();
         } else {
-          Navigator.pop(context);
+          Navigator.pop(context); // close drawer only
         }
       },
     );

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/widgets/app_scaffold.dart';
 import 'login_controller.dart';
 
 class LoginScreen extends StatelessWidget {
@@ -16,10 +15,9 @@ class LoginScreen extends StatelessWidget {
           final theme = Theme.of(context);
           final scheme = theme.colorScheme;
 
-          return AppScaffold(
-            // --------------------------------------------------
-            // NO AppBar for login (intentional)
-            // --------------------------------------------------
+          return Scaffold(
+            appBar: null, // 🔒 NO APP BAR FOR AUTH SCREENS
+            resizeToAvoidBottomInset: true,
             body: SafeArea(
               child: Column(
                 children: [
@@ -142,7 +140,13 @@ class LoginScreen extends StatelessWidget {
                                 ),
                               ),
                               child: controller.isLoading
-                                  ? const CircularProgressIndicator()
+                                  ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
                                   : const Text(
                                       "Login",
                                       style: TextStyle(fontSize: 18),

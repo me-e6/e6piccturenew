@@ -1,17 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:video_player/video_player.dart';
 
-import '../../features/navigation/snapout_controller.dart';
-import '../../features/settingsbreadcrumb/settings_controller.dart';
-import '../../features/settingsbreadcrumb/settings_snapout_screen.dart';
 import '../../features/profile/profile_controller.dart';
+import '../../features/settingsbreadcrumb/settings_snapout_screen.dart';
 import '../../features/profile/user_model.dart';
 
 /// ----------------------------------
-/// AppScaffold
+/// AppScaffold (CANONICAL)
 /// ----------------------------------
-class AppScaffold extends StatefulWidget {
+/// Responsibilities:
+/// - AppBar
+/// - Left Drawer (Main Navigation)
+/// - Right Drawer (Settings)
+/// - Body (pure content)
+/// - Bottom Navigation Bar (optional)
+///
+/// ❌ No Stack
+/// ❌ No Positioned
+/// ❌ No custom snapout animation
+///
+/// ✅ Uses Scaffold.drawer / endDrawer
+class AppScaffold extends StatelessWidget {
   final PreferredSizeWidget? appBar;
   final Widget body;
   final Widget? bottomNavigationBar;
@@ -24,131 +33,104 @@ class AppScaffold extends StatefulWidget {
   });
 
   @override
-  State<AppScaffold> createState() => _AppScaffoldState();
-}
-
-class _AppScaffoldState extends State<AppScaffold>
-    with TickerProviderStateMixin {
-  late final SnapoutController _snapoutController;
-  late final SettingsController _settingsController;
-  late final ProfileController _profileController;
-
-  bool _showVideoDp = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _snapoutController = SnapoutController()..init(vsync: this);
-    _settingsController = SettingsController();
-    _profileController = ProfileController();
-  }
-
-  @override
-  void dispose() {
-    _snapoutController.disposeController();
-    super.dispose();
-  }
-
-  void _openVideoDp() {
-    setState(() {
-      _showVideoDp = true;
-    });
-  }
-
-  void _closeVideoDp() {
-    setState(() {
-      _showVideoDp = false;
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider.value(value: _snapoutController),
-        ChangeNotifierProvider.value(value: _settingsController),
-        ChangeNotifierProvider.value(value: _profileController),
-      ],
-      child: Scaffold(
-        appBar:
-            widget.appBar ??
-            AppBar(
-              leading: IconButton(
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Scaffold(
+      // --------------------------------------------------
+      // APP BAR
+      // --------------------------------------------------
+      appBar:
+          appBar ??
+          AppBar(
+            title: const Text('PICCTURE'),
+            leading: Builder(
+              builder: (context) => IconButton(
                 icon: const Icon(Icons.menu),
-                onPressed: _snapoutController.toggleLeft,
+                onPressed: () => Scaffold.of(context).openDrawer(),
               ),
-              title: const Text('PICCTURE'),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.more_horiz),
-                  onPressed: _snapoutController.toggleRight,
-                ),
-              ],
             ),
-        body: Stack(
-          children: [
-            widget.body,
-            _LeftSnapout(onAvatarTap: _openVideoDp),
-            _RightSnapout(),
-            if (_showVideoDp)
-              _VideoDpOverlay(
-                user: _profileController.user,
-                onClose: _closeVideoDp,
+            actions: [
+              Builder(
+                builder: (context) => IconButton(
+                  icon: const Icon(Icons.more_horiz),
+                  onPressed: () => Scaffold.of(context).openEndDrawer(),
+                ),
               ),
-          ],
-        ),
-        bottomNavigationBar: widget.bottomNavigationBar, // ✅ ADD THIS
-      ),
+            ],
+          ),
+
+      // --------------------------------------------------
+      // LEFT DRAWER — MAIN MENU
+      // --------------------------------------------------
+      drawer: const _LeftDrawer(),
+
+      // --------------------------------------------------
+      // RIGHT DRAWER — SETTINGS
+      // --------------------------------------------------
+      endDrawer: const SettingsSnapOutScreen(),
+
+      // --------------------------------------------------
+      // BODY (PURE CONTENT ONLY)
+      // --------------------------------------------------
+      body: SafeArea(bottom: false, child: body),
+
+      // --------------------------------------------------
+      // BOTTOM NAV (FLOATING SAFE)
+      // --------------------------------------------------
+      bottomNavigationBar: bottomNavigationBar,
+
+      backgroundColor: scheme.surface,
     );
   }
 }
 
 /// ----------------------------------
-/// LEFT SNAPOUT
+/// LEFT DRAWER (MAIN NAVIGATION)
 /// ----------------------------------
-class _LeftSnapout extends StatelessWidget {
-  final VoidCallback onAvatarTap;
-
-  const _LeftSnapout({required this.onAvatarTap});
+class _LeftDrawer extends StatelessWidget {
+  const _LeftDrawer();
 
   @override
   Widget build(BuildContext context) {
-    final snapout = context.watch<SnapoutController>();
-    final profile = context.watch<ProfileController>();
+    final profileController = context.watch<ProfileController>();
+    final user = profileController.user;
 
-    return AnimatedBuilder(
-      animation: snapout.leftAnimation,
-      builder: (context, _) {
-        return Positioned(
-          top: 0,
-          bottom: 0,
-          left: -300 + (300 * snapout.leftAnimation.value),
-          width: 300,
-          child: Material(
-            elevation: 12,
-            color: Theme.of(context).scaffoldBackgroundColor,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _UserHeader(user: profile.user, onTap: onAvatarTap),
-                const Divider(),
-                _NavItem('Timeline'),
-                _NavItem('Bookmarks'),
-                _NavItem('Impact Picctures'),
-                _NavItem('Messenger'),
-                _NavItem('Piccture Analytics'),
-                const Spacer(),
-                _NavItem('About', enabled: true),
-                _NavItem('Help', enabled: true),
-                const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Text('v0.4.0', style: TextStyle(color: Colors.grey)),
-                ),
-              ],
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Drawer(
+      backgroundColor: scheme.surface,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // --------------------------------------------------
+            // USER HEADER
+            // --------------------------------------------------
+            _UserHeader(user: user),
+
+            const Divider(),
+
+            _NavItem(title: 'Timeline', icon: Icons.home),
+            _NavItem(title: 'Bookmarks', icon: Icons.bookmark_border),
+            _NavItem(title: 'Impact Picctures', icon: Icons.rocket_launch),
+            _NavItem(title: 'Messenger', icon: Icons.chat_bubble_outline),
+            _NavItem(title: 'Piccture Analytics', icon: Icons.bar_chart),
+
+            const Spacer(),
+
+            _NavItem(title: 'About', icon: Icons.info, enabled: true),
+            _NavItem(title: 'Help', icon: Icons.help_outline, enabled: true),
+
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('v0.4.0', style: TextStyle(color: Colors.grey)),
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 }
@@ -158,115 +140,47 @@ class _LeftSnapout extends StatelessWidget {
 /// ----------------------------------
 class _UserHeader extends StatelessWidget {
   final UserModel? user;
-  final VoidCallback onTap;
 
-  const _UserHeader({required this.user, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 48, 16, 16),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 28,
-              backgroundImage: user?.profileImageUrl != null
-                  ? NetworkImage(user!.profileImageUrl!)
-                  : null,
-              child: user?.profileImageUrl == null
-                  ? const Icon(Icons.person)
-                  : null,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    user?.username ?? 'User',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    '@${user?.handle ?? 'handle'}',
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// ----------------------------------
-/// VIDEO DP OVERLAY
-/// ----------------------------------
-class _VideoDpOverlay extends StatefulWidget {
-  final UserModel? user;
-  final VoidCallback onClose;
-
-  const _VideoDpOverlay({required this.user, required this.onClose});
-
-  @override
-  State<_VideoDpOverlay> createState() => _VideoDpOverlayState();
-}
-
-class _VideoDpOverlayState extends State<_VideoDpOverlay> {
-  VideoPlayerController? _controller;
-
-  @override
-  void initState() {
-    super.initState();
-
-    final videoUrl = widget.user?.videoDpUrl;
-    if (videoUrl != null) {
-      _controller = VideoPlayerController.network(videoUrl)
-        ..initialize().then((_) {
-          _controller!
-            ..setLooping(false)
-            ..play();
-          setState(() {});
-        });
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
-  }
+  const _UserHeader({required this.user});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: widget.onClose,
-      child: Container(
-        color: Colors.black54,
-        alignment: Alignment.center,
-        child: GestureDetector(
-          onTap: () {},
-          child: Container(
-            width: 260,
-            height: 360,
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: _controller != null && _controller!.value.isInitialized
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: VideoPlayer(_controller!),
-                  )
-                : const Center(child: CircularProgressIndicator()),
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 28,
+            backgroundImage: user?.profileImageUrl != null
+                ? NetworkImage(user!.profileImageUrl!)
+                : null,
+            child: user?.profileImageUrl == null
+                ? const Icon(Icons.person)
+                : null,
           ),
-        ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user?.username ?? 'User',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  '@${user?.handle ?? 'handle'}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -277,48 +191,29 @@ class _VideoDpOverlayState extends State<_VideoDpOverlay> {
 /// ----------------------------------
 class _NavItem extends StatelessWidget {
   final String title;
+  final IconData icon;
   final bool enabled;
 
-  const _NavItem(this.title, {this.enabled = false});
+  const _NavItem({
+    required this.title,
+    required this.icon,
+    this.enabled = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
+      leading: Icon(icon),
       title: Text(title),
       enabled: enabled,
-      onTap: enabled
-          ? () {}
-          : () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Coming in a future update')),
-              );
-            },
-    );
-  }
-}
+      onTap: () {
+        Navigator.pop(context);
 
-/// ----------------------------------
-/// RIGHT SNAPOUT — Settings
-/// ----------------------------------
-class _RightSnapout extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final controller = context.watch<SnapoutController>();
-
-    return AnimatedBuilder(
-      animation: controller.rightAnimation,
-      builder: (context, _) {
-        return Positioned(
-          top: 0,
-          bottom: 0,
-          right: -320 + (320 * controller.rightAnimation.value),
-          width: 320,
-          child: Material(
-            elevation: 12,
-            color: Theme.of(context).scaffoldBackgroundColor,
-            child: const SettingsSnapOutScreen(),
-          ),
-        );
+        if (!enabled) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Coming in a future update')),
+          );
+        }
       },
     );
   }

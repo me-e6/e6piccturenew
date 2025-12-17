@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'create_post_controller.dart';
 
@@ -10,18 +13,21 @@ import 'create_post_controller.dart';
 /// - Image-only posts
 /// - Multi-image selection supported
 /// - No captions
-/// - No camera
 /// - Clean exit on success
 class CreatePostScreen extends StatelessWidget {
-  const CreatePostScreen({super.key});
+  final List<XFile> files;
+
+  const CreatePostScreen({super.key, required this.files});
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => CreatePostController(),
+      create: (_) => CreatePostController(
+        initialImagePaths: files.map((f) => f.path).toList(),
+      ),
       child: Scaffold(
         appBar: AppBar(title: const Text('New Post')),
-        body: const _CreatePostBody(),
+        body: _CreatePostBody(), // ← NOT const
       ),
     );
   }
@@ -44,19 +50,26 @@ class _CreatePostBody extends StatelessWidget {
                     : _SelectedImagesGrid(images: controller.selectedImages),
               ),
               const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: controller.isUploading
-                    ? null
-                    : () async {
-                        final success = await controller.createPost();
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: controller.isUploading
+                      ? null
+                      : () async {
+                          final success = await controller.createPost();
 
-                        if (success && context.mounted) {
-                          Navigator.pop(context, true);
-                        }
-                      },
-                child: controller.isUploading
-                    ? const CircularProgressIndicator()
-                    : const Text('Post'),
+                          if (success && context.mounted) {
+                            Navigator.pop(context, true);
+                          }
+                        },
+                  child: controller.isUploading
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Post'),
+                ),
               ),
             ],
           ),
@@ -87,10 +100,10 @@ class _EmptyPickerState extends StatelessWidget {
 }
 
 /// ----------------------------------
-/// Selected Images Grid
+/// Selected Images Grid (LOCAL FILE PREVIEW)
 /// ----------------------------------
 class _SelectedImagesGrid extends StatelessWidget {
-  final List<String> images;
+  final List<String> images; // local file paths
 
   const _SelectedImagesGrid({required this.images});
 
@@ -106,7 +119,7 @@ class _SelectedImagesGrid extends StatelessWidget {
       itemBuilder: (context, index) {
         return ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: Image.network(images[index], fit: BoxFit.cover),
+          child: Image.file(File(images[index]), fit: BoxFit.cover),
         );
       },
     );

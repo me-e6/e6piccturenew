@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../feed/day_feed_service.dart';
 
 import '../../core/widgets/app_scaffold.dart';
 import '../feed/day_feed_controller.dart';
-import '../feed/day_feed_service.dart';
 import '../feed/day_feed_screen.dart';
-import '../settingsbreadcrumb/settings_snapout_screen.dart';
 import 'home_controller_v2.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -15,20 +14,16 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // --------------------------------------------------
-        // SINGLE DayFeedController (SOURCE OF TRUTH)
-        // --------------------------------------------------
+        // -----------------------------
+        // Day Feed (source of truth)
+        // -----------------------------
         ChangeNotifierProvider(
-          create: (_) {
-            final controller = DayFeedController(DayFeedService());
-            controller.init();
-            return controller;
-          },
+          create: (_) => DayFeedController(DayFeedService())..init(),
         ),
 
-        // --------------------------------------------------
-        // HomeController derived from DayFeedController
-        // --------------------------------------------------
+        // -----------------------------
+        // Home Controller (derived)
+        // -----------------------------
         ChangeNotifierProxyProvider<DayFeedController, HomeControllerV2>(
           create: (_) => HomeControllerV2.empty(),
           update: (_, dayFeed, __) =>
@@ -53,7 +48,7 @@ class _HomeView extends StatelessWidget {
 
     return AppScaffold(
       // --------------------------------------------------
-      // APP BAR (NO endDrawer — SNAP-OUT VIA NAVIGATION)
+      // APP BAR (NO drawer logic here)
       // --------------------------------------------------
       appBar: AppBar(
         title: Row(
@@ -69,27 +64,24 @@ class _HomeView extends StatelessWidget {
               icon: const Icon(Icons.search),
               onPressed: () => Navigator.pushNamed(context, "/search"),
             ),
-            IconButton(
-              icon: const Icon(Icons.menu),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const SettingsSnapOutScreen(),
-                  ),
-                );
-              },
+            Builder(
+              builder: (context) => IconButton(
+                icon: const Icon(Icons.more_horiz),
+                onPressed: () => Scaffold.of(context).openEndDrawer(),
+              ),
             ),
           ],
         ),
       ),
 
       // --------------------------------------------------
-      // DAY ALBUM BANNER
+      // BODY
       // --------------------------------------------------
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: GestureDetector(
           onTap: () {
+            // Guard
             if (dayFeed.totalPostCount == 0) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -99,6 +91,7 @@ class _HomeView extends StatelessWidget {
               return;
             }
 
+            // Navigate to feed
             Navigator.push(
               context,
               MaterialPageRoute(

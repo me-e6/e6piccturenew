@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
-import '../../core/widgets/app_scaffold.dart';
-
-import '../home/home_screen.dart';
+import '../home/home_screen_v3.dart';
 import '../post/create/create_post_screen.dart';
-import '../profile/profile_screen.dart';
+import '../post/create/media_picker_service.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -17,275 +14,260 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation>
     with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
-  late final String _currentUid;
-  late final List<Widget> _screens;
+  bool _isPlusExpanded = false;
 
-  bool _showMenu = false;
-  late AnimationController _menuAnimation;
+  final MediaPickerService _mediaPicker = MediaPickerService();
+
+  late final AnimationController _controller;
+  late final Animation<double> _expandAnimation;
+  late final Animation<double> _rotationAnimation;
 
   @override
   void initState() {
     super.initState();
 
-    _currentUid = FirebaseAuth.instance.currentUser!.uid;
-
-    _screens = [
-      const HomeScreen(),
-      const CreatePostScreen(),
-      ProfileScreen(uid: _currentUid),
-    ];
-
-    _menuAnimation = AnimationController(
+    _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 280),
+      duration: const Duration(milliseconds: 200),
     );
+
+    _expandAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    );
+
+    _rotationAnimation = Tween<double>(
+      begin: 0,
+      end: 0.125, // 45°
+    ).animate(_expandAnimation);
   }
 
-  void _togglePlusMenu() {
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _togglePlus() {
     setState(() {
-      _showMenu = !_showMenu;
-      _showMenu ? _menuAnimation.forward() : _menuAnimation.reverse();
+      _isPlusExpanded = !_isPlusExpanded;
+      _isPlusExpanded ? _controller.forward() : _controller.reverse();
+    });
+  }
+
+  void _closePlus() {
+    if (!_isPlusExpanded) return;
+    setState(() {
+      _isPlusExpanded = false;
+      _controller.reverse();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    //final scheme = Theme.of(context).colorScheme;
+    return Scaffold(
+      body: Stack(
+        children: [
+          _buildCurrentTab(),
 
-    return Stack(
-      children: [
-        AppScaffold(
-          body: _screens[_currentIndex],
-          bottomNavigationBar: _buildNavBar(context),
-        ),
-
-        // ------------------------------------------------
-        // DIM BACKDROP
-        // ------------------------------------------------
-        if (_showMenu)
-          GestureDetector(
-            onTap: _togglePlusMenu,
-            child: Container(color: Colors.black54),
-          ),
-
-        // ------------------------------------------------
-        // PLUS MENU
-        // ------------------------------------------------
-        Positioned(
-          bottom: 95,
-          left: 0,
-          right: 0,
-          child: ScaleTransition(
-            scale: CurvedAnimation(
-              parent: _menuAnimation,
-              curve: Curves.easeOutBack,
+          /// TAP OUTSIDE (BLOCKS BACKGROUND ONLY)
+          if (_isPlusExpanded)
+            GestureDetector(
+              onTap: _closePlus,
+              behavior: HitTestBehavior.opaque,
+              child: Container(color: Colors.black.withOpacity(0.15)),
             ),
-            child: _buildPlusMenu(context),
+
+          /// BOTTOM NAV (BELOW PLUS)
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: _buildBottomNavigation(),
           ),
+
+          /// PLUS EXPANSION (TOPMOST — MUST BE LAST)
+          if (_isPlusExpanded)
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: _PlusExpansion(
+                animation: _expandAnimation,
+                onCamera: _handleCamera,
+                onUpload: _handleUpload,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCurrentTab() {
+    switch (_currentIndex) {
+      case 0:
+        return const HomeScreenV3();
+      default:
+        return const HomeScreenV3();
+    }
+  }
+
+  Widget _buildBottomNavigation() {
+    return BottomNavigationBar(
+      type: BottomNavigationBarType.fixed,
+      currentIndex: _currentIndex,
+      onTap: (index) {
+        if (index == 2) {
+          _togglePlus();
+          return;
+        }
+        _closePlus();
+        setState(() => _currentIndex = index);
+      },
+      items: [
+        const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+        const BottomNavigationBarItem(icon: Icon(Icons.smart_toy), label: 'AI'),
+        BottomNavigationBarItem(
+          icon: RotationTransition(
+            turns: _rotationAnimation,
+            child: const Icon(Icons.add),
+          ),
+          label: '',
+        ),
+        const BottomNavigationBarItem(
+          icon: Icon(Icons.photo),
+          label: 'Pictures',
+        ),
+        const BottomNavigationBarItem(
+          icon: Icon(Icons.person),
+          label: 'Profile',
         ),
       ],
     );
   }
 
-  // ------------------------------------------------
-  // BOTTOM NAV BAR (THEME-DRIVEN)
-  // ------------------------------------------------
-  Widget _buildNavBar(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+  // ---------------------------------------------------------------------------
+  // PLUS ACTION HANDLERS
+  // ---------------------------------------------------------------------------
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20, left: 20, right: 20),
-      child: Container(
-        height: 70,
-        decoration: BoxDecoration(
-          color: scheme.surface,
-          borderRadius: BorderRadius.circular(40),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 12,
-              offset: Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _navItem(context, Icons.home, 0),
+  Future<void> _handleCamera() async {
+    debugPrint('📸 Camera tapped');
+    _closePlus();
 
-            _navAction(
-              context,
-              Icons.search,
-              () => Navigator.pushNamed(context, "/search"),
-            ),
+    final file = await _mediaPicker.pickFromCamera();
+    if (file == null) return;
+    if (!mounted) return;
 
-            _centerPlusButton(context),
-
-            _navAction(context, Icons.favorite_border, () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Likes coming soon")),
-              );
-            }),
-
-            _navItem(context, Icons.person, 2),
-          ],
-        ),
-      ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => CreatePostScreen(files: [file])),
     );
   }
 
-  // ------------------------------------------------
-  // NAV ITEMS
-  // ------------------------------------------------
-  Widget _navItem(BuildContext context, IconData icon, int index) {
-    final scheme = Theme.of(context).colorScheme;
-    final active = _currentIndex == index;
+  Future<void> _handleUpload() async {
+    debugPrint('🖼 Upload tapped');
+    _closePlus();
 
-    return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: active
-              ? scheme.primary.withValues(alpha: 0.15)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Icon(
-          icon,
-          size: 28,
-          color: active
-              ? scheme.primary
-              : scheme.onSurface.withValues(alpha: 0.7),
-        ),
-      ),
+    final files = await _mediaPicker.pickFromGallery();
+    if (files.isEmpty) return;
+    if (!mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => CreatePostScreen(files: files)),
     );
   }
+}
 
-  Widget _navAction(BuildContext context, IconData icon, VoidCallback onTap) {
-    final scheme = Theme.of(context).colorScheme;
+/// ---------------------------------------------------------------------------
+/// PLUS EXPANSION (NO IgnorePointer — TOPMOST)
+// ---------------------------------------------------------------------------
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Icon(icon, size: 28, color: scheme.onSurface),
-      ),
-    );
-  }
+class _PlusExpansion extends StatelessWidget {
+  final Animation<double> animation;
+  final VoidCallback onCamera;
+  final VoidCallback onUpload;
 
-  // ------------------------------------------------
-  // CENTER PLUS BUTTON
-  // ------------------------------------------------
-  Widget _centerPlusButton(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+  const _PlusExpansion({
+    required this.animation,
+    required this.onCamera,
+    required this.onUpload,
+  });
 
-    return GestureDetector(
-      onTap: _togglePlusMenu,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        height: 55,
-        width: 55,
-        decoration: BoxDecoration(
-          color: scheme.surfaceBright,
-          shape: BoxShape.circle,
-          border: Border.all(color: scheme.primary, width: 2),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 8,
-              offset: Offset(0, 4),
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (_, __) {
+        return Transform.translate(
+          offset: Offset(0, -120 * animation.value),
+          child: Opacity(
+            opacity: animation.value,
+            child: Container(
+              margin: EdgeInsets.only(bottom: 56 + bottomPadding),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              width: 140,
+              decoration: BoxDecoration(
+                color:
+                    Theme.of(
+                      context,
+                    ).bottomNavigationBarTheme.backgroundColor ??
+                    Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    blurRadius: 12,
+                    color: Colors.black.withOpacity(0.15),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _PlusAction(
+                    icon: Icons.camera_alt,
+                    label: 'Camera',
+                    onTap: onCamera,
+                  ),
+                  const SizedBox(height: 8),
+                  _PlusAction(
+                    icon: Icons.upload,
+                    label: 'Upload',
+                    onTap: onUpload,
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
-        child: Icon(Icons.add, size: 30, color: scheme.primary),
-      ),
-    );
-  }
-
-  // ------------------------------------------------
-  // PLUS MENU
-  // ------------------------------------------------
-  Widget _buildPlusMenu(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return Center(
-      child: Container(
-        width: 240,
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-        decoration: BoxDecoration(
-          color: scheme.surface,
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 16,
-              offset: Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _menuItem(
-              context,
-              icon: Icons.camera_alt,
-              label: "Take Photo",
-              onTap: () {
-                _togglePlusMenu();
-                setState(() => _currentIndex = 1);
-              },
-            ),
-            const SizedBox(height: 12),
-            _menuItem(
-              context,
-              icon: Icons.photo_library,
-              label: "Upload Photo",
-              onTap: () {
-                _togglePlusMenu();
-                setState(() => _currentIndex = 1);
-              },
-            ),
-            const SizedBox(height: 12),
-            _menuItem(
-              context,
-              icon: Icons.qr_code_scanner,
-              label: "Scan",
-              onTap: () {
-                _togglePlusMenu();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Scan coming soon")),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _menuItem(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Row(
-        children: [
-          Icon(icon, size: 26, color: scheme.primary),
-          const SizedBox(width: 12),
-          Text(
-            label,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
-        ],
+        );
+      },
+    );
+  }
+}
+
+class _PlusAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _PlusAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            Icon(icon, size: 20),
+            const SizedBox(width: 8),
+            Text(label),
+          ],
+        ),
       ),
     );
   }

@@ -11,9 +11,15 @@ class CreatePostController extends ChangeNotifier {
   final ImagePicker _picker = ImagePicker();
 
   /// Local image paths (UI-safe)
-  final List<String> selectedImages = [];
+  final List<String> selectedImages;
 
   bool isUploading = false;
+
+  // ------------------------------------------------------------
+  // CONSTRUCTOR (INITIAL IMAGES FROM PLUS / CAMERA / UPLOAD)
+  // ------------------------------------------------------------
+  CreatePostController({List<String>? initialImagePaths})
+    : selectedImages = initialImagePaths ?? [];
 
   // ------------------------------------------------------------
   // PICK IMAGES (GALLERY ONLY)
