@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-
+import '../feed/day_feed_controller.dart';
+import '../feed/day_feed_service.dart';
+import 'package:provider/provider.dart';
 import '../home/home_screen_v3.dart';
 import '../post/create/create_post_screen.dart';
 import '../post/create/media_picker_service.dart';
+import '../home/home_screen_v3.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -17,6 +20,7 @@ class _MainNavigationState extends State<MainNavigation>
   bool _isPlusExpanded = false;
 
   final MediaPickerService _mediaPicker = MediaPickerService();
+  late final DayFeedController _dayFeedController;
 
   late final AnimationController _controller;
   late final Animation<double> _expandAnimation;
@@ -25,6 +29,7 @@ class _MainNavigationState extends State<MainNavigation>
   @override
   void initState() {
     super.initState();
+    _dayFeedController = DayFeedController(DayFeedService())..init();
 
     _controller = AnimationController(
       vsync: this,
@@ -102,9 +107,13 @@ class _MainNavigationState extends State<MainNavigation>
   Widget _buildCurrentTab() {
     switch (_currentIndex) {
       case 0:
-        return const HomeScreenV3();
+        return ChangeNotifierProvider.value(
+          value: _dayFeedController,
+          child: const HomeScreenV3(),
+        );
+
       default:
-        return const HomeScreenV3();
+        return const SizedBox.shrink();
     }
   }
 
