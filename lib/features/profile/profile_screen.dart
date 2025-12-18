@@ -1,6 +1,10 @@
+/* Profile_screen.dart */
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'widgets/profile_tabs_bar.dart';
+import 'widgets/profile_tab_content.dart';
 
 import 'profile_controller.dart';
 import 'widgets/profile_identity_banner.dart';
@@ -52,10 +56,18 @@ class _ProfileScreenBody extends StatelessWidget {
           children: [
             const SizedBox(height: 16),
             ProfileIdentityBanner(
-              user: user,
+              displayName: user.displayName ?? 'User',
+              handle: user.handle,
+              avatarUrl: user.profileImageUrl,
+              isVerified: user.isVerified,
+              hasVideoDp: false, // future
+              bio: user.bio,
               isOwner: isOwner,
+              isFollowing: controller.isFollowing,
               isUpdatingAvatar: controller.isUpdatingPhoto,
               onEditAvatar: isOwner ? controller.updatePhoto : null,
+              onEditProfile: isOwner ? controller.editProfile : null,
+              onFollowToggle: !isOwner ? controller.toggleFollow : null,
             ),
 
             const SizedBox(height: 24),
@@ -72,9 +84,13 @@ class _ProfileScreenBody extends StatelessWidget {
             const SizedBox(height: 24),
 
             /// --------------------------------------------------------
-            /// POSTS GRID
+            /// Profile tabs
             /// --------------------------------------------------------
-            _ProfilePostsGrid(posts: controller.posts),
+            const ProfileTabsBar(),
+
+            const SizedBox(height: 12),
+
+            const ProfileTabContent(),
           ],
         ),
       ),

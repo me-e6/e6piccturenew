@@ -26,8 +26,25 @@ class CreatePostService {
       throw Exception('User not authenticated');
     }
 
+    // 🔒 Force token refresh
+    await user.getIdToken(true);
+
     final String authorId = user.uid;
-    final String? avatarUrl = user.photoURL;
+
+    // ✅ FETCH USER PROFILE FIRST
+    final userDoc = await _firestore.collection('users').doc(authorId).get();
+    final Map<String, dynamic>? userData = userDoc.data();
+
+    final String authorName =
+        (userData?['displayName'] as String?)?.isNotEmpty == true
+        ? userData!['displayName']
+        : 'Unknown';
+
+    String? rawPhotoUrl = userData?['photoURL'] as String?;
+
+    final String? avatarUrl =
+        (userData?['profileImageUrl'] as String?) ??
+        (userData?['photoURL'] as String?);
 
     final postRef = _firestore.collection('posts').doc();
     final postId = postRef.id;
@@ -57,12 +74,12 @@ class CreatePostService {
       }
 
       // ------------------------------------------------------------
-      // 2. WRITE FIRESTORE (ATOMIC FROM UI PERSPECTIVE)
+      // 2. WRITE FIRESTORE
       // ------------------------------------------------------------
       await postRef.set({
         'postId': postId,
         'authorId': authorId,
-        'authorName': '', // resolved later via profile
+        'authorName': authorName,
         'authorAvatarUrl': avatarUrl,
         'imageUrls': imageUrls,
         'isRepost': false,
@@ -75,14 +92,12 @@ class CreatePostService {
       });
     } catch (e) {
       // ------------------------------------------------------------
-      // 3. ROLLBACK STORAGE (BEST EFFORT)
+      // 3. ROLLBACK STORAGE
       // ------------------------------------------------------------
       for (final ref in uploadedRefs) {
         try {
           await ref.delete();
-        } catch (_) {
-          // Swallow cleanup failures (non-fatal)
-        }
+        } catch (_) {}
       }
       rethrow;
     }
