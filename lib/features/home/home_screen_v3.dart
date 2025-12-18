@@ -7,6 +7,7 @@ import '../engagement/engagement_controller.dart';
 import '../feed/day_album_viewer_screen.dart';
 import '../follow/follow_controller.dart';
 import '../profile/profile_screen.dart';
+import '../user/user_avatar_controller.dart';
 
 /// ---------------------------------------------------------------------------
 /// HOME SCREEN V3
@@ -299,7 +300,7 @@ class _PostCardState extends State<_PostCard>
 /// ---------------------------------------------------------------------------
 /// POST HEADER (UNCHANGED LOGIC, POLISHED UI)
 /// ---------------------------------------------------------------------------
-class _PostHeader extends StatelessWidget {
+/* class _PostHeader extends StatelessWidget {
   final PostModel post;
   final currentUid = FirebaseAuth.instance.currentUser?.uid;
 
@@ -334,24 +335,16 @@ class _PostHeader extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 16,
-                      backgroundColor: const Color.fromARGB(255, 121, 117, 117),
+                      backgroundColor: Colors.grey.shade300,
                       backgroundImage:
                           post.authorAvatarUrl != null &&
                               post.authorAvatarUrl!.isNotEmpty
                           ? NetworkImage(post.authorAvatarUrl!)
                           : null,
                       child:
-                          post.authorAvatarUrl == null ||
-                              post.authorAvatarUrl!.isEmpty
-                          ? Text(
-                              post.authorName.isNotEmpty
-                                  ? post.authorName[0].toUpperCase()
-                                  : 'Y',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              ),
-                            )
+                          (post.authorAvatarUrl == null ||
+                              post.authorAvatarUrl!.isEmpty)
+                          ? const Icon(Icons.person, size: 16)
                           : null,
                     ),
 
@@ -403,6 +396,138 @@ class _PostHeader extends StatelessWidget {
               onSelected: (value) {
                 // TODO: wire actions later
               },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+} */
+class _PostHeader extends StatelessWidget {
+  final PostModel post;
+
+  const _PostHeader({required this.post});
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isOwner =
+        FirebaseAuth.instance.currentUser?.uid == post.authorId;
+
+    return ChangeNotifierProvider(
+      create: (_) {
+        final c = FollowController();
+        c.load(post.authorId);
+        return c;
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            /// AUTHOR AVATAR + NAME
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ProfileScreen(userId: post.authorId),
+                    ),
+                  );
+                },
+                child: Row(
+                  children: [
+                    /// 👇 AVATAR (THIS IS WHERE YOUR LINE BELONGS)
+                    ChangeNotifierProvider(
+                      create: (_) => UserAvatarController(post.authorId),
+                      child: Consumer<UserAvatarController>(
+                        builder: (_, avatar, __) {
+                          return CircleAvatar(
+                            radius: 16,
+                            backgroundColor: Colors.grey.shade300,
+                            backgroundImage:
+                                post.authorAvatarUrl != null &&
+                                    post.authorAvatarUrl!.isNotEmpty
+                                ? NetworkImage(post.authorAvatarUrl!)
+                                : null,
+                            child:
+                                post.authorAvatarUrl == null ||
+                                    post.authorAvatarUrl!.isEmpty
+                                ? const Icon(Icons.person, size: 16)
+                                : null,
+                          );
+                        },
+                      ),
+                    ),
+
+                    const SizedBox(width: 8),
+
+                    Row(
+                      children: [
+                        Text(
+                          post.authorName.isNotEmpty
+                              ? post.authorName
+                              : 'Unknown',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                        if (post.isVerifiedOwner) ...[
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.verified,
+                            size: 14,
+                            color: Colors.blue,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            /// FOLLOW + MENU
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Consumer<FollowController>(
+                  builder: (_, follow, __) {
+                    if (isOwner) return const SizedBox.shrink();
+
+                    return OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      onPressed: follow.isFollowing
+                          ? () => follow.unfollow(post.authorId)
+                          : () => follow.follow(post.authorId),
+                      child: Text(
+                        follow.isFollowing ? 'Following' : 'Follow',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, size: 20),
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'copy', child: Text('Copy link')),
+                  ],
+                ),
+              ],
             ),
           ],
         ),

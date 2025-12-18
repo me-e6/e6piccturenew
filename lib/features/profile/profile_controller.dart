@@ -150,6 +150,11 @@ class ProfileController extends ChangeNotifier {
   int get repostCount => reposts.length;
   int get followersCount => user?.followersCount ?? 0;
   int get followingCount => user?.followingCount ?? 0;
+  // ------------------------------------------------------------
+  // UI ALIASES (DO NOT CHANGE UI EXPECTATIONS)
+  // ------------------------------------------------------------
+  List<PostModel> get posts => userPosts;
+  List<PostModel> get saved => savedPosts;
 
   // ------------------------------------------------------------
   // LIFECYCLE

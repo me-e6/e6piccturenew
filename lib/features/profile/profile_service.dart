@@ -37,7 +37,7 @@ class ProfileService {
         .orderBy('createdAt', descending: true)
         .get();
 
-    return snap.docs.map(PostModel.fromDocument).toList();
+    return snap.docs.map((doc) => PostModel.fromFirestore(doc)).toList();
   }
 
   // --------------------------------------------------
@@ -51,7 +51,7 @@ class ProfileService {
         .orderBy('createdAt', descending: true)
         .get();
 
-    return snap.docs.map(PostModel.fromDocument).toList();
+    return snap.docs.map((doc) => PostModel.fromFirestore(doc)).toList();
   }
 
   // --------------------------------------------------
@@ -76,7 +76,7 @@ class ProfileService {
         .where(FieldPath.documentId, whereIn: ids)
         .get();
 
-    return postsSnap.docs.map(PostModel.fromDocument).toList();
+    return postsSnap.docs.map((doc) => PostModel.fromFirestore(doc)).toList();
   }
 
   // --------------------------------------------------

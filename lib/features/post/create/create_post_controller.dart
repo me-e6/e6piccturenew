@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import 'create_post_service.dart';
 
@@ -27,7 +26,6 @@ class CreatePostController extends ChangeNotifier {
   Future<void> pickImages() async {
     try {
       final List<XFile> files = await _picker.pickMultiImage();
-
       if (files.isEmpty) return;
 
       selectedImages
@@ -41,21 +39,17 @@ class CreatePostController extends ChangeNotifier {
   }
 
   // ------------------------------------------------------------
-  // CREATE POST
+  // CREATE POST (HARDENED, SINGLE-SUBMIT)
   // ------------------------------------------------------------
   Future<bool> createPost() async {
-    if (selectedImages.isEmpty || isUploading) return false;
-
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return false;
+    if (isUploading || selectedImages.isEmpty) return false;
 
     isUploading = true;
     notifyListeners();
 
     try {
       final imageFiles = selectedImages.map((p) => File(p)).toList();
-
-      await _service.createImagePost(authorId: uid, images: imageFiles);
+      await _service.createImagePost(images: imageFiles);
 
       // Reset state on success
       selectedImages.clear();

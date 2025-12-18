@@ -8,20 +8,25 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 enum PostVisibility { public, followers, mutuals, private }
 
 /// ------------------------------------------------------------
-/// POST MODEL (PRODUCTION-GRADE, DEFENSIVE)
+/// POST MODEL (API-READY, DENORMALIZED, SAFE)
 /// ------------------------------------------------------------
+/// Design principles:
+/// - Flat author snapshot (NO nested user objects)
+/// - Defensive Firestore parsing
+/// - Client-safe mutable engagement flags
+/// - Ready for REST / GraphQL mapping later
 class PostModel {
   // -------------------------
   // CORE IDENTITY
   // -------------------------
   final String postId;
+
+  // -------------------------
+  // AUTHOR SNAPSHOT (DENORMALIZED)
+  // -------------------------
   final String authorId;
   final String authorName;
   final String? authorAvatarUrl;
-
-  // -------------------------
-  // VERIFIED / GAZETTER
-  // -------------------------
   final bool isVerifiedOwner;
 
   // -------------------------
@@ -45,7 +50,7 @@ class PostModel {
   final DateTime createdAt;
 
   // -------------------------
-  // ENGAGEMENT COUNTS
+  // ENGAGEMENT COUNTS (SERVER-OWNED)
   // -------------------------
   int likeCount;
   int replyCount;
@@ -75,14 +80,7 @@ class PostModel {
   });
 
   // ------------------------------------------------------------
-  // ALIAS FACTORY (LEGACY-SAFE)
-  // ------------------------------------------------------------
-  factory PostModel.fromDocument(DocumentSnapshot doc) {
-    return PostModel.fromFirestore(doc);
-  }
-
-  // ------------------------------------------------------------
-  // FIRESTORE → MODEL (CANONICAL, GENERIC-SAFE)
+  // FIRESTORE → MODEL (DEFENSIVE)
   // ------------------------------------------------------------
   factory PostModel.fromFirestore(DocumentSnapshot doc) {
     final raw = doc.data();
@@ -93,17 +91,13 @@ class PostModel {
 
     final Map<String, dynamic> data = raw;
 
-    // -------------------------
-    // createdAt (DEFENSIVE)
-    // -------------------------
+    // createdAt (safe)
     final rawCreatedAt = data['createdAt'];
     final DateTime createdAt = rawCreatedAt is Timestamp
         ? rawCreatedAt.toDate()
         : DateTime.now();
 
-    // -------------------------
-    // visibility (BACKWARD-SAFE)
-    // -------------------------
+    // visibility (backward-safe)
     final String visibilityRaw =
         (data['visibility'] as String?)?.toLowerCase() ?? 'public';
 
@@ -116,6 +110,7 @@ class PostModel {
       postId: data['postId'] as String? ?? doc.id,
       authorId: data['authorId'] as String? ?? '',
       authorName: data['authorName'] as String? ?? 'Unknown',
+      authorAvatarUrl: data['authorAvatarUrl'] as String?,
       isVerifiedOwner: data['isVerifiedOwner'] as bool? ?? false,
       visibility: visibility,
       imageUrls:
@@ -130,7 +125,7 @@ class PostModel {
   }
 
   // ------------------------------------------------------------
-  // COPY WITH — OPTIMISTIC / UI-SAFE
+  // COPY WITH — OPTIMISTIC UI SAFE
   // ------------------------------------------------------------
   PostModel copyWith({
     int? likeCount,
@@ -143,6 +138,7 @@ class PostModel {
       postId: postId,
       authorId: authorId,
       authorName: authorName,
+      authorAvatarUrl: authorAvatarUrl,
       isVerifiedOwner: isVerifiedOwner,
       visibility: visibility,
       imageUrls: imageUrls,

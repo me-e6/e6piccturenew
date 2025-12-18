@@ -135,6 +135,7 @@ class _DayAlbumBanner extends StatelessWidget {
 /// Feed Content
 /// ----------------------------------
 class _FeedContent extends StatelessWidget {
+  // final PageController _pageController = PageController(viewportFraction: 0.92);
   @override
   Widget build(BuildContext context) {
     return Consumer<DayFeedController>(
@@ -159,7 +160,6 @@ class _FeedContent extends StatelessWidget {
         }
 
         return PageView.builder(
-          controller: PageController(viewportFraction: 0.92),
           itemCount: state.posts.length,
           itemBuilder: (context, index) {
             return ChangeNotifierProvider(

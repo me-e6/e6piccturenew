@@ -63,6 +63,6 @@ class SearchService {
         .limit(50)
         .get();
 
-    return postsSnap.docs.map(PostModel.fromDocument).toList();
+    return postsSnap.docs.map((doc) => PostModel.fromFirestore(doc)).toList();
   }
 }
