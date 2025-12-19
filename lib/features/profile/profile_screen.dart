@@ -40,21 +40,6 @@ class ProfileScreen extends StatelessWidget {
       ],
       child: const _ProfileScreenBody(),
     );
-
-    /*   return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(
-          create: (_) => ProfileController()..loadProfile(userId),
-        ),
-
-        /// 👇 FollowController ONLY for external profiles
-        if (!isOwner)
-          ChangeNotifierProvider(
-            create: (_) => FollowController()..load(userId),
-          ),
-      ],
-      child: const _ProfileScreenBody(),
-    ); */
   }
 }
 
@@ -64,7 +49,7 @@ class _ProfileScreenBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final profile = context.watch<ProfileController>();
-    final mutuals = context.watch<MutualController>(); // ✅ HERE
+    //  final mutuals = context.watch<MutualController>(); // ✅ HERE
 
     if (profile.isLoading || profile.user == null) {
       return const Scaffold(

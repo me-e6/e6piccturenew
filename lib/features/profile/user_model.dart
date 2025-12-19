@@ -134,7 +134,7 @@ class UserModel {
       username: username,
       displayName: displayName,
       photoUrl: photoUrl ?? this.photoUrl,
-      profileImageUrl: profileImageUrl ?? profileImageUrl,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       videoDpUrl: videoDpUrl ?? this.videoDpUrl,
       videoDpThumbUrl: videoDpThumbUrl ?? this.videoDpThumbUrl,
       bio: bio ?? this.bio,
