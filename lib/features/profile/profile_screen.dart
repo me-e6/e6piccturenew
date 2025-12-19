@@ -1,14 +1,15 @@
-/* Profile_screen.dart */
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'widgets/profile_tabs_bar.dart';
-import 'widgets/profile_tab_content.dart';
-
+import 'package:e6piccturenew/features/follow/mutuals_list_screen.dart';
+import 'package:e6piccturenew/features/follow/mutual_controller.dart';
+import '../../features/follow/following_list_screen.dart';
+import '../../features/follow/follower_list_screen.dart';
 import 'profile_controller.dart';
 import 'widgets/profile_identity_banner.dart';
-import '../post/create/post_model.dart';
+import 'widgets/profile_tabs_bar.dart';
+import 'widgets/profile_tab_content.dart';
+import '../follow/follow_controller.dart';
 
 /// ---------------------------------------------------------------------------
 /// PROFILE SCREEN (API-AWARE, CONTROLLER-DRIVEN)
@@ -20,10 +21,40 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => ProfileController()..loadProfile(userId),
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+    final isOwner = currentUid == userId;
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => ProfileController()..loadProfile(userId),
+        ),
+
+        ChangeNotifierProvider(
+          create: (_) => MutualController()..loadMutuals(userId),
+        ),
+
+        if (!isOwner)
+          ChangeNotifierProvider(
+            create: (_) => FollowController()..load(userId),
+          ),
+      ],
       child: const _ProfileScreenBody(),
     );
+
+    /*   return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => ProfileController()..loadProfile(userId),
+        ),
+
+        /// 👇 FollowController ONLY for external profiles
+        if (!isOwner)
+          ChangeNotifierProvider(
+            create: (_) => FollowController()..load(userId),
+          ),
+      ],
+      child: const _ProfileScreenBody(),
+    ); */
   }
 }
 
@@ -32,21 +63,20 @@ class _ProfileScreenBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = context.watch<ProfileController>();
+    final profile = context.watch<ProfileController>();
+    final mutuals = context.watch<MutualController>(); // ✅ HERE
 
-    if (controller.isLoading || controller.user == null) {
+    if (profile.isLoading || profile.user == null) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
     }
 
-    final user = controller.user!;
+    final user = profile.user!;
     final currentUid = FirebaseAuth.instance.currentUser?.uid;
     final isOwner = currentUid == user.uid;
 
-    // ------------------------------------------------------------
-    // API-AWARE IDENTITY SNAPSHOT
-    // ------------------------------------------------------------
+    final follow = !isOwner ? context.watch<FollowController>() : null;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile'), centerTitle: true),
@@ -55,41 +85,90 @@ class _ProfileScreenBody extends StatelessWidget {
         child: Column(
           children: [
             const SizedBox(height: 16),
+
+            /// ------------------------------------------------------------
+            /// PROFILE IDENTITY BANNER (FINAL)
+            /// ------------------------------------------------------------
             ProfileIdentityBanner(
               displayName: user.displayName ?? 'User',
               handle: user.handle,
               avatarUrl: user.profileImageUrl,
               isVerified: user.isVerified,
-              hasVideoDp: false, // future
+              hasVideoDp: false, // future-safe
               bio: user.bio,
+
+              /// Ownership
               isOwner: isOwner,
-              isFollowing: controller.isFollowing,
-              isUpdatingAvatar: controller.isUpdatingPhoto,
-              onEditAvatar: isOwner ? controller.updatePhoto : null,
-              onEditProfile: isOwner ? controller.editProfile : null,
-              onFollowToggle: !isOwner ? controller.toggleFollow : null,
+
+              /// Follow state (external only)
+              isFollowing: follow?.isFollowing ?? false,
+
+              /// Avatar update
+              isUpdatingAvatar: profile.isUpdatingPhoto,
+              onEditAvatar: isOwner ? profile.updatePhoto : null,
+
+              /// Edit / Follow actions
+              onEditProfile: isOwner
+                  ? () {
+                      // TODO: Navigate to Edit Profile screen
+                    }
+                  : null,
+
+              onFollowToggle: !isOwner
+                  ? () {
+                      follow!.isFollowing
+                          ? follow.unfollow(user.uid)
+                          : follow.follow(user.uid);
+                    }
+                  : null,
             ),
 
             const SizedBox(height: 24),
 
-            /// --------------------------------------------------------
-            /// STATS
-            /// --------------------------------------------------------
+            /// ------------------------------------------------------------
+            /// STATS ROW
+            /// ------------------------------------------------------------
             _ProfileStatsRow(
-              posts: controller.posts.length,
-              reposts: controller.reposts.length,
-              saved: controller.saved.length,
+              posts: profile.posts.length,
+              mutuals: context.watch<MutualController>().count,
+              followers: profile.followersCount,
+              following: profile.followingCount,
+
+              onMutualsTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MutualsListScreen(userId: user.uid),
+                  ),
+                );
+              },
+
+              onFollowersTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => FollowersListScreen(userId: user.uid),
+                  ),
+                );
+              },
+
+              onFollowingTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => FollowingListScreen(userId: user.uid),
+                  ),
+                );
+              },
             ),
 
             const SizedBox(height: 24),
 
-            /// --------------------------------------------------------
-            /// Profile tabs
-            /// --------------------------------------------------------
+            /// ------------------------------------------------------------
+            /// TABS
+            /// ------------------------------------------------------------
             const ProfileTabsBar(),
-
             const SizedBox(height: 12),
-
             const ProfileTabContent(),
           ],
         ),
@@ -103,25 +182,38 @@ class _ProfileScreenBody extends StatelessWidget {
 /// ---------------------------------------------------------------------------
 class _ProfileStatsRow extends StatelessWidget {
   final int posts;
-  final int reposts;
-  final int saved;
+  final int mutuals;
+  final int followers;
+  final int following;
+
+  final VoidCallback onMutualsTap;
+  final VoidCallback onFollowersTap;
+  final VoidCallback onFollowingTap;
 
   const _ProfileStatsRow({
     required this.posts,
-    required this.reposts,
-    required this.saved,
+    required this.mutuals,
+    required this.followers,
+    required this.following,
+    required this.onMutualsTap,
+    required this.onFollowersTap,
+    required this.onFollowingTap,
   });
 
-  Widget _stat(String label, int value) {
-    return Column(
-      children: [
-        Text(
-          value.toString(),
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-        ),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontSize: 12)),
-      ],
+  Widget _stat(String label, int value, {VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Column(
+        children: [
+          Text(
+            value.toString(),
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+          ),
+          const SizedBox(height: 4),
+          Text(label, style: const TextStyle(fontSize: 12)),
+        ],
+      ),
     );
   }
 
@@ -133,53 +225,11 @@ class _ProfileStatsRow extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _stat('Posts', posts),
-          _stat('Repics', reposts),
-          _stat('Saved', saved),
+          _stat('Mutuals', mutuals, onTap: onMutualsTap),
+          _stat('Followers', followers, onTap: onFollowersTap),
+          _stat('Following', following, onTap: onFollowingTap),
         ],
       ),
-    );
-  }
-}
-
-/// ---------------------------------------------------------------------------
-/// PROFILE POSTS GRID (BASIC)
-/// ---------------------------------------------------------------------------
-class _ProfilePostsGrid extends StatelessWidget {
-  final List<PostModel> posts;
-
-  const _ProfilePostsGrid({required this.posts});
-
-  @override
-  Widget build(BuildContext context) {
-    if (posts.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(32),
-        child: Text('No posts yet'),
-      );
-    }
-
-    return GridView.builder(
-      padding: const EdgeInsets.all(12),
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: posts.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 6,
-        mainAxisSpacing: 6,
-      ),
-      itemBuilder: (_, index) {
-        final post = posts[index];
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: post.imageUrls.isNotEmpty
-              ? Image.network(post.imageUrls.first, fit: BoxFit.cover)
-              : Container(
-                  color: Colors.grey.shade300,
-                  child: const Icon(Icons.image),
-                ),
-        );
-      },
     );
   }
 }

@@ -86,4 +86,24 @@ class FollowService {
 
     return snap.docs.map((d) => d.id).toList();
   }
+
+  Future<int> getFollowersCount(String uid) async {
+    final snap = await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('followers')
+        .get();
+
+    return snap.size;
+  }
+
+  Future<int> getFollowingCount(String uid) async {
+    final snap = await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('following')
+        .get();
+
+    return snap.size;
+  }
 }
