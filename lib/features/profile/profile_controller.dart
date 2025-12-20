@@ -584,8 +584,9 @@ class ProfileController extends ChangeNotifier {
   }
 
   // ------------------------------------------------------------
-  // VIDEO DP — UPLOAD / REPLACE
+  // VIDEO DP — REPLACE
   // ------------------------------------------------------------
+
   Future<void> replaceVideoDp(BuildContext context) async {
     if (isUpdatingVideoDp || !isOwner) return;
 
@@ -599,13 +600,14 @@ class ProfileController extends ChangeNotifier {
       isUpdatingVideoDp = true;
       notifyListeners();
 
-      final url = await _profileService.uploadVideoDp(
+      await _profileService.updateVideoDp(
         uid: user!.uid,
         file: File(picked.path),
       );
 
-      user = user!.copyWith(videoDpUrl: url);
-      currentUser = currentUser?.copyWith(videoDpUrl: url);
+      // 🔥 RELOAD USER
+      user = await _profileService.getUser(user!.uid);
+      currentUser = user;
 
       _success(context, 'Video DP updated');
     } catch (_) {
@@ -628,8 +630,9 @@ class ProfileController extends ChangeNotifier {
 
       await _profileService.deleteVideoDp(user!.uid);
 
-      user = user!.copyWith(videoDpUrl: null);
-      currentUser = currentUser?.copyWith(videoDpUrl: null);
+      // 🔥 RELOAD USER
+      user = await _profileService.getUser(user!.uid);
+      currentUser = user;
 
       _success(context, 'Video DP removed');
     } catch (_) {
@@ -641,7 +644,44 @@ class ProfileController extends ChangeNotifier {
   }
 
   // ------------------------------------------------------------
-  // UI HELPERS
+  // updatVideo DP
+  // ------------------------------------------------------------
+
+  Future<void> updateVideoDp() async {
+    debugPrint('🎥 updateVideoDp called');
+
+    if (isUpdatingVideoDp || !isOwner) return;
+
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+
+    try {
+      final picked = await _picker.pickVideo(
+        source: ImageSource.gallery,
+        maxDuration: const Duration(seconds: 20),
+      );
+      if (picked == null) return;
+
+      isUpdatingVideoDp = true;
+      notifyListeners();
+
+      await _profileService.updateVideoDp(uid: uid, file: File(picked.path));
+
+      // 🔥 CRITICAL FIX — RELOAD USER FROM FIRESTORE
+      user = await _profileService.getUser(uid);
+      currentUser = user;
+
+      debugPrint('✅ videoDpUrl after reload = ${user?.videoDpUrl}');
+    } catch (e) {
+      debugPrint('❌ updateVideoDp error: $e');
+    } finally {
+      isUpdatingVideoDp = false;
+      notifyListeners();
+    }
+  }
+
+  // ------------------------------------------------------------
+  // UI HELPERS -Snackbars
   // ------------------------------------------------------------
   void _success(BuildContext context, String message) {
     ScaffoldMessenger.of(

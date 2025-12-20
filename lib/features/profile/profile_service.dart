@@ -104,38 +104,10 @@ class ProfileService {
     return url;
   }
 
-  /// ------------------------------------------------------------
-  /// UPDATE VIDEO DP (≤20s)
-  /// ------------------------------------------------------------
-  /* 
-  Future<String?> updateVideoDp({
-    required String uid,
-    required File file,
-  }) async {
-    try {
-      final ref = _storage.ref().child('users/$uid/video_dp.mp4');
-
-      await ref.putFile(file);
-
-      final url = await ref.getDownloadURL();
-
-      await _firestore.collection('users').doc(uid).update({
-        'videoDpUrl': url,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-
-      return url;
-    } catch (e) {
-      debugPrint('updateVideoDp failed: $e');
-      return null;
-    }
-  }
- */
-
   // ------------------------------------------------------------
   // VIDEO DP — REPLACE (overwrite same path)
   // ------------------------------------------------------------
-  Future<String> uploadVideoDp({
+  Future<String> updateVideoDp({
     required String uid,
     required File file,
   }) async {

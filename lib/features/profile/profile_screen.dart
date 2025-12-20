@@ -345,6 +345,8 @@ class _ProfileScreenBody extends StatelessWidget {
 
     final bool hasVideoDp =
         user.videoDpUrl != null && user.videoDpUrl!.isNotEmpty;
+    debugPrint('🔥 videoDpUrl from model = ${user.videoDpUrl}');
+    debugPrint('🔥 hasVideoDp = $hasVideoDp');
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile'), centerTitle: true),
@@ -402,9 +404,7 @@ class _ProfileScreenBody extends StatelessWidget {
                     }
                   : null,
 
-              onEditVideoDp: isOwner
-                  ? () => profile.showVideoDpActions(context)
-                  : null,
+              onEditVideoDp: isOwner ? () => profile.updateVideoDp() : null,
 
               onReplaceVideo: () => profile.replaceVideoDp(context),
               onDeleteVideo: () => profile.deleteVideoDp(context),

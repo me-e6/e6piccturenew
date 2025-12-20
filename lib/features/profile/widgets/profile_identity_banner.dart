@@ -160,63 +160,60 @@ class ProfileIdentityBanner extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              /// -------------------------------
-              /// AVATAR
-              /// -------------------------------
-              GestureDetector(
-                onTap: () {
-                  if (hasVideoDp) {
-                    _showVideoActions(context);
-                  } else {
-                    onEditAvatar?.call();
-                  }
-                },
-                child: CircleAvatar(
-                  radius: 36,
-                  backgroundColor: Colors.grey.shade300,
-                  backgroundImage: avatarUrl != null && avatarUrl!.isNotEmpty
-                      ? NetworkImage(avatarUrl!)
-                      : null,
-                  child: avatarUrl == null || avatarUrl!.isEmpty
-                      ? const Icon(Icons.person, size: 32)
-                      : null,
-                ),
-              ),
+              Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      if (!isOwner) return;
 
-              /// -------------------------------
-              /// VIDEO DP BADGE (RIGHT SIDE)
-              /// -------------------------------
-              if (hasVideoDp) ...[
-                const SizedBox(width: 10),
-                GestureDetector(
-                  onTap: onViewVideo ?? () => _showVideoActions(context),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Text(
-                      'vDP',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
-                      ),
+                      if (hasVideoDp) {
+                        onVideoDpTap?.call(); // play video
+                      } else {
+                        _showInitialDpChooser(context);
+                      }
+                    },
+
+                    onLongPress: hasVideoDp && isOwner
+                        ? () =>
+                              _showVideoActions(context) // edit / delete
+                        : null,
+                    child: CircleAvatar(
+                      radius: 36,
+                      backgroundColor: Colors.grey.shade300,
+                      backgroundImage:
+                          avatarUrl != null && avatarUrl!.isNotEmpty
+                          ? NetworkImage(avatarUrl!)
+                          : null,
+                      child: avatarUrl == null || avatarUrl!.isEmpty
+                          ? const Icon(Icons.person, size: 32)
+                          : null,
                     ),
                   ),
-                ),
-              ],
+
+                  /// VIDEO BADGE
+                  if (hasVideoDp)
+                    Positioned(
+                      right: -4,
+                      bottom: -4,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color.fromARGB(255, 238, 80, 2),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 1),
+                        ),
+                        child: const Icon(
+                          Icons.play_arrow,
+                          size: 14,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
 
               const Spacer(),
-
-              /// -------------------------------
-              /// ACTION BUTTON
-              /// -------------------------------
               if (isOwner)
                 OutlinedButton(
                   onPressed: onEditProfile,
@@ -270,6 +267,35 @@ class ProfileIdentityBanner extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+
+  void _showInitialDpChooser(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.image),
+              title: const Text('Upload profile photo'),
+              onTap: () {
+                Navigator.pop(context);
+                onEditAvatar?.call();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.videocam),
+              title: const Text('Upload video DP (≤20s)'),
+              onTap: () {
+                Navigator.pop(context);
+                onEditVideoDp?.call(); // 👈 THIS triggers upload
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

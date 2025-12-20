@@ -102,7 +102,12 @@ class UserModel {
       photoUrl: data['photoUrl'] ?? '',
       profileImageUrl: data['profileImageUrl'],
       profileBannerUrl: data['profileBannerUrl'],
-      videoDpUrl: data['videoDpUrl'],
+      videoDpUrl:
+          (data['videoDpUrl'] is String &&
+              (data['videoDpUrl'] as String).trim().isNotEmpty)
+          ? data['videoDpUrl']
+          : null,
+
       videoDpThumbUrl: data['videoDpThumbUrl'],
       bio: data['bio'] ?? '',
       role: data['role'] ?? 'citizen',
