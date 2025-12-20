@@ -9,16 +9,27 @@ class ProfileIdentityBanner extends StatelessWidget {
   final bool hasVideoDp;
   final String? bio;
 
+  /// Ownership
   final bool isOwner;
   final bool isFollowing;
 
+  /// Loading states
   final bool isUpdatingAvatar;
   final bool isUpdatingBanner;
+  final bool? isUpdatingVideoDp;
 
+  /// Actions
   final VoidCallback? onEditAvatar;
   final VoidCallback? onEditProfile;
   final VoidCallback? onFollowToggle;
   final VoidCallback? onEditBanner;
+
+  /// Video DP actions
+  final VoidCallback? onViewVideo;
+  final VoidCallback? onReplaceVideo;
+  final VoidCallback? onDeleteVideo;
+  final VoidCallback? onEditVideoDp;
+  final VoidCallback? onVideoDpTap;
 
   const ProfileIdentityBanner({
     super.key,
@@ -33,19 +44,70 @@ class ProfileIdentityBanner extends StatelessWidget {
     required this.isFollowing,
     required this.isUpdatingAvatar,
     required this.isUpdatingBanner,
+    this.isUpdatingVideoDp,
     this.onEditAvatar,
     this.onEditProfile,
     this.onFollowToggle,
     this.onEditBanner,
+    this.onViewVideo,
+    this.onReplaceVideo,
+    this.onDeleteVideo,
+    this.onEditVideoDp,
+    this.onVideoDpTap,
   });
+
+  // ------------------------------------------------------------
+  // VIDEO DP ACTION SHEET (OWNER ONLY)
+  // ------------------------------------------------------------
+  void _showVideoActions(BuildContext context) {
+    if (!isOwner) return;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.play_circle),
+              title: const Text('View Video'),
+              onTap: () {
+                Navigator.pop(context);
+                onViewVideo?.call();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.swap_horiz),
+              title: const Text('Replace Video'),
+              onTap: () {
+                Navigator.pop(context);
+                onReplaceVideo?.call();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: const Text(
+                'Remove Video',
+                style: TextStyle(color: Colors.red),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                onDeleteVideo?.call();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        /// -------------------------------
+        /// ------------------------------------------------------------
         /// PROFILE BANNER
-        /// -------------------------------
+        /// ------------------------------------------------------------
         Stack(
           children: [
             Container(
@@ -61,7 +123,6 @@ class ProfileIdentityBanner extends StatelessWidget {
                     : null,
               ),
             ),
-
             if (isOwner)
               Positioned(
                 top: 12,
@@ -92,79 +153,70 @@ class ProfileIdentityBanner extends StatelessWidget {
 
         const SizedBox(height: 48),
 
-        /// -------------------------------
+        /// ------------------------------------------------------------
         /// AVATAR + ACTION
-        /// -------------------------------
+        /// ------------------------------------------------------------
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              Stack(
-                alignment: Alignment.bottomRight,
-                children: [
-                  CircleAvatar(
-                    radius: 36,
-                    backgroundColor: Colors.grey.shade300,
-                    backgroundImage: avatarUrl != null && avatarUrl!.isNotEmpty
-                        ? NetworkImage(avatarUrl!)
-                        : null,
-                    child: avatarUrl == null || avatarUrl!.isEmpty
-                        ? const Icon(Icons.person, size: 32)
-                        : null,
-                  ),
-
-                  if (hasVideoDp)
-                    Positioned(
-                      right: 2,
-                      top: 2,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.black87,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.play_arrow,
-                          size: 12,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-
-                  if (isOwner)
-                    Positioned(
-                      right: 0,
-                      bottom: 0,
-                      child: InkWell(
-                        onTap: isUpdatingAvatar ? null : onEditAvatar,
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary,
-                            shape: BoxShape.circle,
-                          ),
-                          child: isUpdatingAvatar
-                              ? const SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Icon(
-                                  Icons.edit,
-                                  size: 14,
-                                  color: Colors.white,
-                                ),
-                        ),
-                      ),
-                    ),
-                ],
+              /// -------------------------------
+              /// AVATAR
+              /// -------------------------------
+              GestureDetector(
+                onTap: () {
+                  if (hasVideoDp) {
+                    _showVideoActions(context);
+                  } else {
+                    onEditAvatar?.call();
+                  }
+                },
+                child: CircleAvatar(
+                  radius: 36,
+                  backgroundColor: Colors.grey.shade300,
+                  backgroundImage: avatarUrl != null && avatarUrl!.isNotEmpty
+                      ? NetworkImage(avatarUrl!)
+                      : null,
+                  child: avatarUrl == null || avatarUrl!.isEmpty
+                      ? const Icon(Icons.person, size: 32)
+                      : null,
+                ),
               ),
+
+              /// -------------------------------
+              /// VIDEO DP BADGE (RIGHT SIDE)
+              /// -------------------------------
+              if (hasVideoDp) ...[
+                const SizedBox(width: 10),
+                GestureDetector(
+                  onTap: onViewVideo ?? () => _showVideoActions(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Text(
+                      'vDP',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
 
               const Spacer(),
 
+              /// -------------------------------
+              /// ACTION BUTTON
+              /// -------------------------------
               if (isOwner)
                 OutlinedButton(
                   onPressed: onEditProfile,
@@ -181,9 +233,9 @@ class ProfileIdentityBanner extends StatelessWidget {
 
         const SizedBox(height: 12),
 
-        /// -------------------------------
+        /// ------------------------------------------------------------
         /// NAME + HANDLE + BIO
-        /// -------------------------------
+        /// ------------------------------------------------------------
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [

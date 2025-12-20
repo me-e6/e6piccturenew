@@ -5,6 +5,10 @@ import 'follow_list_controller.dart';
 import '../profile/profile_screen.dart';
 import '../../core/widgets/list_skeleton.dart';
 
+import '../follow/mutual_controller.dart';
+import '../profile/profile_controller.dart';
+import '../follow/follow_controller.dart';
+
 /// ---------------------------------------------------------------------------
 /// FOLLOWERS LIST SCREEN (API-AWARE, CONTROLLER-DRIVEN)
 /// ---------------------------------------------------------------------------
@@ -67,10 +71,31 @@ class _FollowersListBody extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => ProfileScreen(userId: user.uid),
+                builder: (_) => MultiProvider(
+                  providers: [
+                    ChangeNotifierProvider(
+                      create: (_) => ProfileController()..loadProfile(user.uid),
+                    ),
+                    ChangeNotifierProvider(
+                      create: (_) => MutualController()..loadMutuals(user.uid),
+                    ),
+                    ChangeNotifierProvider(
+                      create: (_) => FollowController()..load(user.uid),
+                    ),
+                  ],
+                  child: ProfileScreen(userId: user.uid),
+                ),
               ),
             );
           },
+          /*  onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ProfileScreen(userId: user.uid),
+              ),
+            );
+          }, */
         );
       },
     );

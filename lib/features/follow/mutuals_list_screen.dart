@@ -248,11 +248,12 @@ class _UserRowSkeleton extends StatelessWidget {
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import '../follow/mutual_controller.dart';
+import '../profile/profile_controller.dart';
+import '../follow/follow_controller.dart';
 import '../profile/profile_screen.dart';
 import '../profile/profile_service.dart';
 import '../profile/user_model.dart';
-import 'mutual_controller.dart';
 import 'widgets/user_list_row.dart';
 
 /// ---------------------------------------------------------------------------
@@ -343,10 +344,32 @@ class _MutualUserTile extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => ProfileScreen(userId: user.uid),
+                builder: (_) => MultiProvider(
+                  providers: [
+                    ChangeNotifierProvider(
+                      create: (_) => ProfileController()..loadProfile(user.uid),
+                    ),
+                    ChangeNotifierProvider(
+                      create: (_) => MutualController()..loadMutuals(user.uid),
+                    ),
+                    ChangeNotifierProvider(
+                      create: (_) => FollowController()..load(user.uid),
+                    ),
+                  ],
+                  child: ProfileScreen(userId: user.uid),
+                ),
               ),
             );
           },
+
+          /* onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ProfileScreen(userId: user.uid),
+              ),
+            );
+          }, */
         );
       },
     );

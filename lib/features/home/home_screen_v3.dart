@@ -8,6 +8,9 @@ import '../feed/day_album_viewer_screen.dart';
 import '../follow/follow_controller.dart';
 import '../profile/profile_screen.dart';
 import '../user/user_avatar_controller.dart';
+import '../follow/mutual_controller.dart';
+import '../profile/profile_controller.dart';
+import '../follow/follow_controller.dart';
 
 /// ---------------------------------------------------------------------------
 /// HOME SCREEN V3
@@ -321,14 +324,39 @@ class _PostHeader extends StatelessWidget {
             Expanded(
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
+
                 onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => MultiProvider(
+                        providers: [
+                          ChangeNotifierProvider(
+                            create: (_) =>
+                                ProfileController()..loadProfile(post.authorId),
+                          ),
+                          ChangeNotifierProvider(
+                            create: (_) =>
+                                MutualController()..loadMutuals(post.authorId),
+                          ),
+                          ChangeNotifierProvider(
+                            create: (_) =>
+                                FollowController()..load(post.authorId),
+                          ),
+                        ],
+                        child: ProfileScreen(userId: post.authorId),
+                      ),
+                    ),
+                  );
+                },
+                /* onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => ProfileScreen(userId: post.authorId),
                     ),
                   );
-                },
+                }, */
                 child: Row(
                   children: [
                     /// 👇 AVATAR (THIS IS WHERE YOUR LINE BELONGS)

@@ -2,11 +2,22 @@
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+/// ------------------------------------------------------------
+/// VIDEO DP VIEWER (UI ONLY)
+/// ------------------------------------------------------------
+import 'video_dp_viewer_screen.dart';
+
+/// ------------------------------------------------------------
+/// FOLLOW / MUTUALS FEATURES
+/// ------------------------------------------------------------
 import 'package:e6piccturenew/features/follow/mutuals_list_screen.dart';
 import 'package:e6piccturenew/features/follow/mutual_controller.dart';
 import '../../features/follow/following_list_screen.dart';
 import '../../features/follow/follower_list_screen.dart';
 
+/// ------------------------------------------------------------
+/// PROFILE FEATURE
+/// ------------------------------------------------------------
 import 'profile_controller.dart';
 import 'widgets/profile_identity_banner.dart';
 import 'widgets/profile_tabs_bar.dart';
@@ -15,7 +26,12 @@ import '../follow/follow_controller.dart';
 import 'edit_profile_screen.dart';
 
 /// ---------------------------------------------------------------------------
-/// PROFILE SCREEN (API-AWARE, CONTROLLER-DRIVEN)
+/// PROFILE SCREEN
+///
+/// • Pure UI
+/// • Controller-driven
+/// • No business logic
+/// • Ownership derived from FirebaseAuth
 /// ---------------------------------------------------------------------------
 class ProfileScreen extends StatelessWidget {
   final String userId;
@@ -29,22 +45,30 @@ class ProfileScreen extends StatelessWidget {
 
     return MultiProvider(
       providers: [
+        /// Main profile controller
         ChangeNotifierProvider(
           create: (_) => ProfileController()..loadProfile(userId),
         ),
+
+        /// Mutual graph
         ChangeNotifierProvider(
           create: (_) => MutualController()..loadMutuals(userId),
         ),
+
+        /// Follow controller (external profiles only)
         if (!isOwner)
           ChangeNotifierProvider(
             create: (_) => FollowController()..load(userId),
           ),
-      ],
+      ],/*  */
       child: const _ProfileScreenBody(),
     );
   }
 }
 
+/// ---------------------------------------------------------------------------
+/// PROFILE SCREEN BODY
+/// ---------------------------------------------------------------------------
 class _ProfileScreenBody extends StatelessWidget {
   const _ProfileScreenBody();
 
@@ -59,33 +83,12 @@ class _ProfileScreenBody extends StatelessWidget {
     }
 
     final user = profile.user!;
-    final currentUid = FirebaseAuth.instance.currentUser?.uid;
-    final isOwner = currentUid == user.uid;
-
+    final isOwner = profile.isOwner;
     final follow = !isOwner ? context.watch<FollowController>() : null;
     final mutuals = context.watch<MutualController>();
 
-    /// ------------------------------------------------------------
-    /// CONTROLLER → UI NAVIGATION WIRING (ONCE)
-    /// ------------------------------------------------------------
-    profile.onEditProfileRequested ??= () {
-   //  onEditProfile:
-      isOwner
-          ? () {
-              final profile = context.read<ProfileController>();
-
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ChangeNotifierProvider.value(
-                    value: profile,
-                    child: const EditProfileScreen(),
-                  ),
-                ),
-              );
-            }
-          : null;
-    };
+    final bool hasVideoDp =
+        user.videoDpUrl != null && user.videoDpUrl!.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile'), centerTitle: true),
@@ -96,36 +99,80 @@ class _ProfileScreenBody extends StatelessWidget {
             const SizedBox(height: 16),
 
             /// ------------------------------------------------------------
-            /// PROFILE IDENTITY BANNER (FINAL)
+            /// PROFILE IDENTITY BANNER
             /// ------------------------------------------------------------
             ProfileIdentityBanner(
               displayName: user.displayName,
               handle: user.handle,
               avatarUrl: user.profileImageUrl,
-              isVerified: user.isVerified,
-              hasVideoDp: false, // future-safe
+              bannerUrl: user.profileBannerUrl,
               bio: user.bio,
 
-              /// Ownership
-              isOwner: isOwner,
+              /// Verification
+              isVerified: user.isVerified,
 
-              /// Follow state (external only)
+              /// Video DP
+              hasVideoDp: hasVideoDp,
+              isUpdatingVideoDp: profile.isUpdatingVideoDp,
+
+              /// Ownership / follow
+              isOwner: isOwner,
               isFollowing: follow?.isFollowing ?? false,
 
-              /// Avatar / banner update
+              /// Loading flags
               isUpdatingAvatar: profile.isUpdatingPhoto,
               isUpdatingBanner: profile.isUpdatingBanner,
-              onEditAvatar: isOwner ? profile.updatePhoto : null,
 
-              /// Actions
-              onEditProfile: isOwner ? profile.requestEditProfile : null,
-              onFollowToggle: !isOwner ? profile.toggleFollow : null,
+              /// Avatar / banner actions
+              onEditAvatar: isOwner ? () => profile.updatePhoto(context) : null,
+
+              onEditBanner: isOwner
+                  ? () => profile.updateBanner(context)
+                  : null,
+
+              /// Video DP interactions
+              onVideoDpTap: hasVideoDp
+                  ? () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              VideoDpViewerScreen(videoUrl: user.videoDpUrl!),
+                        ),
+                      );
+                    }
+                  : null,
+
+              onEditVideoDp: isOwner
+                  ? () => profile.showVideoDpActions(context)
+                  : null,
+
+              onReplaceVideo: () => profile.replaceVideoDp(context),
+              onDeleteVideo: () => profile.deleteVideoDp(context),
+
+              /// Profile actions
+              onEditProfile: isOwner
+                  ? () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChangeNotifierProvider.value(
+                            value: profile,
+                            child: const EditProfileScreen(),
+                          ),
+                        ),
+                      );
+                    }
+                  : null,
+
+              //   onFollowToggle: !isOwner ? profile.toggleFollow : null,
+              onFollowToggle: () => profile.toggleFollow(),
             ),
 
             const SizedBox(height: 24),
 
             /// ------------------------------------------------------------
-            /// STATS ROW
+            /// PROFILE STATS
             /// ------------------------------------------------------------
             _ProfileStatsRow(
               posts: profile.posts.length,
@@ -161,7 +208,7 @@ class _ProfileScreenBody extends StatelessWidget {
             const SizedBox(height: 24),
 
             /// ------------------------------------------------------------
-            /// TABS
+            /// PROFILE CONTENT
             /// ------------------------------------------------------------
             const ProfileTabsBar(),
             const SizedBox(height: 12),
@@ -174,7 +221,7 @@ class _ProfileScreenBody extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------------------------
-/// PROFILE STATS ROW
+/// PROFILE STATS ROW (UI-ONLY)
 /// ---------------------------------------------------------------------------
 class _ProfileStatsRow extends StatelessWidget {
   final int posts;
@@ -233,13 +280,23 @@ class _ProfileStatsRow extends StatelessWidget {
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
+/// ------------------------------------------------------------
+/// VIDEO DP VIEWER (UI ONLY)
+/// ------------------------------------------------------------
+import 'video_dp_viewer_screen.dart';
+
+/// ------------------------------------------------------------
+/// FOLLOW / MUTUALS FEATURES
+/// ------------------------------------------------------------
 import 'package:e6piccturenew/features/follow/mutuals_list_screen.dart';
 import 'package:e6piccturenew/features/follow/mutual_controller.dart';
 import '../../features/follow/following_list_screen.dart';
 import '../../features/follow/follower_list_screen.dart';
 
+/// ------------------------------------------------------------
+/// PROFILE FEATURE
+/// ------------------------------------------------------------
 import 'profile_controller.dart';
 import 'widgets/profile_identity_banner.dart';
 import 'widgets/profile_tabs_bar.dart';
@@ -248,7 +305,11 @@ import '../follow/follow_controller.dart';
 import 'edit_profile_screen.dart';
 
 /// ---------------------------------------------------------------------------
-/// PROFILE SCREEN (API-AWARE, CONTROLLER-DRIVEN)
+/// PROFILE SCREEN
+///
+/// ✅ UI ONLY
+/// ❌ NO providers created here
+/// ❌ NO controller lifecycle here
 /// ---------------------------------------------------------------------------
 class ProfileScreen extends StatelessWidget {
   final String userId;
@@ -257,33 +318,21 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentUid = FirebaseAuth.instance.currentUser?.uid;
-    final isOwner = currentUid == userId;
-
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(
-          create: (_) => ProfileController()..loadProfile(userId),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => MutualController()..loadMutuals(userId),
-        ),
-        if (!isOwner)
-          ChangeNotifierProvider(
-            create: (_) => FollowController()..load(userId),
-          ),
-      ],
-      child: const _ProfileScreenBody(),
-    );
+    return const _ProfileScreenBody();
   }
 }
 
+/// ---------------------------------------------------------------------------
+/// PROFILE SCREEN BODY
+/// ---------------------------------------------------------------------------
 class _ProfileScreenBody extends StatelessWidget {
   const _ProfileScreenBody();
 
   @override
   Widget build(BuildContext context) {
     final profile = context.watch<ProfileController>();
+    final mutuals = context.watch<MutualController>();
+    final follow = context.watch<FollowController>();
 
     if (profile.isLoading || profile.user == null) {
       return const Scaffold(
@@ -294,8 +343,8 @@ class _ProfileScreenBody extends StatelessWidget {
     final user = profile.user!;
     final isOwner = profile.isOwner;
 
-    final follow = !isOwner ? context.watch<FollowController>() : null;
-    final mutuals = context.watch<MutualController>();
+    final bool hasVideoDp =
+        user.videoDpUrl != null && user.videoDpUrl!.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile'), centerTitle: true),
@@ -312,17 +361,55 @@ class _ProfileScreenBody extends StatelessWidget {
               displayName: user.displayName,
               handle: user.handle,
               avatarUrl: user.profileImageUrl,
-              isVerified: user.isVerified,
-              hasVideoDp: false,
+              bannerUrl: user.profileBannerUrl,
               bio: user.bio,
 
+              /// Verification
+              isVerified: user.isVerified,
+
+              /// Video DP
+              hasVideoDp: hasVideoDp,
+              isUpdatingVideoDp: profile.isUpdatingVideoDp,
+
+              /// Ownership / follow
               isOwner: isOwner,
               isFollowing: follow?.isFollowing ?? false,
 
+              /// Loading flags
               isUpdatingAvatar: profile.isUpdatingPhoto,
               isUpdatingBanner: profile.isUpdatingBanner,
-              onEditAvatar: isOwner ? profile.updatePhoto : null,
 
+              /// Avatar / banner actions
+              /// Avatar / banner actions
+              onEditAvatar: isOwner ? () => profile.updatePhoto(context) : null,
+
+              onEditBanner: isOwner
+                  ? () => profile.updateBanner(context)
+                  : null,
+              /*   onEditAvatar: isOwner ? profile.updatePhoto : null,
+              onEditBanner: isOwner ? profile.updateBanner : null,
+              */
+              /// Video DP interactions
+              onVideoDpTap: hasVideoDp
+                  ? () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              VideoDpViewerScreen(videoUrl: user.videoDpUrl!),
+                        ),
+                      );
+                    }
+                  : null,
+
+              onEditVideoDp: isOwner
+                  ? () => profile.showVideoDpActions(context)
+                  : null,
+
+              onReplaceVideo: () => profile.replaceVideoDp(context),
+              onDeleteVideo: () => profile.deleteVideoDp(context),
+
+              /// Profile edit
               onEditProfile: isOwner
                   ? () {
                       Navigator.push(
@@ -337,13 +424,14 @@ class _ProfileScreenBody extends StatelessWidget {
                     }
                   : null,
 
+              /// Follow / unfollow
               onFollowToggle: !isOwner ? profile.toggleFollow : null,
             ),
 
             const SizedBox(height: 24),
 
             /// ------------------------------------------------------------
-            /// STATS ROW
+            /// PROFILE STATS
             /// ------------------------------------------------------------
             _ProfileStatsRow(
               posts: profile.posts.length,
@@ -379,7 +467,7 @@ class _ProfileScreenBody extends StatelessWidget {
             const SizedBox(height: 24),
 
             /// ------------------------------------------------------------
-            /// TABS
+            /// PROFILE CONTENT
             /// ------------------------------------------------------------
             const ProfileTabsBar(),
             const SizedBox(height: 12),
@@ -392,7 +480,7 @@ class _ProfileScreenBody extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------------------------
-/// PROFILE STATS ROW
+/// PROFILE STATS ROW (UI-ONLY)
 /// ---------------------------------------------------------------------------
 class _ProfileStatsRow extends StatelessWidget {
   final int posts;

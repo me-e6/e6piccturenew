@@ -44,7 +44,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     setState(() {}); // 🔥 THIS WAS MISSING
   }
 
-  bool _hasChanges() {
+  bool _hasChanges(ProfileController profile) {
     return _displayNameController.text.trim() != _initialDisplayName ||
         _bioController.text.trim() != _initialBio;
   }
@@ -66,15 +66,30 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         title: const Text('Edit Profile'),
         actions: [
           TextButton(
-            onPressed: _hasChanges()
+            onPressed: _hasChanges(profile)
                 ? () async {
                     await profile.saveProfile(
+                      context: context,
                       displayName: _displayNameController.text.trim(),
                       bio: _bioController.text.trim(),
                     );
-                    if (mounted) Navigator.pop(context);
+
+                    if (!mounted) return;
+                    Navigator.pop(context);
                   }
                 : null,
+
+            /* onPressed: _hasChanges()
+                ? () async {
+                    await profile.saveProfile(
+                      context: context,
+                      displayName: _displayNameController.text.trim(),
+                      bio: _bioController.text.trim(),
+                    );
+
+                    if (mounted) Navigator.pop(context);
+                  }
+                : null, */
             child: const Text('Save'),
           ),
         ],
@@ -86,7 +101,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           children: [
             /// BANNER
             GestureDetector(
-              onTap: profile.isUpdatingBanner ? null : profile.updateBanner,
+              onTap: profile.isUpdatingBanner
+                  ? null
+                  : () => profile.updateBanner(context),
+
               child: Container(
                 height: 140,
                 width: double.infinity,

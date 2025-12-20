@@ -1,5 +1,5 @@
 import 'dart:io';
-
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
@@ -104,6 +104,67 @@ class ProfileService {
     return url;
   }
 
+  /// ------------------------------------------------------------
+  /// UPDATE VIDEO DP (≤20s)
+  /// ------------------------------------------------------------
+  /* 
+  Future<String?> updateVideoDp({
+    required String uid,
+    required File file,
+  }) async {
+    try {
+      final ref = _storage.ref().child('users/$uid/video_dp.mp4');
+
+      await ref.putFile(file);
+
+      final url = await ref.getDownloadURL();
+
+      await _firestore.collection('users').doc(uid).update({
+        'videoDpUrl': url,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      return url;
+    } catch (e) {
+      debugPrint('updateVideoDp failed: $e');
+      return null;
+    }
+  }
+ */
+
+  // ------------------------------------------------------------
+  // VIDEO DP — REPLACE (overwrite same path)
+  // ------------------------------------------------------------
+  Future<String> uploadVideoDp({
+    required String uid,
+    required File file,
+  }) async {
+    final ref = _storage.ref('users/$uid/video_dp.mp4');
+
+    await ref.putFile(file);
+
+    final url = await ref.getDownloadURL();
+
+    await _firestore.collection('users').doc(uid).update({'videoDpUrl': url});
+
+    return url;
+  }
+
+  // ------------------------------------------------------------
+  // VIDEO DP — DELETE
+  // ------------------------------------------------------------
+  Future<void> deleteVideoDp(String uid) async {
+    final ref = _storage.ref('users/$uid/video_dp.mp4');
+
+    try {
+      await ref.delete();
+    } catch (_) {
+      // file may not exist — ignore
+    }
+
+    await _firestore.collection('users').doc(uid).update({'videoDpUrl': null});
+  }
+
   // --------------------------------------------------
   // 🔐 ADMIN — TOGGLE GAZETTER (VERIFIED)
   // --------------------------------------------------
@@ -131,10 +192,10 @@ class ProfileService {
         .child('banner.jpg');
 
     await ref.putFile(file, SettableMetadata(contentType: 'image/jpeg'));
-    final url = await ref.getDownloadURL();
+    final bannerurl = await ref.getDownloadURL();
 
     await _firestore.collection('users').doc(uid).update({
-      'profileBannerUrl': url,
+      'profileBannerUrl': bannerurl,
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
@@ -142,7 +203,7 @@ class ProfileService {
     //  -Update Profile Details
     // --------------------------------------------------
 
-    return url;
+    return bannerurl;
   }
 
   // --------------------------------------------------

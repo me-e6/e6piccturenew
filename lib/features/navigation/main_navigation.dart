@@ -8,6 +8,8 @@ import '../post/create/media_picker_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../profile/profile_screen.dart';
 import '../profile/profile_controller.dart';
+import '.././follow/mutual_controller.dart';
+import '.././follow/follow_controller.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -119,8 +121,22 @@ class _MainNavigationState extends State<MainNavigation>
         final uid = FirebaseAuth.instance.currentUser?.uid;
         if (uid == null) return const SizedBox.shrink();
 
-        return ChangeNotifierProvider(
+        /* return ChangeNotifierProvider(
           create: (_) => ProfileController(),
+          child: ProfileScreen(userId: uid),
+        ); */
+        return MultiProvider(
+          providers: [
+            ChangeNotifierProvider(
+              create: (_) => ProfileController()..loadProfile(uid),
+            ),
+            ChangeNotifierProvider(
+              create: (_) => MutualController()..loadMutuals(uid),
+            ),
+            ChangeNotifierProvider(
+              create: (_) => FollowController()..load(uid),
+            ),
+          ],
           child: ProfileScreen(userId: uid),
         );
 

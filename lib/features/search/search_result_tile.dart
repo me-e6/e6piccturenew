@@ -3,6 +3,10 @@ import '.././profile/user_model.dart';
 import '.././post/create/post_model.dart';
 import '.././post/details/post_details_screen.dart';
 import '.././profile/profile_screen.dart';
+import '../follow/mutual_controller.dart';
+import '../profile/profile_controller.dart';
+import '../follow/follow_controller.dart';
+import 'package:provider/provider.dart';
 
 class SearchResultTile extends StatelessWidget {
   final UserModel? user;
@@ -22,10 +26,31 @@ class SearchResultTile extends StatelessWidget {
         ),
         title: Text(user!.displayName),
         subtitle: Text(user!.type),
-        onTap: () => Navigator.push(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MultiProvider(
+                providers: [
+                  ChangeNotifierProvider(
+                    create: (_) => ProfileController()..loadProfile(user!.uid),
+                  ),
+                  ChangeNotifierProvider(
+                    create: (_) => MutualController()..loadMutuals(user!.uid),
+                  ),
+                  ChangeNotifierProvider(
+                    create: (_) => FollowController()..load(user!.uid),
+                  ),
+                ],
+                child: ProfileScreen(userId: user!.uid),
+              ),
+            ),
+          );
+        },
+        /*  onTap: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => ProfileScreen(userId: user!.uid)),
-        ),
+        ), */
       );
     }
 
