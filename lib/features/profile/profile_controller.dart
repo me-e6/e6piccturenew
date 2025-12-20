@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -31,6 +30,7 @@ class ProfileController extends ChangeNotifier {
   // ------------------------------------------------------------
   bool isLoading = true;
   bool isUpdatingPhoto = false;
+  bool isUpdatingBanner = false;
 
   /// Viewed profile
   UserModel? user;
@@ -55,6 +55,15 @@ class ProfileController extends ChangeNotifier {
   int selectedTab = 0;
 
   // ------------------------------------------------------------
+  // OWNERSHIP (CANONICAL)
+  // ------------------------------------------------------------
+  bool get isOwner {
+    final currentUid = _auth.currentUser?.uid;
+    if (currentUid == null || user == null) return false;
+    return currentUid == user!.uid;
+  }
+
+  // ------------------------------------------------------------
   // LOAD PROFILE
   // ------------------------------------------------------------
   Future<void> loadProfile(String uid) async {
@@ -64,24 +73,15 @@ class ProfileController extends ChangeNotifier {
     try {
       final currentUid = _auth.currentUser?.uid;
 
-      // ------------------------
-      // USERS
-      // ------------------------
       user = await _profileService.getUser(uid);
 
       if (currentUid != null) {
         currentUser = await _profileService.getUser(currentUid);
       }
 
-      if (user == null) {
-        isLoading = false;
-        notifyListeners();
-        return;
-      }
+      if (user == null) return;
 
-      // ------------------------
-      // FOLLOW STATE
-      // ------------------------
+      // Follow state
       if (currentUid != null && currentUid != uid) {
         _isFollowing = await _followService.isFollowing(
           currentUid: currentUid,
@@ -91,15 +91,11 @@ class ProfileController extends ChangeNotifier {
         _isFollowing = false;
       }
 
-      // ------------------------
-      // FOLLOW COUNTS
-      // ------------------------
+      // Counts
       followersCount = await _followService.getFollowersCount(uid);
       followingCount = await _followService.getFollowingCount(uid);
 
-      // ------------------------
-      // CONTENT
-      // ------------------------
+      // Content
       userPosts = await _profileService.getUserPosts(uid);
       reposts = await _profileService.getUserReposts(uid);
 
@@ -119,13 +115,13 @@ class ProfileController extends ChangeNotifier {
   }
 
   // ------------------------------------------------------------
-  // UPDATE PROFILE PHOTO (DP)
+  // UPDATE PROFILE PHOTO
   // ------------------------------------------------------------
   Future<void> updatePhoto() async {
-    if (isUpdatingPhoto || user == null) return;
+    if (isUpdatingPhoto || !isOwner) return;
 
     final uid = _auth.currentUser?.uid;
-    if (uid == null || uid != user!.uid) return;
+    if (uid == null) return;
 
     try {
       final picked = await _picker.pickImage(source: ImageSource.gallery);
@@ -141,8 +137,14 @@ class ProfileController extends ChangeNotifier {
       );
 
       if (url != null) {
-        user = user!.copyWith(profileImageUrl: url);
-        currentUser = currentUser?.copyWith(profileImageUrl: url);
+        user = user!.copyWith(
+          displayName: user!.displayName,
+          profileImageUrl: url,
+        );
+        currentUser = currentUser?.copyWith(
+          displayName: currentUser!.displayName,
+          profileImageUrl: url,
+        );
       }
     } finally {
       isUpdatingPhoto = false;
@@ -151,13 +153,47 @@ class ProfileController extends ChangeNotifier {
   }
 
   // ------------------------------------------------------------
+  // UPDATE PROFILE BANNER
+  // ------------------------------------------------------------
+  Future<void> updateBanner() async {
+    if (isUpdatingBanner || !isOwner) return;
+
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+
+    try {
+      final picked = await _picker.pickImage(source: ImageSource.gallery);
+      if (picked == null) return;
+
+      isUpdatingBanner = true;
+      notifyListeners();
+
+      final file = File(picked.path);
+      final url = await _profileService.updateProfileBanner(
+        uid: uid,
+        file: file,
+      );
+
+      if (url != null) {
+        user = user!.copyWith(
+          displayName: user!.displayName,
+          profileBannerUrl: url,
+        );
+      }
+    } finally {
+      isUpdatingBanner = false;
+      notifyListeners();
+    }
+  }
+
+  // ------------------------------------------------------------
   // FOLLOW / UNFOLLOW
   // ------------------------------------------------------------
   Future<void> toggleFollow() async {
-    if (user == null) return;
+    if (user == null || isOwner) return;
 
     final currentUid = _auth.currentUser?.uid;
-    if (currentUid == null || currentUid == user!.uid) return;
+    if (currentUid == null) return;
 
     if (_isFollowing) {
       await _followService.unfollow(
@@ -176,7 +212,27 @@ class ProfileController extends ChangeNotifier {
   }
 
   // ------------------------------------------------------------
-  // UI STATE
+  // SAVE PROFILE DETAILS
+  // ------------------------------------------------------------
+  Future<void> saveProfile({
+    required String displayName,
+    required String bio,
+  }) async {
+    if (!isOwner) return;
+
+    await _profileService.updateProfileDetails(
+      uid: user!.uid,
+      displayName: displayName,
+      bio: bio,
+    );
+
+    user = user!.copyWith(displayName: displayName, bio: bio);
+
+    notifyListeners();
+  }
+
+  // ------------------------------------------------------------
+  // UI HELPERS
   // ------------------------------------------------------------
   void setTab(int index) {
     if (selectedTab == index) return;
@@ -184,70 +240,12 @@ class ProfileController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ------------------------------------------------------------
-  // ADMIN / VERIFICATION
-  // ------------------------------------------------------------
-  bool get isAdminViewing {
-    if (currentUser == null || user == null) return false;
-    return currentUser!.isAdmin && currentUser!.uid != user!.uid;
-  }
-  // ------------------------------------------------------------
-  // VERIFICATION
-  // ------------------------------------------------------------
-
-  Future<void> toggleGazetterStatus() async {
-    if (user == null) return;
-
-    final newValue = !user!.isVerified;
-
-    await _profileService.toggleGazetter(
-      targetUid: user!.uid,
-      makeVerified: newValue,
-    );
-
-    user = user!.copyWith(
-      isVerified: newValue,
-      verifiedLabel: newValue ? 'Gazetter' : '',
-    );
-
-    notifyListeners();
-  }
-
-  // ------------------------------------------------------------
-  // READ-ONLY ALIASES (UI SAFE)
-  // ------------------------------------------------------------
   List<PostModel> get posts => userPosts;
   List<PostModel> get saved => savedPosts;
 
-  int get postCount => userPosts.length;
-  int get repostCount => reposts.length;
-
-  // ------------------------------------------------------------
-  // IMPACT POSTS (CLIENT-DERIVED, API-AWARE)
-  // ------------------------------------------------------------
-  /// TEMP logic:
-  /// A post is "Impact" if it crosses engagement threshold.
-  /// Backend will own this later.
-  List<PostModel> get impactPosts {
-    return userPosts.where((post) {
-      return post.likeCount >= 50 ||
-          post.replyCount >= 10 ||
-          post.quoteReplyCount >= 5;
-    }).toList();
-  }
-
-  // ------------------------------------------------------------
-  // EDIT PROFILE (STUB — FUTURE)
-  // ------------------------------------------------------------
-  void editProfile() {
-    // TODO: Navigate to Edit Profile screen
-  }
-
-  // ------------------------------------------------------------
-  // LIFECYCLE
-  // ------------------------------------------------------------
-  @override
-  void dispose() {
-    super.dispose();
-  }
+  List<PostModel> get impactPosts => userPosts.where((post) {
+    return post.likeCount >= 50 ||
+        post.replyCount >= 10 ||
+        post.quoteReplyCount >= 5;
+  }).toList();
 }

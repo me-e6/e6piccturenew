@@ -22,6 +22,8 @@ class UserModel {
   final String? videoDpUrl;
   final String? videoDpThumbUrl;
   final String bio;
+  final String? profileBannerUrl; // ✅ NEW
+
   // ------------------------------------------------------------
   // UI ALIAS (CANONICAL HANDLE)
   // ------------------------------------------------------------
@@ -60,6 +62,7 @@ class UserModel {
     required this.displayName,
     required this.photoUrl,
     required this.profileImageUrl,
+    required this.profileBannerUrl,
     required this.bio,
     required this.role,
     required this.type,
@@ -98,6 +101,7 @@ class UserModel {
       displayName: data['displayName'] ?? '',
       photoUrl: data['photoUrl'] ?? '',
       profileImageUrl: data['profileImageUrl'],
+      profileBannerUrl: data['profileBannerUrl'],
       videoDpUrl: data['videoDpUrl'],
       videoDpThumbUrl: data['videoDpThumbUrl'],
       bio: data['bio'] ?? '',
@@ -123,18 +127,21 @@ class UserModel {
     String? photoUrl,
     String? videoDpUrl,
     String? profileImageUrl,
+    String? profileBannerUrl,
     String? videoDpThumbUrl,
     String? bio,
     bool? isVerified,
     String? verifiedLabel,
+    String? displayName,
   }) {
     return UserModel(
       uid: uid,
       email: email,
       username: username,
-      displayName: displayName,
+      displayName: displayName ?? this.displayName,
       photoUrl: photoUrl ?? this.photoUrl,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
+      profileBannerUrl: profileBannerUrl ?? this.profileBannerUrl,
       videoDpUrl: videoDpUrl ?? this.videoDpUrl,
       videoDpThumbUrl: videoDpThumbUrl ?? this.videoDpThumbUrl,
       bio: bio ?? this.bio,

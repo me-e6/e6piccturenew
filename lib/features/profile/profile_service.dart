@@ -116,4 +116,47 @@ class ProfileService {
       'verifiedLabel': makeVerified ? 'Gazetter' : '',
     });
   }
+
+  // --------------------------------------------------
+  //  Profiel Identity Banner
+  // --------------------------------------------------
+  Future<String?> updateProfileBanner({
+    required String uid,
+    required File file,
+  }) async {
+    final ref = _storage
+        .ref()
+        .child('profile_banners')
+        .child(uid)
+        .child('banner.jpg');
+
+    await ref.putFile(file, SettableMetadata(contentType: 'image/jpeg'));
+    final url = await ref.getDownloadURL();
+
+    await _firestore.collection('users').doc(uid).update({
+      'profileBannerUrl': url,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    //--------------------------------------------------
+    //  -Update Profile Details
+    // --------------------------------------------------
+
+    return url;
+  }
+
+  // --------------------------------------------------
+  // UPDATE PROFILE DETAILS (EDIT PROFILE)
+  // --------------------------------------------------
+  Future<void> updateProfileDetails({
+    required String uid,
+    required String displayName,
+    required String bio,
+  }) async {
+    await _firestore.collection('users').doc(uid).update({
+      'displayName': displayName,
+      'bio': bio,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
 }
