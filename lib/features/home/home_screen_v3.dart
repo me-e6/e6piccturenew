@@ -10,7 +10,8 @@ import '../profile/profile_screen.dart';
 import '../user/user_avatar_controller.dart';
 import '../follow/mutual_controller.dart';
 import '../profile/profile_controller.dart';
-import '../follow/follow_controller.dart';
+import '../search/search_screen.dart';
+import '../search/search_controllers.dart';
 
 /// ---------------------------------------------------------------------------
 /// HOME SCREEN V3
@@ -24,7 +25,7 @@ class HomeScreenV3 extends StatelessWidget {
     final state = feed.state;
 
     return Scaffold(
-      appBar: _buildAppBar(),
+      appBar: _buildAppBar(context),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: feed.refresh,
@@ -55,7 +56,7 @@ class HomeScreenV3 extends StatelessWidget {
     );
   }
 
-  AppBar _buildAppBar() {
+  AppBar _buildAppBar(BuildContext context) {
     return AppBar(
       elevation: 0,
       leading: IconButton(icon: const Icon(Icons.menu), onPressed: () {}),
@@ -65,7 +66,10 @@ class HomeScreenV3 extends StatelessWidget {
       ),
       centerTitle: true,
       actions: [
-        IconButton(icon: const Icon(Icons.search), onPressed: () {}),
+        IconButton(
+          icon: const Icon(Icons.search),
+          onPressed: () => openSearch(context),
+        ),
         IconButton(icon: const Icon(Icons.more_horiz), onPressed: () {}),
       ],
     );
@@ -349,17 +353,10 @@ class _PostHeader extends StatelessWidget {
                     ),
                   );
                 },
-                /* onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ProfileScreen(userId: post.authorId),
-                    ),
-                  );
-                }, */
+
                 child: Row(
                   children: [
-                    /// 👇 AVATAR (THIS IS WHERE YOUR LINE BELONGS)
+                    /// AVATAR
                     ChangeNotifierProvider(
                       create: (_) => UserAvatarController(post.authorId),
                       child: Consumer<UserAvatarController>(
@@ -491,7 +488,7 @@ class _ImageDots extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------------------------
-/// ENGAGEMENT BAR (UNCHANGED)
+/// ENGAGEMENT BAR
 /// ---------------------------------------------------------------------------
 class _EngagementBar extends StatelessWidget {
   final PostModel post;
@@ -602,4 +599,24 @@ String resolvePostAuthorLabel({
     return 'You';
   }
   return post.authorName;
+}
+
+void openSearch(BuildContext context) {
+  final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+  if (currentUserId != null) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => SearchControllers()),
+            ChangeNotifierProvider(create: (_) => ProfileController()),
+            ChangeNotifierProvider(create: (_) => MutualController()),
+            ChangeNotifierProvider(create: (_) => FollowController()),
+          ],
+          child: const SearchScreen(),
+        ),
+      ),
+    );
+  }
 }

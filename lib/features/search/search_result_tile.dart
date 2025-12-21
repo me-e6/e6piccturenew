@@ -1,76 +1,61 @@
 import 'package:flutter/material.dart';
-import '.././profile/user_model.dart';
-import '.././post/create/post_model.dart';
-import '.././post/details/post_details_screen.dart';
-import '.././profile/profile_screen.dart';
-import '../follow/mutual_controller.dart';
-import '../profile/profile_controller.dart';
-import '../follow/follow_controller.dart';
 import 'package:provider/provider.dart';
 
-class SearchResultTile extends StatelessWidget {
-  final UserModel? user;
-  final PostModel? post;
+import '../profile/user_model.dart';
+import '../profile/profile_screen.dart';
+import '../profile/profile_controller.dart';
+import '../follow/follow_controller.dart';
+import '../follow/mutual_controller.dart';
 
-  const SearchResultTile({super.key, this.user, this.post});
+class SearchResultTile extends StatelessWidget {
+  final UserModel user;
+
+  const SearchResultTile({super.key, required this.user});
 
   @override
   Widget build(BuildContext context) {
-    if (user != null) {
-      return ListTile(
-        leading: CircleAvatar(
-          backgroundImage: user!.photoUrl.isNotEmpty
-              ? NetworkImage(user!.photoUrl)
-              : const AssetImage("assets/profile_placeholder.png")
-                    as ImageProvider,
-        ),
-        title: Text(user!.displayName),
-        subtitle: Text(user!.type),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => MultiProvider(
-                providers: [
-                  ChangeNotifierProvider(
-                    create: (_) => ProfileController()..loadProfile(user!.uid),
-                  ),
-                  ChangeNotifierProvider(
-                    create: (_) => MutualController()..loadMutuals(user!.uid),
-                  ),
-                  ChangeNotifierProvider(
-                    create: (_) => FollowController()..load(user!.uid),
-                  ),
-                ],
-                child: ProfileScreen(userId: user!.uid),
-              ),
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundImage:
+            user.profileImageUrl != null && user.profileImageUrl!.isNotEmpty
+            ? NetworkImage(user.profileImageUrl!)
+            : null,
+        child: user.profileImageUrl == null || user.profileImageUrl!.isEmpty
+            ? const Icon(Icons.person)
+            : null,
+      ),
+      title: Text(
+        user.displayName,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text('@${user.handle}'),
+      trailing: user.hasMutual == true
+          ? const Text(
+              'Mutual',
+              style: TextStyle(color: Colors.green, fontSize: 12),
+            )
+          : null,
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MultiProvider(
+              providers: [
+                ChangeNotifierProvider(
+                  create: (_) => ProfileController()..loadProfile(user.uid),
+                ),
+                ChangeNotifierProvider(
+                  create: (_) => MutualController()..loadMutuals(user.uid),
+                ),
+                ChangeNotifierProvider(
+                  create: (_) => FollowController()..load(user.uid),
+                ),
+              ],
+              child: ProfileScreen(userId: user.uid),
             ),
-          );
-        },
-        /*  onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => ProfileScreen(userId: user!.uid)),
-        ), */
-      );
-    }
-
-    if (post != null) {
-      return GestureDetector(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => PostDetailsScreen(post: post!)),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.network(
-            post!.resolvedImages.first,
-            height: 140,
-            fit: BoxFit.cover,
           ),
-        ),
-      );
-    }
-
-    return const SizedBox.shrink();
+        );
+      },
+    );
   }
 }

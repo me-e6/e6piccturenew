@@ -14,7 +14,7 @@ class UserModel {
   final UserState state;
 
   final bool isVerified;
-  final String? jurisdictionId;
+  final String jurisdictionId;
 
   final int followersCount;
   final int followingCount;
@@ -35,6 +35,8 @@ class UserModel {
     required this.followingCount,
     required this.createdAt,
     required this.updatedAt,
+    required handle,
+    required hasMutual,
   });
 
   // --------------------------------------------------
@@ -71,6 +73,8 @@ class UserModel {
 
     return UserModel(
       uid: map['uid'],
+      handle: map['handle'],
+      hasMutual: map['hasMutual'],
       email: map['email'],
       displayName: map['displayName'] ?? '',
       photoUrl: map['photoUrl'],

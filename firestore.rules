@@ -2,37 +2,43 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // -------------------------
+    // -----------------------------
     // USERS
-    // -------------------------
+    // -----------------------------
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if true;
 
-      // FOLLOWERS SUBCOLLECTION
-      match /followers/{followerId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null;
-      }
+      allow create: if request.auth != null && request.auth.uid == userId;
 
-      // FOLLOWING SUBCOLLECTION
-      match /following/{followingId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null;
-        }
-      // Saved   
+      allow update: if request.auth != null && request.auth.uid == userId;
+
+      allow update: if request.auth != null &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['followersCount', 'followingCount', 'updatedAt']);
+    }
+
+    match /users/{userId}/followers/{followerId} {
+      allow read: if true;
+      allow create, delete: if request.auth != null && request.auth.uid == followerId;
+    }
+
+    match /users/{userId}/following/{followingId} {
+      allow read: if true;
+      allow create, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // -----------------------------
+    // POSTS  ✅ REQUIRED
+    // -----------------------------
+    match /posts/{postId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // Saved   
         match /saved/{docId} {
         allow read, write: if request.auth != null
                            && request.auth.uid == userId;
       }
-    }
-
-    // -------------------------
-    // POSTS
-    // -------------------------
-    match /posts/{postId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
   }
 }

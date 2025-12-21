@@ -8,8 +8,9 @@ import '../post/create/media_picker_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../profile/profile_screen.dart';
 import '../profile/profile_controller.dart';
-import '.././follow/mutual_controller.dart';
-import '.././follow/follow_controller.dart';
+import '../follow/mutual_controller.dart';
+import '../follow/follow_controller.dart';
+import 'package:image_picker/image_picker.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -55,6 +56,7 @@ class _MainNavigationState extends State<MainNavigation>
   @override
   void dispose() {
     _controller.dispose();
+    _dayFeedController.dispose();
     super.dispose();
   }
 
@@ -121,10 +123,6 @@ class _MainNavigationState extends State<MainNavigation>
         final uid = FirebaseAuth.instance.currentUser?.uid;
         if (uid == null) return const SizedBox.shrink();
 
-        /* return ChangeNotifierProvider(
-          create: (_) => ProfileController(),
-          child: ProfileScreen(userId: uid),
-        ); */
         return MultiProvider(
           providers: [
             ChangeNotifierProvider(
@@ -149,7 +147,6 @@ class _MainNavigationState extends State<MainNavigation>
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
       currentIndex: _currentIndex,
-      // 👇 ADD THESE TWO LINES
       showSelectedLabels: false,
       showUnselectedLabels: false,
       iconSize: 25,
@@ -164,29 +161,12 @@ class _MainNavigationState extends State<MainNavigation>
 
         _closePlus();
 
-        // PROFILE TAB (index = 4)
-        onTap:
-        (index) {
-          if (index == 2) {
-            _togglePlus();
-            return;
-          }
-
-          _closePlus();
-
-          setState(() {
-            _currentIndex = index;
-            _isProfileActive = index == 4;
-          });
-        };
-
         // NORMAL TABS
         setState(() {
           _currentIndex = index;
-          _isProfileActive = false;
+          _isProfileActive = index == 4;
         });
       },
-
       items: [
         const BottomNavigationBarItem(icon: Icon(Icons.home), label: ''),
         const BottomNavigationBarItem(icon: Icon(Icons.smart_toy), label: ''),
@@ -239,12 +219,7 @@ class _MainNavigationState extends State<MainNavigation>
                                 vertical: 8,
                               ),
                               decoration: BoxDecoration(
-                                color: Color.fromARGB(
-                                  221,
-                                  9,
-                                  41,
-                                  8,
-                                ), //heme.of(context).colorScheme.surface,
+                                color: const Color.fromARGB(221, 9, 41, 8),
                                 borderRadius: BorderRadius.circular(24),
                                 boxShadow: [
                                   BoxShadow(
@@ -280,7 +255,6 @@ class _MainNavigationState extends State<MainNavigation>
           ),
           label: '',
         ),
-
         const BottomNavigationBarItem(icon: Icon(Icons.photo), label: ''),
         BottomNavigationBarItem(
           icon: Icon(
@@ -296,41 +270,77 @@ class _MainNavigationState extends State<MainNavigation>
   }
 
   // ---------------------------------------------------------------------------
-  // PLUS ACTION HANDLERS
+  // PLUS ACTION HANDLERS (FIXED)
   // ---------------------------------------------------------------------------
 
   Future<void> _handleCamera() async {
     debugPrint('📸 Camera tapped');
     _closePlus();
 
-    final file = await _mediaPicker.pickFromCamera();
-    if (file == null) return;
-    if (!mounted) return;
+    try {
+      // Use the new pickImage method with camera source
+      final file = await _mediaPicker.pickImage(source: ImageSource.camera);
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => CreatePostScreen(files: [file])),
-    );
+      if (file == null) {
+        debugPrint('Camera cancelled or failed');
+        return;
+      }
+
+      if (!mounted) return;
+
+      // Convert File to XFile
+      final xFile = XFile(file.path);
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => CreatePostScreen(files: [xFile])),
+      );
+    } catch (e) {
+      debugPrint('Error picking from camera: $e');
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to take photo: $e')));
+    }
   }
 
   Future<void> _handleUpload() async {
     debugPrint('🖼 Upload tapped');
     _closePlus();
 
-    final files = await _mediaPicker.pickFromGallery();
-    if (files.isEmpty) return;
-    if (!mounted) return;
+    try {
+      // Use the new pickMultipleImages method
+      final files = await _mediaPicker.pickMultipleImages();
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => CreatePostScreen(files: files)),
-    );
+      if (files.isEmpty) {
+        debugPrint('Gallery picker cancelled or no images selected');
+        return;
+      }
+
+      if (!mounted) return;
+
+      // Convert List<File> to List<XFile>
+      final xFiles = files.map((file) => XFile(file.path)).toList();
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => CreatePostScreen(files: xFiles)),
+      );
+    } catch (e) {
+      debugPrint('Error picking from gallery: $e');
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to pick images: $e')));
+    }
   }
 }
 
 /// ---------------------------------------------------------------------------
 /// PLUS EXPANSION (NO IgnorePointer — TOPMOST)
-// ---------------------------------------------------------------------------
+/// ---------------------------------------------------------------------------
 
 class _PlusExpansion extends StatelessWidget {
   final Animation<double> animation;
@@ -358,13 +368,12 @@ class _PlusExpansion extends StatelessWidget {
               margin: EdgeInsets.only(bottom: 70 + bottomPadding),
               padding: const EdgeInsets.symmetric(vertical: 12),
               width: 140,
-
               decoration: BoxDecoration(
                 color:
                     Theme.of(
                       context,
                     ).bottomNavigationBarTheme.backgroundColor ??
-                    Theme.of(context).colorScheme.onPrimary,
+                    Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(30),
                 boxShadow: [
                   BoxShadow(

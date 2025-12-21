@@ -70,4 +70,29 @@ class MutualService {
     final mutuals = await getMutualUids(uid);
     return mutuals.length;
   }
+
+  // ------------------------------------------------------------
+  // CHECK IF TWO USERS ARE MUTUALS
+  // ------------------------------------------------------------
+  Future<bool> isMutual({
+    required String currentUid,
+    required String targetUid,
+  }) async {
+    final followingRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUid)
+        .collection('following')
+        .doc(targetUid);
+
+    final followerRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUid)
+        .collection('followers')
+        .doc(targetUid);
+
+    final followingSnap = await followingRef.get();
+    final followerSnap = await followerRef.get();
+
+    return followingSnap.exists && followerSnap.exists;
+  }
 }

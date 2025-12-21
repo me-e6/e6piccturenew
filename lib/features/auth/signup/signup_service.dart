@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+/* import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class SignupService {
@@ -63,6 +63,53 @@ class SignupService {
       return "auth-error";
     } catch (_) {
       return "unknown-error";
+    }
+  }
+}
+ */
+
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../user/services/user_service.dart';
+
+class SignupService {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final UserService _userService = UserService();
+
+  Future<String> signupUser({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final cred = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      final user = cred.user;
+      if (user == null) return 'unknown-error';
+
+      await _userService.upsertUser(
+        uid: user.uid,
+        email: email,
+        displayName: name,
+        profileImageUrl: user.photoURL,
+      );
+
+      return 'success';
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case 'email-already-in-use':
+          return 'email-already-in-use';
+        case 'invalid-email':
+          return 'invalid-email';
+        case 'weak-password':
+          return 'weak-password';
+        default:
+          return 'auth-error';
+      }
+    } catch (_) {
+      return 'unknown-error';
     }
   }
 }

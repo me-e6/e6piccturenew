@@ -16,7 +16,6 @@ class SignupController extends ChangeNotifier {
   // States
   bool isLoading = false;
   bool isPasswordVisible = false;
-  String userType = "citizen"; // default
 
   // Constructor for testing + normal use
   SignupController({SignupService? testService})
@@ -25,12 +24,6 @@ class SignupController extends ChangeNotifier {
   // Toggle password visibility
   void togglePasswordVisibility() {
     isPasswordVisible = !isPasswordVisible;
-    notifyListeners();
-  }
-
-  // Set user type
-  void setUserType(String type) {
-    userType = type;
     notifyListeners();
   }
 

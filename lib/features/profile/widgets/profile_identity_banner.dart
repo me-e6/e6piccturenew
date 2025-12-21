@@ -194,19 +194,19 @@ class ProfileIdentityBanner extends StatelessWidget {
                   /// VIDEO BADGE
                   if (hasVideoDp)
                     Positioned(
-                      right: -4,
-                      bottom: -4,
+                      right: -1,
+                      bottom: -1,
                       child: Container(
-                        padding: const EdgeInsets.all(6),
+                        padding: const EdgeInsets.all(5),
                         decoration: BoxDecoration(
-                          color: const Color.fromARGB(255, 238, 80, 2),
+                          color: const Color.fromARGB(120, 21, 106, 29),
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 1),
                         ),
                         child: const Icon(
                           Icons.play_arrow,
                           size: 14,
-                          color: Colors.white,
+                          color: Color.fromARGB(255, 255, 255, 222),
                         ),
                       ),
                     ),
@@ -214,14 +214,66 @@ class ProfileIdentityBanner extends StatelessWidget {
               ),
 
               const Spacer(),
-              if (isOwner)
+              /*    if (isOwner)
                 OutlinedButton(
                   onPressed: onEditProfile,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(120, 20), // exact size
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ), // width, height
+                  ),
                   child: const Text('Edit profile'),
                 )
               else
                 OutlinedButton(
                   onPressed: onFollowToggle,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(120, 20), // exact size
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ), // width, height
+                  ),
+                  child: Text(isFollowing ? 'Following' : 'Follow'),
+                ), */
+              if (isOwner)
+                ElevatedButton(
+                  onPressed: onEditProfile,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color.fromARGB(
+                      120,
+                      21,
+                      106,
+                      29,
+                    ), // Orange color
+                    foregroundColor: Colors.white, // White text
+                    minimumSize: const Size(110, 30),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0, // Flat design like Claude
+                  ),
+                  child: const Text('Edit profile'),
+                )
+              else
+                ElevatedButton(
+                  onPressed: onFollowToggle,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color.fromARGB(
+                      220,
+                      15,
+                      136,
+                      49,
+                    ), // Orange color
+                    foregroundColor: Colors.white, // White text
+                    minimumSize: const Size(110, 30),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0, // Flat design like Claude
+                  ),
                   child: Text(isFollowing ? 'Following' : 'Follow'),
                 ),
             ],

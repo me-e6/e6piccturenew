@@ -1,68 +1,46 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 import '../profile/user_model.dart';
-import '../post/create/post_model.dart';
+import './../user/services/user_service.dart';
+import '../follow/mutual_service.dart';
 
 class SearchService {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final UserService _userService;
+  final MutualService _mutualService;
 
-  // ---------------------------------------------------------------------------
-  // FETCH USER BY ID
-  // ---------------------------------------------------------------------------
-  Future<UserModel?> getUserById(String uid) async {
-    final doc = await _db.collection("users").doc(uid).get();
-    if (!doc.exists) return null;
-    return UserModel.fromDocument(doc);
-  }
+  SearchService({UserService? userService, MutualService? mutualService})
+    : _userService = userService ?? UserService(),
+      _mutualService = mutualService ?? MutualService();
 
-  // ---------------------------------------------------------------------------
-  // SEARCH USERS (BY USERNAME OR DISPLAY NAME)
-  // ---------------------------------------------------------------------------
-  Future<List<UserModel>> searchUsers(String query) async {
-    final trimmed = query.trim().toLowerCase();
-    if (trimmed.isEmpty) return [];
+  // ------------------------------------------------------------
+  // SEARCH USERS (WITH OPTIONAL MUTUAL ENRICHMENT)
+  // ------------------------------------------------------------
+  Future<List<UserModel>> searchUsers({
+    required String query,
+    String? currentUid,
+  }) async {
+    if (query.trim().isEmpty) return [];
 
-    // Prefer username (indexed, lowercase, unique)
-    final snap = await _db
-        .collection("users")
-        .where("username", isGreaterThanOrEqualTo: trimmed)
-        .where("username", isLessThanOrEqualTo: "$trimmed\uf8ff")
-        .limit(20)
-        .get();
+    // 1️⃣ Pure search (Firestore handled by UserService)
+    final users = await _userService.searchUsers(query);
 
-    return snap.docs.map(UserModel.fromDocument).toList();
-  }
+    // 2️⃣ No auth context → return raw results
+    if (currentUid == null) {
+      return users;
+    }
 
-  // ---------------------------------------------------------------------------
-  // SEARCH POSTS BY AUTHOR USERNAME
-  // ---------------------------------------------------------------------------
-  Future<List<PostModel>> searchPostsByUserName(String query) async {
-    final trimmed = query.trim().toLowerCase();
-    if (trimmed.isEmpty) return [];
+    // 3️⃣ Enrich with mutual info (parallelized)
+    return Future.wait(
+      users.map((user) async {
+        if (user.uid == currentUid) {
+          return user;
+        }
 
-    // 1️⃣ Find matching users
-    final userSnap = await _db
-        .collection("users")
-        .where("username", isGreaterThanOrEqualTo: trimmed)
-        .where("username", isLessThanOrEqualTo: "$trimmed\uf8ff")
-        .limit(20)
-        .get();
+        final isMutual = await _mutualService.isMutual(
+          currentUid: currentUid,
+          targetUid: user.uid,
+        );
 
-    final userIds = userSnap.docs
-        .map((d) => d.id)
-        .where((id) => id.isNotEmpty)
-        .toList();
-
-    if (userIds.isEmpty) return [];
-
-    // 2️⃣ Fetch posts by those users
-    final postsSnap = await _db
-        .collection("posts")
-        .where("authorId", whereIn: userIds)
-        .orderBy("createdAt", descending: true)
-        .limit(50)
-        .get();
-
-    return postsSnap.docs.map((doc) => PostModel.fromFirestore(doc)).toList();
+        return user.copyWith(hasMutual: isMutual);
+      }),
+    );
   }
 }

@@ -48,6 +48,7 @@ class UserModel {
   final int followersCount;
   final int followingCount;
   final int mutualCount;
+  final bool? hasMutual;
 
   // -------------------------
   // AUDIT
@@ -72,12 +73,14 @@ class UserModel {
     required this.state,
     required this.followersCount,
     required this.followingCount,
+    this.hasMutual,
     required this.mutualCount,
     required this.createdAt,
     required this.updatedAt,
     this.videoDpUrl,
     this.videoDpThumbUrl,
     this.jurisdictionId,
+    required String handle,
   });
 
   // ------------------------------------------------------------
@@ -107,7 +110,7 @@ class UserModel {
               (data['videoDpUrl'] as String).trim().isNotEmpty)
           ? data['videoDpUrl']
           : null,
-
+      handle: data['handle'] ?? "",
       videoDpThumbUrl: data['videoDpThumbUrl'],
       bio: data['bio'] ?? '',
       role: data['role'] ?? 'citizen',
@@ -129,8 +132,11 @@ class UserModel {
   // COPY WITH (SAFE PROFILE UPDATES)
   // ------------------------------------------------------------
   UserModel copyWith({
-    String? photoUrl,
+    String? uid,
+    String? handle,
+    String? email,
     String? videoDpUrl,
+    String? photoUrl,
     String? profileImageUrl,
     String? profileBannerUrl,
     String? videoDpThumbUrl,
@@ -138,10 +144,14 @@ class UserModel {
     bool? isVerified,
     String? verifiedLabel,
     String? displayName,
+    bool? hasMutual,
+    int? followersCount,
+    int? followingCount,
   }) {
     return UserModel(
-      uid: uid,
-      email: email,
+      uid: uid ?? this.uid,
+      email: email ?? this.email,
+      handle: handle ?? this.handle,
       username: username,
       displayName: displayName ?? this.displayName,
       photoUrl: photoUrl ?? this.photoUrl,
@@ -157,11 +167,12 @@ class UserModel {
       isAdmin: isAdmin,
       state: state,
       jurisdictionId: jurisdictionId,
-      followersCount: followersCount,
-      followingCount: followingCount,
+      followersCount: followersCount ?? this.followersCount,
+      followingCount: followingCount ?? this.followingCount,
       mutualCount: mutualCount,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      hasMutual: hasMutual ?? this.hasMutual,
     );
   }
 }
