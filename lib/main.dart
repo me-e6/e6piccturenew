@@ -9,7 +9,7 @@ Future<void> main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // ✅ CRITICAL FIX: Configure App Check for Debug Mode
+  // CRITICAL FIX: Configure App Check for Debug Mode
   await FirebaseAppCheck.instance.activate(
     // For Android Debug builds - use debug provider
     androidProvider: AndroidProvider.debug,

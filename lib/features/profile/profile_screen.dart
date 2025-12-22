@@ -21,7 +21,6 @@ import 'profile_controller.dart';
 import 'widgets/profile_identity_banner.dart';
 import 'widgets/profile_tabs_bar.dart';
 import 'widgets/profile_tab_content.dart';
-import '../follow/follow_controller.dart';
 import 'edit_profile_screen.dart';
 
 /// ---------------------------------------------------------------------------

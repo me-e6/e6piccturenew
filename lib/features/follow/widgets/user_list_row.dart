@@ -41,7 +41,7 @@ class UserListRow extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        user.displayName ?? 'User',
+                        user.displayName,
                         style: const TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 14,

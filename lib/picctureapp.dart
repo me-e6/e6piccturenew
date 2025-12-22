@@ -1,21 +1,50 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+// ============================================================
+// CORE
+// ============================================================
+import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
-import '../../core/theme/app_theme.dart';
-import '.././features/engagement/engagement_controller.dart';
-// ---------------- AUTH ----------------
+
+// ============================================================
+// GLOBAL CONTROLLERS
+// ============================================================
 import 'features/auth/login/login_controller.dart';
+import 'features/engagement/engagement_controller.dart';
+import './features/auth/auth_contoller.dart';
+// ============================================================
+// AUTH
+// ============================================================
 import 'features/auth/login/login_screen.dart';
 import 'features/auth/signup/signup_screen.dart';
-// ---------------- NAVIGATION ----------------
+
+// ============================================================
+// NAVIGATION
+// ============================================================
 import 'features/navigation/main_navigation.dart';
-// ---------------- FEED ----------------
+
+///import 'features/navigation/main_navigation_v1_refined.dart';
+
+// ============================================================
+// FEED
+// ============================================================
 import 'features/feed/day_feed_screen.dart';
-// ---------------- POST ----------------
+
+// ============================================================
+// POST
+// ============================================================
 import 'features/post/create/create_post_screen.dart';
-// ---------------- SEARCH ----------------
+
+// ============================================================
+// SEARCH
+// ============================================================
 import 'features/search/search_screen.dart';
-import 'package:provider/provider.dart';
-import '/features/profile/video_dp_upload_screen.dart';
+
+// ============================================================
+// PROFILE
+// ============================================================
+import 'features/profile/video_dp_upload_screen.dart';
 
 class PicctureApp extends StatelessWidget {
   const PicctureApp({super.key});
@@ -25,16 +54,20 @@ class PicctureApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         // --------------------------------------------------
-        // AUTH CONTROLLER
+        // AUTH
         // --------------------------------------------------
+        ChangeNotifierProvider(create: (_) => AuthController()),
+
         ChangeNotifierProvider(create: (_) => LoginController()),
 
         // --------------------------------------------------
-        // THEME CONTROLLER (GLOBAL)
+        // THEME (GLOBAL)
         // --------------------------------------------------
         ChangeNotifierProvider(create: (_) => ThemeController()),
 
-        // Engagement Controller
+        // --------------------------------------------------
+        // ENGAGEMENT (GLOBAL COUNTERS / LIKES / ETC.)
+        // --------------------------------------------------
         ChangeNotifierProvider(create: (_) => EngagementController()),
       ],
       child: Consumer<ThemeController>(
@@ -42,31 +75,33 @@ class PicctureApp extends StatelessWidget {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'Piccture',
-            // ---------------- CORE / THEME ----------------
-            // ---------------- THEME ----------------
+
+            // --------------------------------------------------
+            // THEME
+            // --------------------------------------------------
             theme: AppThemes.lightTheme,
             darkTheme: AppThemes.darkTheme,
             themeMode: themeController.themeMode,
 
-            // ---------------- ROUTING ----------------
-            initialRoute: "/login",
+            // --------------------------------------------------
+            // ROUTING (TOP-LEVEL ONLY)
+            // --------------------------------------------------
+            initialRoute: '/login',
             routes: {
-              // AUTH
-              "/login": (_) => const LoginScreen(),
-              "/signup": (_) => SignupScreen(),
+              // ---------------- AUTH ----------------
+              '/login': (_) => const LoginScreen(),
+              '/signup': (_) => SignupScreen(),
 
-              // MAIN APP
-              "/home": (_) => const MainNavigation(),
+              // ---------------- MAIN APP ----------------
+              '/home': (_) => const MainNavigation(),
+              // '/home': (_) => const MainNavigationV1Refined(),
+              // ---------------- UTILITIES ----------------
+              '/search': (_) => const SearchScreen(),
+              '/create-post': (_) => const CreatePostScreen(files: []),
               '/video-dp-upload': (_) => const VideoDpUploadScreen(),
 
-              // FEED
-              "/day-feed": (_) => const DayFeedScreen(),
-              //'/day-feed': (_) => const DayFeedProbeScreen(),
-              // POST
-              "/create-post": (_) => const CreatePostScreen(files: const []),
-
-              // SEARCH
-              "/search": (_) => const SearchScreen(),
+              // ---------------- FEED (OPTIONAL ENTRY) ----------------
+              '/day-feed': (_) => const DayFeedScreen(),
             },
           );
         },

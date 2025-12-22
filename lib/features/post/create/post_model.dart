@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
 
 /// ------------------------------------------------------------
 /// POST VISIBILITY (CANONICAL ENUM)
@@ -90,60 +89,6 @@ class PostModel {
     this.hasSaved = false,
   });
 
-  // ------------------------------------------------------------
-  // FIRESTORE → MODEL (DEFENSIVE)
-  // ------------------------------------------------------------
-  /* factory PostModel.fromFirestore(DocumentSnapshot doc) {
-    final raw = doc.data() as Map<String, dynamic>;
-    debugPrint('POST ${doc.id} avatar = ${raw['authorAvatarUrl']}');
-
-    /*   if (raw == null || raw is! Map<String, dynamic>) {
-      throw StateError('Post document ${doc.id} has invalid data');
-    } */
-
-    final Map<String, dynamic> data = raw;
-
-    // createdAt (safe)
-    final rawCreatedAt = data['createdAt'];
-    final DateTime createdAt = rawCreatedAt is Timestamp
-        ? rawCreatedAt.toDate()
-        : DateTime.now();
-
-    // visibility (backward-safe)
-    final String visibilityRaw =
-        (data['visibility'] as String?)?.toLowerCase() ?? 'public';
-
-    final PostVisibility visibility =
-        PostVisibility.values.any((v) => v.name == visibilityRaw)
-        ? PostVisibility.values.byName(visibilityRaw)
-        : PostVisibility.public;
-    authorName:
-    (data['authorName'] as String?)?.isNotEmpty == true
-        ? data['authorName'] as String
-        : 'Unknown';
-
-    authorAvatarUrl:
-    data['authorAvatarUrl'] as String?;
-
-    return PostModel(
-      postId: data['postId'] as String? ?? doc.id,
-      authorId: data['authorId'] as String? ?? '',
-      authorName: (data['authorName'] as String?)?.isNotEmpty == true
-          ? data['authorName'] as String
-          : (data['displayName'] as String?) ?? 'Unknown',
-      authorAvatarUrl: data['authorAvatarUrl'] as String?,
-      isVerifiedOwner: data['isVerifiedOwner'] as bool? ?? false,
-      visibility: visibility,
-      imageUrls:
-          (data['imageUrls'] as List?)?.whereType<String>().toList() ??
-          const [],
-      isRepost: data['isRepost'] as bool? ?? false,
-      createdAt: createdAt,
-      likeCount: data['likeCount'] as int? ?? 0,
-      replyCount: data['replyCount'] as int? ?? 0,
-      quoteReplyCount: data['quoteReplyCount'] as int? ?? 0,
-    );
-  } */
   factory PostModel.fromFirestore(DocumentSnapshot doc) {
     final raw = doc.data();
 

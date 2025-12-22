@@ -40,7 +40,7 @@ class FollowUserRow extends StatelessWidget {
         children: [
           Flexible(
             child: Text(
-              user.displayName ?? 'User',
+              user.displayName,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontWeight: FontWeight.w500),
             ),
@@ -52,7 +52,7 @@ class FollowUserRow extends StatelessWidget {
         ],
       ),
 
-      subtitle: user.handle != null && user.handle!.isNotEmpty
+      subtitle: user.handle!.isNotEmpty
           ? Text('@${user.handle}', style: const TextStyle(fontSize: 13))
           : null,
 

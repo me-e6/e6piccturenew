@@ -12,6 +12,10 @@ import '../follow/mutual_controller.dart';
 import '../profile/profile_controller.dart';
 import '../search/search_screen.dart';
 import '../search/search_controllers.dart';
+import '../../core/theme/theme_controller.dart';
+import '../../features/feed/day_album_tracker.dart';
+import '../auth/auth_gate.dart';
+import '../auth/auth_service.dart';
 
 /// ---------------------------------------------------------------------------
 /// HOME SCREEN V3
@@ -23,6 +27,7 @@ class HomeScreenV3 extends StatelessWidget {
   Widget build(BuildContext context) {
     final feed = context.watch<DayFeedController>();
     final state = feed.state;
+    final albumStatus = state.albumStatus; // Access from state
 
     return Scaffold(
       appBar: _buildAppBar(context),
@@ -32,13 +37,33 @@ class HomeScreenV3 extends StatelessWidget {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              SliverToBoxAdapter(
+              if (albumStatus != null && albumStatus.hasUnseen)
+                SliverToBoxAdapter(
+                  child: _XStyleDayAlbumPill(
+                    status: albumStatus,
+                    onTap: feed.dismissAlbumPill, // Controller handles logic
+                  ),
+                ),
+              /* SliverToBoxAdapter(
+                child: _XStyleDayAlbumPill(
+                  count: feed.totalPostCount,
+                  onTap: feed.refresh,
+                ),
+              ), */
+              /* SliverToBoxAdapter(
+                child: _TodayAlbumContextPill(
+                  count: feed.totalPostCount,
+                  onTap: feed.refresh,
+                ),
+              ), */
+              /* SliverToBoxAdapter(
                 child: _DayAlbumBanner(
                   count: feed.totalPostCount,
                   hasNewPosts: state.hasNewPosts,
                 ),
-              ),
+              ), */
               const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
               SliverToBoxAdapter(
                 child: _PostCarousel(
                   posts: state.posts,
@@ -56,7 +81,7 @@ class HomeScreenV3 extends StatelessWidget {
     );
   }
 
-  AppBar _buildAppBar(BuildContext context) {
+  /*   AppBar _buildAppBar(BuildContext context) {
     return AppBar(
       elevation: 0,
       leading: IconButton(icon: const Icon(Icons.menu), onPressed: () {}),
@@ -73,10 +98,99 @@ class HomeScreenV3 extends StatelessWidget {
         IconButton(icon: const Icon(Icons.more_horiz), onPressed: () {}),
       ],
     );
+  } */
+
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
+    return AppBar(
+      elevation: 0,
+      backgroundColor: const Color(0xFFF6F4EF),
+      leading: IconButton(
+        icon: const Icon(
+          Icons.menu_rounded,
+          color: Color(0xFF3D3D3D),
+          size: 26,
+        ),
+        onPressed: () => _showProfileSheet(context),
+      ),
+      title: const Text(
+        'PICCTURE',
+        style: TextStyle(
+          fontWeight: FontWeight.w800,
+          fontSize: 20,
+          letterSpacing: 1.5,
+          color: Color(0xFF3D3D3D),
+        ),
+      ),
+      centerTitle: true,
+      actions: [
+        IconButton(
+          icon: const Icon(
+            Icons.search_rounded,
+            color: Color(0xFF3D3D3D),
+            size: 25,
+          ),
+          onPressed: () => _openSearch(context),
+        ),
+        Stack(
+          children: [
+            IconButton(
+              icon: const Icon(
+                Icons.notifications_outlined,
+                color: Color(0xFF3D3D3D),
+                size: 25,
+              ),
+              onPressed: () {
+                // TODO: Navigate to notifications
+              },
+            ),
+            Positioned(
+              right: 10,
+              top: 10,
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFD84315),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(width: 4),
+      ],
+    );
+  }
+
+  void _openSearch(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => SearchControllers()),
+            ChangeNotifierProvider(create: (_) => ProfileController()),
+            ChangeNotifierProvider(create: (_) => MutualController()),
+            ChangeNotifierProvider(create: (_) => FollowController()),
+          ],
+          child: const SearchScreen(),
+        ),
+      ),
+    );
+  }
+
+  void _showProfileSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const _ProfileBottomSheet(),
+    );
   }
 }
 
-/// ---------------------------------------------------------------------------
+/* /// ---------------------------------------------------------------------------
 /// DAY ALBUM BANNER
 /// ---------------------------------------------------------------------------
 class _DayAlbumBanner extends StatelessWidget {
@@ -110,7 +224,153 @@ class _DayAlbumBanner extends StatelessWidget {
       ),
     );
   }
+} */
+
+// ---------------------------------------------------------------------------
+/// X-STYLE DAY ALBUM PILL (COMPACT LIKE TWITTER)
+/// ---------------------------------------------------------------------------
+class _XStyleDayAlbumPill extends StatelessWidget {
+  final DayAlbumStatus status;
+  final VoidCallback onTap;
+
+  const _XStyleDayAlbumPill({required this.status, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8E3D6),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFD0C9B8), width: 0.5),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.arrow_upward_rounded,
+                size: 14,
+                color: Color(0xFF8B7355),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                status.message ?? 'New Picctures available',
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF4A4A4A),
+                  letterSpacing: 0.1,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
+
+/* /// ---------------------------------------------------------------------------
+/// X-STYLE DAY ALBUM PILL (COMPACT LIKE TWITTER)
+/// ---------------------------------------------------------------------------
+class _XStyleDayAlbumPill extends StatelessWidget {
+  final int count;
+  final VoidCallback onTap;
+
+  const _XStyleDayAlbumPill({required this.count, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    if (count <= 0) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8E3D6),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFD0C9B8), width: 0.5),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.arrow_upward_rounded,
+                size: 14,
+                color: Color(0xFF8B7355),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Day Album has $count new ${count > 1 ? 'Picctures' : 'Piccture'}',
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF4A4A4A),
+                  letterSpacing: 0.1,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+} */
+/* 
+/// ---------------------------------------------------------------------------
+/// TODAY’S ALBUM — X/TWITTER STYLE CONTEXT PILL
+/// ---------------------------------------------------------------------------
+class _TodayAlbumContextPill extends StatelessWidget {
+  final int count;
+  final VoidCallback onTap;
+
+  const _TodayAlbumContextPill({required this.count, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    if (count <= 0) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEAE6DC),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.photo_library_outlined, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                '$count New Piccters ${count > 1 ? 's' : ''} in Day album '
+                '$count more picture${count > 1 ? 's' : ''} from today',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+} */
 
 /// ---------------------------------------------------------------------------
 /// POST CAROUSEL
@@ -315,11 +575,7 @@ class _PostHeader extends StatelessWidget {
         FirebaseAuth.instance.currentUser?.uid == post.authorId;
 
     return ChangeNotifierProvider(
-      create: (_) {
-        final c = FollowController();
-        c.load(post.authorId);
-        return c;
-      },
+      create: (_) => FollowController()..load(post.authorId),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
@@ -427,9 +683,14 @@ class _PostHeader extends StatelessWidget {
                           borderRadius: BorderRadius.circular(20),
                         ),
                       ),
-                      onPressed: follow.isFollowing
-                          ? () => follow.unfollow(post.authorId)
-                          : () => follow.follow(post.authorId),
+                      onPressed: follow.isProcessing
+                          ? null
+                          : () {
+                              follow.isFollowing
+                                  ? follow.unfollow(post.authorId)
+                                  : follow.follow(post.authorId);
+                            },
+
                       child: Text(
                         follow.isFollowing ? 'Following' : 'Follow',
                         style: const TextStyle(
@@ -587,6 +848,319 @@ class _SuggestedUsersSection extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// ---------------------------------------------------------------------------
+/// LOGOUT HANDLER (CONFIRMED + SAFE NAV RESET)
+/// ---------------------------------------------------------------------------
+/* Future<void> _handleLogout(BuildContext context) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => AlertDialog(
+      title: const Text('Logout'),
+      content: const Text('Are you sure you want to logout?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text(
+            'Logout',
+            style: TextStyle(color: Color(0xFF8B7355)),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmed != true) return;
+
+  try {
+    // 🔐 Firebase sign out
+    await FirebaseAuth.instance.signOut();
+
+    // 🧹 Clear entire navigation stack & go to Auth gate
+    if (context.mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const AuthGate()),
+        (route) => false,
+      );
+    }
+  } catch (e) {
+    debugPrint('❌ Logout failed: $e');
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Logout failed. Please try again.')),
+      );
+    }
+  }
+} */
+
+Future<void> _handleLogout(BuildContext context) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => AlertDialog(
+      title: const Text('Logout'),
+      content: const Text('Are you sure you want to logout?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text(
+            'Logout',
+            style: TextStyle(color: Color(0xFF8B7355)),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmed != true) return;
+
+  try {
+    await AuthService().logout();
+
+    if (context.mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const AuthGate()),
+        (route) => false,
+      );
+    }
+  } catch (e) {
+    debugPrint('❌ Logout failed: $e');
+  }
+}
+
+/// ---------------------------------------------------------------------------
+/// PROFILE BOTTOM SHEET - MODERN ALTERNATIVE TO DRAWER
+/// ---------------------------------------------------------------------------
+class _ProfileBottomSheet extends StatelessWidget {
+  const _ProfileBottomSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final theme = context.watch<ThemeController>();
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.75,
+      decoration: const BoxDecoration(
+        color: Color(0xFFF6F4EF),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 12),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          /// PROFILE HEADER
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Row(
+              children: [
+                Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 32,
+                      backgroundColor: const Color(0xFFE8E4D9),
+                      backgroundImage: user?.photoURL != null
+                          ? NetworkImage(user!.photoURL!)
+                          : null,
+                      child: user?.photoURL == null
+                          ? const Icon(
+                              Icons.person,
+                              size: 32,
+                              color: Color(0xFF8B7355),
+                            )
+                          : null,
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        width: 18,
+                        height: 18,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF8B7355),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: const Color(0xFFF6F4EF),
+                            width: 2,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.videocam,
+                          size: 10,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user?.displayName ?? 'User',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                          color: Color(0xFF3D3D3D),
+                        ),
+                      ),
+                      Text(
+                        user?.email ?? '',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF7A7A7A),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          /// STATS ROW
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _statItem('Mutuals', '0'),
+                _statItem('Following', '0'),
+                _statItem('Followers', '0'),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+          const Divider(height: 1),
+
+          /// MENU ITEMS
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              children: [
+                _menuTile(Icons.settings_outlined, 'Settings', () {}),
+                _menuTile(Icons.message_outlined, 'Messenger', () {}),
+                _menuTile(Icons.mail_outline, 'Mailbox', () {}),
+                _menuTile(Icons.photo_library_outlined, 'Picctures', () {}),
+                _menuTile(Icons.stars_outlined, 'Impact Piccters', () {}),
+
+                const Divider(height: 24),
+
+                /// DAY/NIGHT TOGGLE
+                SwitchListTile(
+                  value: theme.isDarkMode,
+                  onChanged: (_) => theme.toggleTheme(),
+                  title: const Text(
+                    'Day / Night Mode',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                  ),
+                  secondary: Icon(
+                    theme.isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                    color: const Color(0xFF8B7355),
+                  ),
+                ),
+
+                const Divider(height: 24),
+
+                _menuTile(
+                  Icons.delete_outline,
+                  'Delete Account',
+                  () {},
+                  danger: true,
+                ),
+
+                _menuTile(Icons.logout, 'Logout', () => _handleLogout(context)),
+
+                /*   _menuTile(
+                  Icons.logout,
+                  'Logout',
+                  () => FirebaseAuth.instance.signOut(),
+                ), */
+                _menuTile(Icons.info_outline, 'About Us', () {}),
+
+                const SizedBox(height: 16),
+                const Center(
+                  child: Text(
+                    'Piccture v0.4.9',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statItem(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            color: Color(0xFF3D3D3D),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 13, color: Color(0xFF7A7A7A)),
+        ),
+      ],
+    );
+  }
+
+  Widget _menuTile(
+    IconData icon,
+    String title,
+    VoidCallback onTap, {
+    bool danger = false,
+  }) {
+    return ListTile(
+      leading: Icon(
+        icon,
+        color: danger ? Colors.red : const Color(0xFF8B7355),
+        size: 24,
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: danger ? Colors.red : const Color(0xFF3D3D3D),
+          fontWeight: FontWeight.w600,
+          fontSize: 15,
+        ),
+      ),
+      onTap: onTap,
     );
   }
 }

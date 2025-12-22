@@ -5,15 +5,16 @@ import 'follow_service.dart';
 enum FollowState { idle, loading }
 
 class FollowController extends ChangeNotifier {
+  final FollowService _service;
+
   FollowController({FollowService? service})
     : _service = service ?? FollowService();
-
-  final FollowService _service;
 
   final String currentUid = FirebaseAuth.instance.currentUser!.uid;
 
   FollowState state = FollowState.idle;
   bool _isFollowing = false;
+  bool isProcessing = false;
 
   // -------------------------
   // PUBLIC GETTERS (CANONICAL)

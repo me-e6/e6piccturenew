@@ -39,9 +39,6 @@ class CreatePostService {
         (userData?['displayName'] as String?)?.isNotEmpty == true
         ? userData!['displayName']
         : 'Unknown';
-
-    String? rawPhotoUrl = userData?['photoURL'] as String?;
-
     final String? avatarUrl =
         (userData?['profileImageUrl'] as String?) ??
         (userData?['photoURL'] as String?);

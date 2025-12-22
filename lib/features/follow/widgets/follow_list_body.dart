@@ -38,7 +38,7 @@ class FollowListBody extends StatelessWidget {
                   ),
                   title: Row(
                     children: [
-                      Text(user.displayName ?? 'User'),
+                      Text(user.displayName),
                       if (user.isVerified) ...[
                         const SizedBox(width: 4),
                         const Icon(

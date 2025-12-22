@@ -78,18 +78,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     Navigator.pop(context);
                   }
                 : null,
-
-            /* onPressed: _hasChanges()
-                ? () async {
-                    await profile.saveProfile(
-                      context: context,
-                      displayName: _displayNameController.text.trim(),
-                      bio: _bioController.text.trim(),
-                    );
-
-                    if (mounted) Navigator.pop(context);
-                  }
-                : null, */
             child: const Text('Save'),
           ),
         ],
