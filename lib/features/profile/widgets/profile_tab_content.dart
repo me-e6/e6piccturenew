@@ -1,10 +1,103 @@
+/* import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../profile_controller.dart';
+import '../grids/pictters_grid.dart';
+import '../grids/repics_grid.dart';
+import '../grids/quotes_grid.dart';
+import '../grids/saved_grid.dart';
+import '../profile_feed_viewer.dart';
+
+class ProfileTabContent extends StatelessWidget {
+  const ProfileTabContent({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = context.watch<ProfileController>();
+    final selectedTab = controller.selectedTab;
+
+    if (controller.isLoading) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 48),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+
+    void openFeed(List posts, int index) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              ProfileFeedViewer(posts: posts.cast(), initialIndex: index),
+        ),
+      );
+    }
+
+    Widget content;
+
+    switch (selectedTab) {
+      // ---------------- PICTURES ----------------
+      case 0:
+        content = PicturesGrid(
+          posts: controller.posts,
+          onPostTap: (post, index) {
+            openFeed(controller.posts, index);
+          },
+        );
+        break;
+
+      // ---------------- REPICS ----------------
+      case 1:
+        content = RepicsGrid(
+          posts: controller.repics,
+          onPostTap: (repics, index) {
+            openFeed(controller.repics, index);
+          },
+        );
+        break;
+
+      // ---------------- QUOTES ----------------
+      case 2:
+        content = QuotesGrid(
+          posts: controller.quotes,
+          onPostTap: (quotes, index) {
+            openFeed(controller.quotes, index);
+          },
+        );
+        break;
+
+      // ---------------- SAVED ----------------
+      case 3:
+        content = SavedGrid(
+          posts: controller.saved,
+          onPostTap: (saved, index) {
+            openFeed(controller.saved, index);
+          },
+        );
+        break;
+
+      default:
+        content = const SizedBox.shrink();
+    }
+
+    /// SINGLE SCROLL CONTAINER (prevents unbounded height)
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: Column(children: [content, const SizedBox(height: 32)]),
+    );
+  }
+}
+ */
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../profile_controller.dart';
-import '../../post/create/post_model.dart';
-import 'repic_grid_tile.dart';
-import 'impact_grid_tile.dart';
+import '../grids/pictters_grid.dart';
+import '../grids/repics_grid.dart';
+import '../grids/quotes_grid.dart';
+import '../grids/saved_grid.dart';
+import '../profile_feed_viewer.dart';
 
 class ProfileTabContent extends StatelessWidget {
   const ProfileTabContent({super.key});
@@ -13,153 +106,52 @@ class ProfileTabContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = context.watch<ProfileController>();
 
-    switch (controller.selectedTab) {
-      case 0:
-        return _PostsGrid(posts: controller.posts);
-
-      case 1: // Repics
-        if (controller.reposts.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.all(32),
-            child: Text('No repics yet'),
-          );
-        }
-
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(12),
-          itemCount: controller.reposts.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 6,
-            mainAxisSpacing: 6,
-          ),
-          itemBuilder: (_, index) {
-            return RepicGridTile(post: controller.reposts[index]);
-          },
-        );
-      case 2:
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(12),
-          itemCount: controller.impactPosts.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 6,
-            mainAxisSpacing: 6,
-          ),
-          itemBuilder: (_, index) {
-            return ImpactGridTile(post: controller.impactPosts[index]);
-          },
-        );
-
-      case 3:
-        return _PostsGrid(posts: controller.saved);
-
-      default:
-        return const SizedBox.shrink();
-    }
-  }
-}
-
-/// ------------------------------------------------------------
-/// POSTS GRID (REUSABLE)
-/// ------------------------------------------------------------
-class _PostsGrid extends StatelessWidget {
-  final List<PostModel> posts;
-
-  const _PostsGrid({required this.posts});
-
-  @override
-  Widget build(BuildContext context) {
-    if (posts.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(32),
-        child: Text('Nothing here yet', textAlign: TextAlign.center),
+    if (controller.isLoading) {
+      return const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.only(top: 48),
+          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        ),
       );
     }
 
-    return GridView.builder(
-      padding: const EdgeInsets.all(12),
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: posts.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 6,
-        mainAxisSpacing: 6,
-      ),
-      /*  itemBuilder: (_, index) {
-        final post = posts[index];
+    void openFeed(List posts, int index) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              ProfileFeedViewer(posts: posts.cast(), initialIndex: index),
+        ),
+      );
+    }
 
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: post.imageUrls.isNotEmpty
-              ? Image.network(post.imageUrls.first, fit: BoxFit.cover)
-              : Container(
-                  color: Colors.grey.shade300,
-                  child: const Icon(Icons.image),
-                ),
+    switch (controller.selectedTab) {
+      case 0:
+        return PicturesGrid(
+          posts: controller.posts,
+          onPostTap: (_, index) => openFeed(controller.posts, index),
         );
-      },
-    );
-  }
-} */
-      itemBuilder: (_, index) {
-        final post = posts[index];
 
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              post.imageUrls.isNotEmpty
-                  ? Image.network(post.imageUrls.first, fit: BoxFit.cover)
-                  : Container(color: Colors.grey.shade300),
-
-              /// Repic badge
-              if (post.isRepost)
-                Positioned(
-                  right: 6,
-                  top: 6,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.7),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Icon(
-                      Icons.repeat,
-                      size: 12,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-            ],
-          ),
+      case 1:
+        return RepicsGrid(
+          posts: controller.repics,
+          onPostTap: (_, index) => openFeed(controller.repics, index),
         );
-      },
-    );
-  }
-}
 
-/// ------------------------------------------------------------
-/// IMPACT PLACEHOLDER (API-SAFE)
-/// ------------------------------------------------------------
-class _ImpactPlaceholder extends StatelessWidget {
-  const _ImpactPlaceholder();
+      case 2:
+        return QuotesGrid(
+          posts: controller.quotes,
+          onPostTap: (_, index) => openFeed(controller.quotes, index),
+        );
 
-  @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.all(32),
-      child: Text(
-        'Impact pictures coming soon',
-        textAlign: TextAlign.center,
-        style: TextStyle(color: Colors.grey),
-      ),
-    );
+      case 3:
+        return SavedGrid(
+          posts: controller.saved,
+          onPostTap: (_, index) => openFeed(controller.saved, index),
+        );
+
+      default:
+        return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
   }
 }

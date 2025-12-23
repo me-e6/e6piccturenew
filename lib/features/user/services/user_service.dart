@@ -1,67 +1,3 @@
-/* import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../profile/user_model.dart';
-
-class UserService {
-  final FirebaseFirestore _firestore;
-
-  UserService({FirebaseFirestore? firestore})
-    : _firestore = firestore ?? FirebaseFirestore.instance;
-
-  // ------------------------------------------------------------
-  // UPSERT USER (REQUIRED FOR SEARCH INDEXING)
-  // ------------------------------------------------------------
-  Future<void> upsertUser({
-    required String uid,
-    required String handle,
-    required String displayName,
-    String? profileImageUrl,
-  }) async {
-    await _firestore.collection('users').doc(uid).set({
-      'uid': uid,
-
-      'handle': handle,
-      'handle_lower': handle.toLowerCase(),
-
-      'displayName': displayName,
-      'displayName_lower': displayName.toLowerCase(),
-
-      'profileImageUrl': profileImageUrl,
-
-      'updatedAt': FieldValue.serverTimestamp(),
-      'createdAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-  }
-
-  // ------------------------------------------------------------
-  // SEARCH USERS (PURE — INDEXED)
-  // ------------------------------------------------------------
-  Future<List<UserModel>> searchUsers(String query) async {
-    if (query.trim().isEmpty) return [];
-
-    final q = query.toLowerCase();
-
-    final snap = await _firestore
-        .collection('users')
-        .orderBy('handle_lower')
-        .startAt([q])
-        .endAt(['$q\uf8ff'])
-        .limit(20)
-        .get();
-
-    return snap.docs.map((d) => UserModel.fromDocument(d)).toList();
-  }
-
-  // ------------------------------------------------------------
-  // GET SINGLE USER
-  // ------------------------------------------------------------
-  Future<UserModel?> getUser(String uid) async {
-    final doc = await _firestore.collection('users').doc(uid).get();
-    if (!doc.exists) return null;
-    return UserModel.fromDocument(doc);
-  }
-}
- */
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../profile/user_model.dart';
 
@@ -71,46 +7,81 @@ class UserService {
   UserService({FirebaseFirestore? firestore})
     : _firestore = firestore ?? FirebaseFirestore.instance;
 
-  // ------------------------------------------------------------
-  // CREATE / UPDATE USER (CANONICAL)
-  // ------------------------------------------------------------
-  Future<void> upsertUser({
+  Future<void> createUserIfNotExists({
     required String uid,
     required String email,
     required String displayName,
     String? profileImageUrl,
   }) async {
+    final ref = _firestore.collection('users').doc(uid);
+    final snap = await ref.get();
+
+    if (snap.exists) return;
+
     final handle = _generateHandle(displayName);
 
-    await _firestore.collection('users').doc(uid).set({
+    await ref.set({
       'uid': uid,
       'email': email,
-
-      // Identity
-      'displayName': displayName,
-      'displayName_lower': displayName.toLowerCase(),
-
+      'username': handle,
       'handle': handle,
       'handle_lower': handle.toLowerCase(),
 
-      'profileImageUrl': profileImageUrl ?? '',
+      'displayName': displayName,
+      'displayName_lower': displayName.toLowerCase(),
 
-      // Social
+      'photoUrl': profileImageUrl ?? '',
+      'profileImageUrl': profileImageUrl,
+      'profileBannerUrl': null,
+      'bio': '',
+
+      'role': 'citizen',
+      'type': 'citizen',
+      'isVerified': false,
+      'verifiedLabel': '',
+      'isAdmin': false,
+      'state': 'active',
+
       'followersCount': 0,
       'followingCount': 0,
+      'mutualCount': 0,
 
-      // Flags
-      'isVerified': false,
-
-      // Audit
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    });
   }
 
-  // ------------------------------------------------------------
-  // SEARCH (INDEXED)
-  // ------------------------------------------------------------
+  Future<void> updateProfile({
+    required String uid,
+    String? displayName,
+    String? bio,
+    String? profileImageUrl,
+    String? profileBannerUrl,
+    String? videoDpUrl,
+    String? videoDpThumbUrl,
+  }) async {
+    final Map<String, dynamic> updates = {
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    if (displayName != null) {
+      updates['displayName'] = displayName;
+      updates['displayName_lower'] = displayName.toLowerCase();
+    }
+
+    if (bio != null) updates['bio'] = bio;
+    if (profileImageUrl != null) updates['profileImageUrl'] = profileImageUrl;
+    if (profileBannerUrl != null) {
+      updates['profileBannerUrl'] = profileBannerUrl;
+    }
+    if (videoDpUrl != null) updates['videoDpUrl'] = videoDpUrl;
+    if (videoDpThumbUrl != null) {
+      updates['videoDpThumbUrl'] = videoDpThumbUrl;
+    }
+
+    await _firestore.collection('users').doc(uid).update(updates);
+  }
+
   Future<List<UserModel>> searchUsers(String query) async {
     if (query.trim().isEmpty) return [];
 
@@ -123,21 +94,15 @@ class UserService {
         .limit(20)
         .get();
 
-    return snap.docs.map((d) => UserModel.fromDocument(d)).toList();
+    return snap.docs.map(UserModel.fromDocument).toList();
   }
 
-  // ------------------------------------------------------------
-  // GET SINGLE USER
-  // ------------------------------------------------------------
   Future<UserModel?> getUser(String uid) async {
     final doc = await _firestore.collection('users').doc(uid).get();
     if (!doc.exists) return null;
     return UserModel.fromDocument(doc);
   }
 
-  // ------------------------------------------------------------
-  // HANDLE GENERATION (STABLE)
-  // ------------------------------------------------------------
   String _generateHandle(String name) {
     final base = name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
     return base.length >= 4 ? base : '${base}user';

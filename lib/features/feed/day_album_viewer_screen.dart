@@ -86,7 +86,10 @@ class _DayAlbumViewerScreenState extends State<DayAlbumViewerScreen> {
                   },
                   itemBuilder: (context, index) {
                     return ChangeNotifierProvider(
-                      create: (_) => EngagementController(),
+                      create: (_) => EngagementController(
+                        postId: widget.posts[index].postId,
+                        initialPost: widget.posts[index],
+                      ),
                       child: _MemoryPost(post: widget.posts[index]),
                     );
                   },
@@ -374,28 +377,33 @@ class _MemoryEngagementBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final engagement = context.watch<EngagementController>();
+    final post = engagement.post;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
+        // LIKE
         IconButton(
           icon: Icon(
             post.hasLiked ? Icons.favorite : Icons.favorite_border,
             color: post.hasLiked ? Colors.red : Colors.white,
           ),
-          onPressed: () {
-            post.hasLiked
-                ? engagement.dislikePost(post)
-                : engagement.likePost(post);
-          },
+          onPressed: engagement.isProcessing ? null : engagement.toggleLike,
         ),
+
+        // SAVE
         IconButton(
-          icon: const Icon(Icons.bookmark_border, color: Colors.white),
-          onPressed: () => engagement.savePost(post),
+          icon: Icon(
+            post.hasSaved ? Icons.bookmark : Icons.bookmark_border,
+            color: Colors.white,
+          ),
+          onPressed: engagement.isProcessing ? null : engagement.toggleSave,
         ),
+
+        // REPIC / SHARE
         IconButton(
-          icon: const Icon(Icons.more_horiz, color: Colors.white),
-          onPressed: () => engagement.sharePost(post),
+          icon: const Icon(Icons.repeat, color: Colors.white),
+          onPressed: engagement.isProcessing ? null : engagement.toggleRepic,
         ),
       ],
     );

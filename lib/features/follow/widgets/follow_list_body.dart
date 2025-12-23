@@ -9,7 +9,7 @@ import '../../follow/follow_controller.dart';
 class FollowListBody extends StatelessWidget {
   final String title;
 
-  const FollowListBody({required this.title});
+  const FollowListBody({super.key, required this.title});
 
   @override
   Widget build(BuildContext context) {

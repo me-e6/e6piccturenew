@@ -89,7 +89,7 @@ class SignupService {
       final user = cred.user;
       if (user == null) return 'unknown-error';
 
-      await _userService.upsertUser(
+      await _userService.createUserIfNotExists(
         uid: user.uid,
         email: email,
         displayName: name,

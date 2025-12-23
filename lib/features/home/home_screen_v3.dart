@@ -1,19 +1,27 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../feed/day_feed_controller.dart';
-import '../post/create/post_model.dart';
-import '../engagement/engagement_controller.dart';
 import '../feed/day_album_viewer_screen.dart';
+import '../feed/day_album_tracker.dart';
+
+import '../post/create/post_model.dart';
+
+import '../engagement/engagement_controller.dart';
+
 import '../follow/follow_controller.dart';
-import '../profile/profile_screen.dart';
-import '../user/user_avatar_controller.dart';
-import '../follow/mutual_controller.dart';
-import '../profile/profile_controller.dart';
+
+import '../profile/profile_entry.dart';
+
 import '../search/search_screen.dart';
 import '../search/search_controllers.dart';
+
+import '../user/user_avatar_controller.dart';
+
 import '../../core/theme/theme_controller.dart';
-import '../../features/feed/day_album_tracker.dart';
+import '../post/reply/quote_reply_screen.dart';
+
 import '../auth/auth_gate.dart';
 import '../auth/auth_service.dart';
 
@@ -27,9 +35,10 @@ class HomeScreenV3 extends StatelessWidget {
   Widget build(BuildContext context) {
     final feed = context.watch<DayFeedController>();
     final state = feed.state;
-    final albumStatus = state.albumStatus; // Access from state
+    final albumStatus = state.albumStatus;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF6F4EF),
       appBar: _buildAppBar(context),
       body: SafeArea(
         child: RefreshIndicator(
@@ -41,27 +50,10 @@ class HomeScreenV3 extends StatelessWidget {
                 SliverToBoxAdapter(
                   child: _XStyleDayAlbumPill(
                     status: albumStatus,
-                    onTap: feed.dismissAlbumPill, // Controller handles logic
+                    onTap: feed.dismissAlbumPill,
                   ),
                 ),
-              /* SliverToBoxAdapter(
-                child: _XStyleDayAlbumPill(
-                  count: feed.totalPostCount,
-                  onTap: feed.refresh,
-                ),
-              ), */
-              /* SliverToBoxAdapter(
-                child: _TodayAlbumContextPill(
-                  count: feed.totalPostCount,
-                  onTap: feed.refresh,
-                ),
-              ), */
-              /* SliverToBoxAdapter(
-                child: _DayAlbumBanner(
-                  count: feed.totalPostCount,
-                  hasNewPosts: state.hasNewPosts,
-                ),
-              ), */
+
               const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
               SliverToBoxAdapter(
@@ -71,9 +63,10 @@ class HomeScreenV3 extends StatelessWidget {
                   errorMessage: state.errorMessage,
                 ),
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 20)),
               const SliverToBoxAdapter(child: _SuggestedUsersSection()),
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              const SliverToBoxAdapter(child: SizedBox(height: 32)),
             ],
           ),
         ),
@@ -81,25 +74,9 @@ class HomeScreenV3 extends StatelessWidget {
     );
   }
 
-  /*   AppBar _buildAppBar(BuildContext context) {
-    return AppBar(
-      elevation: 0,
-      leading: IconButton(icon: const Icon(Icons.menu), onPressed: () {}),
-      title: const Text(
-        'PICCTURE',
-        style: TextStyle(fontWeight: FontWeight.w600),
-      ),
-      centerTitle: true,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.search),
-          onPressed: () => openSearch(context),
-        ),
-        IconButton(icon: const Icon(Icons.more_horiz), onPressed: () {}),
-      ],
-    );
-  } */
-
+  /// -------------------------------------------------------------------------
+  /// APP BAR
+  /// -------------------------------------------------------------------------
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
       elevation: 0,
@@ -107,8 +84,8 @@ class HomeScreenV3 extends StatelessWidget {
       leading: IconButton(
         icon: const Icon(
           Icons.menu_rounded,
-          color: Color(0xFF3D3D3D),
           size: 26,
+          color: Color(0xFF3D3D3D),
         ),
         onPressed: () => _showProfileSheet(context),
       ),
@@ -126,108 +103,50 @@ class HomeScreenV3 extends StatelessWidget {
         IconButton(
           icon: const Icon(
             Icons.search_rounded,
-            color: Color(0xFF3D3D3D),
             size: 25,
+            color: Color(0xFF3D3D3D),
           ),
           onPressed: () => _openSearch(context),
         ),
-        Stack(
-          children: [
-            IconButton(
-              icon: const Icon(
-                Icons.notifications_outlined,
-                color: Color(0xFF3D3D3D),
-                size: 25,
-              ),
-              onPressed: () {
-                // TODO: Navigate to notifications
-              },
-            ),
-            Positioned(
-              right: 10,
-              top: 10,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFD84315),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-          ],
+        IconButton(
+          icon: const Icon(Icons.notifications_outlined, size: 25),
+          onPressed: () {},
         ),
-
-        const SizedBox(width: 4),
+        const SizedBox(width: 6),
       ],
     );
   }
 
+  /// -------------------------------------------------------------------------
+  /// SEARCH
+  /// -------------------------------------------------------------------------
   void _openSearch(BuildContext context) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => MultiProvider(
-          providers: [
-            ChangeNotifierProvider(create: (_) => SearchControllers()),
-            ChangeNotifierProvider(create: (_) => ProfileController()),
-            ChangeNotifierProvider(create: (_) => MutualController()),
-            ChangeNotifierProvider(create: (_) => FollowController()),
-          ],
+        builder: (_) => ChangeNotifierProvider(
+          create: (_) => SearchControllers(),
           child: const SearchScreen(),
         ),
       ),
     );
   }
 
+  /// -------------------------------------------------------------------------
+  /// PROFILE SHEET
+  /// -------------------------------------------------------------------------
   void _showProfileSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => const _ProfileBottomSheet(),
+      isScrollControlled: true,
+      builder: (_) => const _ProfileBottomSheet(),
     );
   }
 }
 
-/* /// ---------------------------------------------------------------------------
-/// DAY ALBUM BANNER
 /// ---------------------------------------------------------------------------
-class _DayAlbumBanner extends StatelessWidget {
-  final int count;
-  final bool hasNewPosts;
-
-  const _DayAlbumBanner({required this.count, required this.hasNewPosts});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.photo_library_outlined),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              hasNewPosts
-                  ? 'New pictures available'
-                  : 'You have $count pictures to review in the last 24 hours.',
-              style: const TextStyle(fontSize: 12),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-} */
-
-// ---------------------------------------------------------------------------
-/// X-STYLE DAY ALBUM PILL (COMPACT LIKE TWITTER)
+/// DAY ALBUM PILL
 /// ---------------------------------------------------------------------------
 class _XStyleDayAlbumPill extends StatelessWidget {
   final DayAlbumStatus status;
@@ -251,7 +170,6 @@ class _XStyleDayAlbumPill extends StatelessWidget {
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Icon(
                 Icons.arrow_upward_rounded,
@@ -265,7 +183,6 @@ class _XStyleDayAlbumPill extends StatelessWidget {
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF4A4A4A),
-                  letterSpacing: 0.1,
                 ),
               ),
             ],
@@ -275,102 +192,6 @@ class _XStyleDayAlbumPill extends StatelessWidget {
     );
   }
 }
-
-/* /// ---------------------------------------------------------------------------
-/// X-STYLE DAY ALBUM PILL (COMPACT LIKE TWITTER)
-/// ---------------------------------------------------------------------------
-class _XStyleDayAlbumPill extends StatelessWidget {
-  final int count;
-  final VoidCallback onTap;
-
-  const _XStyleDayAlbumPill({required this.count, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    if (count <= 0) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFE8E3D6),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFD0C9B8), width: 0.5),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.arrow_upward_rounded,
-                size: 14,
-                color: Color(0xFF8B7355),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'Day Album has $count new ${count > 1 ? 'Picctures' : 'Piccture'}',
-                style: const TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF4A4A4A),
-                  letterSpacing: 0.1,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-} */
-/* 
-/// ---------------------------------------------------------------------------
-/// TODAY’S ALBUM — X/TWITTER STYLE CONTEXT PILL
-/// ---------------------------------------------------------------------------
-class _TodayAlbumContextPill extends StatelessWidget {
-  final int count;
-  final VoidCallback onTap;
-
-  const _TodayAlbumContextPill({required this.count, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    if (count <= 0) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: const Color(0xFFEAE6DC),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.photo_library_outlined, size: 18),
-              const SizedBox(width: 8),
-              Text(
-                '$count New Piccters ${count > 1 ? 's' : ''} in Day album '
-                '$count more picture${count > 1 ? 's' : ''} from today',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-} */
 
 /// ---------------------------------------------------------------------------
 /// POST CAROUSEL
@@ -416,108 +237,45 @@ class _PostCarousel extends StatelessWidget {
       child: PageView.builder(
         controller: PageController(viewportFraction: 0.94),
         itemCount: posts.length,
-        itemBuilder: (_, index) {
-          return _PostCard(post: posts[index]);
-        },
+        itemBuilder: (_, i) => _PostCard(post: posts[i]),
       ),
     );
   }
 }
 
 /// ---------------------------------------------------------------------------
-/// POST CARD (WITH EDGE NUDGE + DOTS)
+/// POST CARD
 /// ---------------------------------------------------------------------------
-class _PostCard extends StatefulWidget {
+class _PostCard extends StatelessWidget {
   final PostModel post;
 
   const _PostCard({required this.post});
 
   @override
-  State<_PostCard> createState() => _PostCardState();
-}
-
-class _PostCardState extends State<_PostCard>
-    with SingleTickerProviderStateMixin {
-  late final PageController _imageController;
-  int _imageIndex = 0;
-
-  late final AnimationController _nudgeController;
-  late final Animation<double> _nudgeAnimation;
-
-  bool _nudgePlayed = false;
-  bool _userInteracted = false;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _imageController = PageController();
-
-    _nudgeController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
-
-    _nudgeAnimation = TweenSequence<double>(
-      [
-        TweenSequenceItem(tween: Tween(begin: 0, end: -8), weight: 1),
-        TweenSequenceItem(tween: Tween(begin: -8, end: 0), weight: 1),
-        TweenSequenceItem(tween: Tween(begin: 0, end: 8), weight: 1),
-        TweenSequenceItem(tween: Tween(begin: 8, end: 0), weight: 1),
-      ],
-    ).animate(CurvedAnimation(parent: _nudgeController, curve: Curves.easeOut));
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_nudgePlayed && mounted) {
-        _nudgePlayed = true;
-        _nudgeController.forward();
-      }
-    });
-  }
-
-  void _stopNudge() {
-    if (_userInteracted) return;
-    _userInteracted = true;
-    _nudgeController.stop();
-  }
-
-  @override
-  void dispose() {
-    _imageController.dispose();
-    _nudgeController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 6),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        children: [
-          _PostHeader(post: widget.post),
-
-          Expanded(
-            child: AnimatedBuilder(
-              animation: _nudgeAnimation,
-              builder: (_, child) {
-                return Transform.translate(
-                  offset: Offset(
-                    _userInteracted ? 0 : _nudgeAnimation.value,
-                    0,
-                  ),
-                  child: child,
-                );
-              },
+    return ChangeNotifierProvider(
+      create: (_) {
+        final controller = EngagementController(
+          postId: post.postId,
+          initialPost: post,
+        );
+        controller.hydrate();
+        return controller;
+      },
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 6),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Column(
+          children: [
+            _PostHeader(post: post),
+            Expanded(
               child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTapDown: (_) => _stopNudge(),
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => DayAlbumViewerScreen(
-                        posts: [widget.post],
+                        posts: [post],
                         sessionStartedAt: DateTime.now(),
                       ),
                     ),
@@ -525,45 +283,25 @@ class _PostCardState extends State<_PostCard>
                 },
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Stack(
-                    children: [
-                      PageView.builder(
-                        controller: _imageController,
-                        itemCount: widget.post.imageUrls.length,
-                        onPageChanged: (i) {
-                          _stopNudge();
-                          setState(() => _imageIndex = i);
-                        },
-                        itemBuilder: (_, i) {
-                          return Image.network(
-                            widget.post.imageUrls[i],
-                            fit: BoxFit.cover,
-                          );
-                        },
-                      ),
-                      Positioned(
-                        bottom: 8,
-                        left: 0,
-                        right: 0,
-                        child: _ImageDots(
-                          count: widget.post.imageUrls.length,
-                          activeIndex: _imageIndex,
-                        ),
-                      ),
-                    ],
+                  child: Image.network(
+                    post.imageUrls.first,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
                   ),
                 ),
               ),
             ),
-          ),
-
-          _EngagementBar(post: widget.post),
-        ],
+            const _EngagementBar(),
+          ],
+        ),
       ),
     );
   }
 }
 
+/// ---------------------------------------------------------------------------
+/// POST HEADER (FOLLOW FIXED)
+/// ---------------------------------------------------------------------------
 class _PostHeader extends StatelessWidget {
   final PostModel post;
 
@@ -571,143 +309,155 @@ class _PostHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isOwner =
-        FirebaseAuth.instance.currentUser?.uid == post.authorId;
+    final isOwner = FirebaseAuth.instance.currentUser?.uid == post.authorId;
 
     return ChangeNotifierProvider(
-      create: (_) => FollowController()..load(post.authorId),
+      create: (_) =>
+          FollowController()..loadFollower(targetUserId: post.authorId),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
           children: [
-            /// AUTHOR AVATAR + NAME
             Expanded(
               child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => MultiProvider(
-                        providers: [
-                          ChangeNotifierProvider(
-                            create: (_) =>
-                                ProfileController()..loadProfile(post.authorId),
-                          ),
-                          ChangeNotifierProvider(
-                            create: (_) =>
-                                MutualController()..loadMutuals(post.authorId),
-                          ),
-                          ChangeNotifierProvider(
-                            create: (_) =>
-                                FollowController()..load(post.authorId),
-                          ),
-                        ],
-                        child: ProfileScreen(userId: post.authorId),
-                      ),
+                      builder: (_) => ProfileEntry(userId: post.authorId),
                     ),
                   );
                 },
-
                 child: Row(
                   children: [
-                    /// AVATAR
                     ChangeNotifierProvider(
                       create: (_) => UserAvatarController(post.authorId),
                       child: Consumer<UserAvatarController>(
-                        builder: (_, avatar, __) {
-                          return CircleAvatar(
-                            radius: 16,
-                            backgroundColor: Colors.grey.shade300,
-                            backgroundImage:
-                                post.authorAvatarUrl != null &&
-                                    post.authorAvatarUrl!.isNotEmpty
-                                ? NetworkImage(post.authorAvatarUrl!)
-                                : null,
-                            child:
-                                post.authorAvatarUrl == null ||
-                                    post.authorAvatarUrl!.isEmpty
-                                ? const Icon(Icons.person, size: 16)
-                                : null,
-                          );
-                        },
+                        builder: (_, avatar, __) => CircleAvatar(
+                          radius: 16,
+                          backgroundImage: post.authorAvatarUrl != null
+                              ? NetworkImage(post.authorAvatarUrl!)
+                              : null,
+                          child: post.authorAvatarUrl == null
+                              ? const Icon(Icons.person, size: 16)
+                              : null,
+                        ),
                       ),
                     ),
-
                     const SizedBox(width: 8),
-
-                    Row(
-                      children: [
-                        Text(
-                          post.authorName.isNotEmpty
-                              ? post.authorName
-                              : 'Unknown',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          ),
-                        ),
-                        if (post.isVerifiedOwner) ...[
-                          const SizedBox(width: 4),
-                          const Icon(
-                            Icons.verified,
-                            size: 14,
-                            color: Colors.blue,
-                          ),
-                        ],
-                      ],
+                    Text(
+                      post.authorName.isNotEmpty ? post.authorName : 'Unknown',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
               ),
             ),
-
-            /// FOLLOW + MENU
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Consumer<FollowController>(
-                  builder: (_, follow, __) {
-                    if (isOwner) return const SizedBox.shrink();
-
-                    return OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                      onPressed: follow.isProcessing
-                          ? null
-                          : () {
-                              follow.isFollowing
-                                  ? follow.unfollow(post.authorId)
-                                  : follow.follow(post.authorId);
-                            },
-
-                      child: Text(
-                        follow.isFollowing ? 'Following' : 'Follow',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    );
-                  },
+            if (!isOwner)
+              Consumer<FollowController>(
+                builder: (_, follow, __) => OutlinedButton(
+                  onPressed: follow.isProcessing ? null : follow.toggle,
+                  child: Text(follow.isFollowing ? 'Following' : 'Follow'),
                 ),
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, size: 20),
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'copy', child: Text('Copy link')),
-                  ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// ---------------------------------------------------------------------------
+/// ENGAGEMENT BAR
+/// ---------------------------------------------------------------------------
+class _EngagementBar extends StatelessWidget {
+  const _EngagementBar();
+
+  @override
+  Widget build(BuildContext context) {
+    final engagement = context.watch<EngagementController>();
+    final post = engagement.post;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          // LIKE
+          _IconWithCount(
+            icon: post.hasLiked ? Icons.favorite : Icons.favorite_border,
+            color: post.hasLiked ? Colors.red : Colors.black,
+            count: post.likeCount,
+            onTap: engagement.isProcessing ? null : engagement.toggleLike,
+          ),
+
+          // REPIC
+          _IconWithCount(
+            icon: Icons.repeat,
+            color: Colors.black,
+            count: post.repicCount,
+            onTap: engagement.isProcessing ? null : engagement.toggleRepic,
+          ),
+
+          // SAVE
+          _IconWithCount(
+            icon: post.hasSaved ? Icons.bookmark : Icons.bookmark_border,
+            color: Colors.black,
+            count: post.saveCount,
+            onTap: engagement.isProcessing ? null : engagement.toggleSave,
+          ),
+
+          // QUOTE COUNT (NO ACTION HERE)
+          _IconWithCount(
+            icon: Icons.chat_bubble_outline,
+            color: Colors.black,
+            count: post.quoteReplyCount,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ChangeNotifierProvider.value(
+                    value: context.read<EngagementController>(),
+                    child: QuoteReplyScreen(postId: post.postId),
+                  ),
                 ),
-              ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IconWithCount extends StatelessWidget {
+  final IconData icon;
+  final int count;
+  final Color color;
+  final VoidCallback? onTap;
+
+  const _IconWithCount({
+    required this.icon,
+    required this.count,
+    required this.color,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(height: 2),
+            Text(
+              count.toString(),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -717,239 +467,28 @@ class _PostHeader extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------------------------
-/// IMAGE DOTS
-/// ---------------------------------------------------------------------------
-class _ImageDots extends StatelessWidget {
-  final int count;
-  final int activeIndex;
-
-  const _ImageDots({required this.count, required this.activeIndex});
-
-  @override
-  Widget build(BuildContext context) {
-    if (count <= 1) return const SizedBox.shrink();
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(count, (i) {
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 3),
-          width: i == activeIndex ? 7 : 4.5,
-          height: i == activeIndex ? 7 : 4.5,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: i == activeIndex
-                ? const Color.fromARGB(192, 27, 107, 228).withValues(alpha: 0.9)
-                : const Color.fromARGB(255, 47, 77, 212).withValues(alpha: 0.4),
-          ),
-        );
-      }),
-    );
-  }
-}
-
-/// ---------------------------------------------------------------------------
-/// ENGAGEMENT BAR
-/// ---------------------------------------------------------------------------
-class _EngagementBar extends StatelessWidget {
-  final PostModel post;
-
-  const _EngagementBar({required this.post});
-
-  @override
-  Widget build(BuildContext context) {
-    final engagement = context.watch<EngagementController>();
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _EngagementIcon(
-            icon: post.hasLiked ? Icons.favorite : Icons.favorite_border,
-            onTap: () => post.hasLiked
-                ? engagement.dislikePost(post)
-                : engagement.likePost(post),
-            color: post.hasLiked ? Colors.red : null,
-          ),
-          _EngagementIcon(icon: Icons.chat_bubble_outline, onTap: () {}),
-          _EngagementIcon(icon: Icons.repeat, onTap: () {}),
-          _EngagementIcon(
-            icon: post.hasSaved ? Icons.bookmark : Icons.bookmark_border,
-            onTap: () => engagement.savePost(post),
-          ),
-          _EngagementIcon(
-            icon: Icons.more_horiz,
-            onTap: () => engagement.sharePost(post),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EngagementIcon extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  final Color? color;
-
-  const _EngagementIcon({required this.icon, required this.onTap, this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkResponse(
-      onTap: onTap,
-      radius: 20,
-      child: Padding(
-        padding: const EdgeInsets.all(6),
-        child: Icon(icon, size: 20, color: color),
-      ),
-    );
-  }
-}
-
-/// ---------------------------------------------------------------------------
-/// SUGGESTED USERS
+/// SUGGESTED USERS (PLACEHOLDER)
 /// ---------------------------------------------------------------------------
 class _SuggestedUsersSection extends StatelessWidget {
   const _SuggestedUsersSection();
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return const SizedBox(
       height: 120,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              'Suggested for You',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: 5,
-              itemBuilder: (_, __) {
-                return Container(
-                  width: 120,
-                  margin: const EdgeInsets.symmetric(horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Center(child: Text('User')),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+      child: Center(child: Text('Suggested users coming soon')),
     );
   }
 }
 
 /// ---------------------------------------------------------------------------
-/// LOGOUT HANDLER (CONFIRMED + SAFE NAV RESET)
-/// ---------------------------------------------------------------------------
-/* Future<void> _handleLogout(BuildContext context) async {
-  final confirmed = await showDialog<bool>(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => AlertDialog(
-      title: const Text('Logout'),
-      content: const Text('Are you sure you want to logout?'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text(
-            'Logout',
-            style: TextStyle(color: Color(0xFF8B7355)),
-          ),
-        ),
-      ],
-    ),
-  );
-
-  if (confirmed != true) return;
-
-  try {
-    // 🔐 Firebase sign out
-    await FirebaseAuth.instance.signOut();
-
-    // 🧹 Clear entire navigation stack & go to Auth gate
-    if (context.mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const AuthGate()),
-        (route) => false,
-      );
-    }
-  } catch (e) {
-    debugPrint('❌ Logout failed: $e');
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Logout failed. Please try again.')),
-      );
-    }
-  }
-} */
-
-Future<void> _handleLogout(BuildContext context) async {
-  final confirmed = await showDialog<bool>(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => AlertDialog(
-      title: const Text('Logout'),
-      content: const Text('Are you sure you want to logout?'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text(
-            'Logout',
-            style: TextStyle(color: Color(0xFF8B7355)),
-          ),
-        ),
-      ],
-    ),
-  );
-
-  if (confirmed != true) return;
-
-  try {
-    await AuthService().logout();
-
-    if (context.mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const AuthGate()),
-        (route) => false,
-      );
-    }
-  } catch (e) {
-    debugPrint('❌ Logout failed: $e');
-  }
-}
-
-/// ---------------------------------------------------------------------------
-/// PROFILE BOTTOM SHEET - MODERN ALTERNATIVE TO DRAWER
+/// PROFILE BOTTOM SHEET + LOGOUT
 /// ---------------------------------------------------------------------------
 class _ProfileBottomSheet extends StatelessWidget {
   const _ProfileBottomSheet();
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
     final theme = context.watch<ThemeController>();
 
     return Container(
@@ -960,237 +499,53 @@ class _ProfileBottomSheet extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const SizedBox(height: 12),
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
           const SizedBox(height: 24),
-
-          /// PROFILE HEADER
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              children: [
-                Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 32,
-                      backgroundColor: const Color(0xFFE8E4D9),
-                      backgroundImage: user?.photoURL != null
-                          ? NetworkImage(user!.photoURL!)
-                          : null,
-                      child: user?.photoURL == null
-                          ? const Icon(
-                              Icons.person,
-                              size: 32,
-                              color: Color(0xFF8B7355),
-                            )
-                          : null,
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        width: 18,
-                        height: 18,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF8B7355),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: const Color(0xFFF6F4EF),
-                            width: 2,
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.videocam,
-                          size: 10,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        user?.displayName ?? 'User',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 18,
-                          color: Color(0xFF3D3D3D),
-                        ),
-                      ),
-                      Text(
-                        user?.email ?? '',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF7A7A7A),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          SwitchListTile(
+            value: theme.isDarkMode,
+            onChanged: (_) => theme.toggleTheme(),
+            title: const Text('Day / Night Mode'),
           ),
-
-          const SizedBox(height: 20),
-
-          /// STATS ROW
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _statItem('Mutuals', '0'),
-                _statItem('Following', '0'),
-                _statItem('Followers', '0'),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 24),
-          const Divider(height: 1),
-
-          /// MENU ITEMS
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              children: [
-                _menuTile(Icons.settings_outlined, 'Settings', () {}),
-                _menuTile(Icons.message_outlined, 'Messenger', () {}),
-                _menuTile(Icons.mail_outline, 'Mailbox', () {}),
-                _menuTile(Icons.photo_library_outlined, 'Picctures', () {}),
-                _menuTile(Icons.stars_outlined, 'Impact Piccters', () {}),
-
-                const Divider(height: 24),
-
-                /// DAY/NIGHT TOGGLE
-                SwitchListTile(
-                  value: theme.isDarkMode,
-                  onChanged: (_) => theme.toggleTheme(),
-                  title: const Text(
-                    'Day / Night Mode',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-                  ),
-                  secondary: Icon(
-                    theme.isDarkMode ? Icons.dark_mode : Icons.light_mode,
-                    color: const Color(0xFF8B7355),
-                  ),
-                ),
-
-                const Divider(height: 24),
-
-                _menuTile(
-                  Icons.delete_outline,
-                  'Delete Account',
-                  () {},
-                  danger: true,
-                ),
-
-                _menuTile(Icons.logout, 'Logout', () => _handleLogout(context)),
-
-                /*   _menuTile(
-                  Icons.logout,
-                  'Logout',
-                  () => FirebaseAuth.instance.signOut(),
-                ), */
-                _menuTile(Icons.info_outline, 'About Us', () {}),
-
-                const SizedBox(height: 16),
-                const Center(
-                  child: Text(
-                    'Piccture v0.4.9',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ),
-              ],
-            ),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Logout'),
+            onTap: () => _handleLogout(context),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _statItem(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
-            color: Color(0xFF3D3D3D),
-          ),
+/// ---------------------------------------------------------------------------
+/// LOGOUT HANDLER
+/// ---------------------------------------------------------------------------
+Future<void> _handleLogout(BuildContext context) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text('Logout'),
+      content: const Text('Are you sure you want to logout?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
         ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 13, color: Color(0xFF7A7A7A)),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Logout'),
         ),
       ],
-    );
-  }
+    ),
+  );
 
-  Widget _menuTile(
-    IconData icon,
-    String title,
-    VoidCallback onTap, {
-    bool danger = false,
-  }) {
-    return ListTile(
-      leading: Icon(
-        icon,
-        color: danger ? Colors.red : const Color(0xFF8B7355),
-        size: 24,
-      ),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: danger ? Colors.red : const Color(0xFF3D3D3D),
-          fontWeight: FontWeight.w600,
-          fontSize: 15,
-        ),
-      ),
-      onTap: onTap,
-    );
-  }
-}
+  if (confirmed != true) return;
 
-String resolvePostAuthorLabel({
-  required PostModel post,
-  required String? currentUserId,
-}) {
-  if (currentUserId != null && post.authorId == currentUserId) {
-    return 'You';
-  }
-  return post.authorName;
-}
+  await AuthService().logout();
 
-void openSearch(BuildContext context) {
-  final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-  if (currentUserId != null) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => MultiProvider(
-          providers: [
-            ChangeNotifierProvider(create: (_) => SearchControllers()),
-            ChangeNotifierProvider(create: (_) => ProfileController()),
-            ChangeNotifierProvider(create: (_) => MutualController()),
-            ChangeNotifierProvider(create: (_) => FollowController()),
-          ],
-          child: const SearchScreen(),
-        ),
-      ),
+  if (context.mounted) {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const AuthGate()),
+      (_) => false,
     );
   }
 }

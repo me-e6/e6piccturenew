@@ -324,6 +324,7 @@ class _ConsistentButton extends StatefulWidget {
 
 class _ConsistentButtonState extends State<_ConsistentButton>
     with SingleTickerProviderStateMixin {
+  // ignore: unused_field
   bool _isPressed = false;
   bool _isHovered = false;
   late AnimationController _scaleController;

@@ -2,43 +2,115 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
     // -----------------------------
     // USERS
     // -----------------------------
     match /users/{userId} {
       allow read: if true;
 
-      allow create: if request.auth != null && request.auth.uid == userId;
+      allow create: if isOwner(userId);
 
-      allow update: if request.auth != null && request.auth.uid == userId;
+      // Profile updates (safe fields only)
+      allow update: if isOwner(userId)
+        && request.resource.data.diff(resource.data).changedKeys()
+          .hasOnly([
+            'displayName',
+            'displayName_lower',
+            'bio',
+            'profileImageUrl',
+            'profileBannerUrl',
+            'videoDpUrl',
+            'videoDpThumbUrl',
+            'updatedAt'
+          ]);
 
-      allow update: if request.auth != null &&
-        request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['followersCount', 'followingCount', 'updatedAt']);
+      // Social counters (follow system)
+      allow update: if isSignedIn()
+        && request.resource.data.diff(resource.data).changedKeys()
+          .hasOnly([
+            'followersCount',
+            'followingCount',
+            'mutualCount',
+            'updatedAt'
+          ]);
+
+      // Engagement index subcollections
+      match /liked_posts/{postId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /saved_posts/{postId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /repic_posts/{postId} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
+    // -----------------------------
+    // FOLLOW SYSTEM
+    // -----------------------------
     match /users/{userId}/followers/{followerId} {
       allow read: if true;
-      allow create, delete: if request.auth != null && request.auth.uid == followerId;
+      allow create, delete: if isOwner(followerId);
     }
 
     match /users/{userId}/following/{followingId} {
       allow read: if true;
-      allow create, delete: if request.auth != null && request.auth.uid == userId;
+      allow create, delete: if isOwner(userId);
     }
 
     // -----------------------------
-    // POSTS  ✅ REQUIRED
+    // POSTS
     // -----------------------------
     match /posts/{postId} {
       allow read: if true;
-      allow write: if request.auth != null;
-    }
-    
-    // Saved   
-        match /saved/{docId} {
-        allow read, write: if request.auth != null
-                           && request.auth.uid == userId;
+
+      // ❌ No full document overwrite
+      allow create, delete: if false;
+
+      // ✅ Engagement counters only
+      allow update: if isSignedIn()
+        && request.resource.data.diff(resource.data).changedKeys()
+          .hasOnly([
+            'likeCount',
+            'saveCount',
+            'repicCount',
+            'replyCount',
+            'quoteReplyCount'
+          ]);
+
+      // -------------------------
+      // ENGAGEMENT SUBCOLLECTIONS
+      // -------------------------
+      match /likes/{uid} {
+        allow read: if true;
+        allow create, delete: if isOwner(uid);
       }
+
+      match /saves/{uid} {
+        allow read: if true;
+        allow create, delete: if isOwner(uid);
+      }
+
+      match /repics/{uid} {
+        allow read: if true;
+        allow create, delete: if isOwner(uid);
+      }
+
+      match /quotes/{quoteId} {
+        allow read: if true;
+        allow create: if isSignedIn();
+      }
+    }
   }
 }

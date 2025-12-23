@@ -57,50 +57,29 @@ class PicctureApp extends StatelessWidget {
         // AUTH
         // --------------------------------------------------
         ChangeNotifierProvider(create: (_) => AuthController()),
-
         ChangeNotifierProvider(create: (_) => LoginController()),
 
         // --------------------------------------------------
         // THEME (GLOBAL)
         // --------------------------------------------------
         ChangeNotifierProvider(create: (_) => ThemeController()),
-
-        // --------------------------------------------------
-        // ENGAGEMENT (GLOBAL COUNTERS / LIKES / ETC.)
-        // --------------------------------------------------
-        ChangeNotifierProvider(create: (_) => EngagementController()),
       ],
       child: Consumer<ThemeController>(
         builder: (context, themeController, _) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'Piccture',
-
-            // --------------------------------------------------
-            // THEME
-            // --------------------------------------------------
             theme: AppThemes.lightTheme,
             darkTheme: AppThemes.darkTheme,
             themeMode: themeController.themeMode,
-
-            // --------------------------------------------------
-            // ROUTING (TOP-LEVEL ONLY)
-            // --------------------------------------------------
             initialRoute: '/login',
             routes: {
-              // ---------------- AUTH ----------------
               '/login': (_) => const LoginScreen(),
               '/signup': (_) => SignupScreen(),
-
-              // ---------------- MAIN APP ----------------
               '/home': (_) => const MainNavigation(),
-              // '/home': (_) => const MainNavigationV1Refined(),
-              // ---------------- UTILITIES ----------------
               '/search': (_) => const SearchScreen(),
               '/create-post': (_) => const CreatePostScreen(files: []),
               '/video-dp-upload': (_) => const VideoDpUploadScreen(),
-
-              // ---------------- FEED (OPTIONAL ENTRY) ----------------
               '/day-feed': (_) => const DayFeedScreen(),
             },
           );

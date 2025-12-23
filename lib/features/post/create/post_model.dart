@@ -3,28 +3,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// ------------------------------------------------------------
 /// POST VISIBILITY (CANONICAL ENUM)
 /// ------------------------------------------------------------
-/// Stored in Firestore as STRING:
-///
-/// "public" | "followers" | "mutuals" | "private"
-enum PostVisibility { public, followers, mutuals, private } // --Futre Plan
-
-enum ImpactReason {
-  // Future Plan
-  highLikes,
-  highReplies,
-  highRepics,
-  gazetterAcknowledged,
-  communityAcknowledged,
-}
+enum PostVisibility { public, followers, mutuals, private }
 
 /// ------------------------------------------------------------
-/// POST MODEL (API-READY, DENORMALIZED, SAFE)
+/// POST MODEL (DENORMALIZED, COUNTER-FIRST, SAFE)
 /// ------------------------------------------------------------
-/// Design principles:
-/// - Flat author snapshot (NO nested user objects)
-/// - Defensive Firestore parsing
-/// - Client-safe mutable engagement flags
-/// - Ready for REST / GraphQL mapping later
 class PostModel {
   // -------------------------
   // CORE IDENTITY
@@ -32,7 +15,7 @@ class PostModel {
   final String postId;
 
   // -------------------------
-  // AUTHOR SNAPSHOT (DENORMALIZED)
+  // AUTHOR SNAPSHOT
   // -------------------------
   final String authorId;
   final String authorName;
@@ -45,7 +28,7 @@ class PostModel {
   final PostVisibility visibility;
 
   // -------------------------
-  // MEDIA (MULTI-IMAGE)
+  // MEDIA
   // -------------------------
   final List<String> imageUrls;
 
@@ -60,17 +43,20 @@ class PostModel {
   final DateTime createdAt;
 
   // -------------------------
-  // ENGAGEMENT COUNTS (SERVER-OWNED)
+  // ENGAGEMENT COUNTERS (SERVER OWNED)
   // -------------------------
   int likeCount;
+  int saveCount;
+  int repicCount;
   int replyCount;
   int quoteReplyCount;
 
   // -------------------------
-  // PER-USER FLAGS (CLIENT ONLY)
+  // PER-USER FLAGS (CLIENT SNAPSHOT)
   // -------------------------
   bool hasLiked;
   bool hasSaved;
+  bool hasRepicced;
 
   PostModel({
     required this.postId,
@@ -83,10 +69,13 @@ class PostModel {
     required this.isRepost,
     required this.createdAt,
     this.likeCount = 0,
+    this.saveCount = 0,
+    this.repicCount = 0,
     this.replyCount = 0,
     this.quoteReplyCount = 0,
     this.hasLiked = false,
     this.hasSaved = false,
+    this.hasRepicced = false,
   });
 
   factory PostModel.fromFirestore(DocumentSnapshot doc) {
@@ -96,27 +85,23 @@ class PostModel {
       throw StateError('Post document ${doc.id} has invalid data');
     }
 
-    final Map<String, dynamic> data = raw;
+    final data = raw;
 
-    // createdAt (safe)
     final rawCreatedAt = data['createdAt'];
-    final DateTime createdAt = rawCreatedAt is Timestamp
+    final createdAt = rawCreatedAt is Timestamp
         ? rawCreatedAt.toDate()
         : DateTime.now();
 
-    // visibility (backward-safe)
-    final String visibilityRaw =
+    final visibilityRaw =
         (data['visibility'] as String?)?.toLowerCase() ?? 'public';
 
-    final PostVisibility visibility =
-        PostVisibility.values.any((v) => v.name == visibilityRaw)
+    final visibility = PostVisibility.values.any((v) => v.name == visibilityRaw)
         ? PostVisibility.values.byName(visibilityRaw)
         : PostVisibility.public;
 
-    // authorName (immutable snapshot, backward-safe)
-    final String authorName =
+    final authorName =
         (data['authorName'] as String?)?.trim().isNotEmpty == true
-        ? data['authorName'] as String
+        ? data['authorName']
         : (data['displayName'] as String?) ?? 'Unknown';
 
     return PostModel(
@@ -132,6 +117,8 @@ class PostModel {
       isRepost: data['isRepost'] as bool? ?? false,
       createdAt: createdAt,
       likeCount: data['likeCount'] as int? ?? 0,
+      saveCount: data['saveCount'] as int? ?? 0,
+      repicCount: data['repicCount'] as int? ?? 0,
       replyCount: data['replyCount'] as int? ?? 0,
       quoteReplyCount: data['quoteReplyCount'] as int? ?? 0,
     );
@@ -142,10 +129,13 @@ class PostModel {
   // ------------------------------------------------------------
   PostModel copyWith({
     int? likeCount,
+    int? saveCount,
+    int? repicCount,
     int? replyCount,
     int? quoteReplyCount,
     bool? hasLiked,
     bool? hasSaved,
+    bool? hasRepicced,
   }) {
     return PostModel(
       postId: postId,
@@ -158,45 +148,23 @@ class PostModel {
       isRepost: isRepost,
       createdAt: createdAt,
       likeCount: likeCount ?? this.likeCount,
+      saveCount: saveCount ?? this.saveCount,
+      repicCount: repicCount ?? this.repicCount,
       replyCount: replyCount ?? this.replyCount,
       quoteReplyCount: quoteReplyCount ?? this.quoteReplyCount,
       hasLiked: hasLiked ?? this.hasLiked,
       hasSaved: hasSaved ?? this.hasSaved,
+      hasRepicced: hasRepicced ?? this.hasRepicced,
     );
   }
 
-  // ------------------------------------------------------------
-  // SAFE IMAGE ACCESS (CAROUSEL-READY)
-  // ------------------------------------------------------------
   List<String> get resolvedImages => imageUrls;
-
-  // ------------------------------------------------------------
-  // IMPACT EXPLANATION (CLIENT-DERIVED, API-READY) ---Future Plan
-  // ------------------------------------------------------------
-  List<ImpactReason> get impactReasons {
-    final reasons = <ImpactReason>[];
-
-    if (likeCount >= 50) {
-      reasons.add(ImpactReason.highLikes);
-    }
-
-    if (replyCount >= 10) {
-      reasons.add(ImpactReason.highReplies);
-    }
-
-    if (quoteReplyCount >= 5) {
-      reasons.add(ImpactReason.highRepics);
-    }
-
-    if (isVerifiedOwner) {
-      reasons.add(ImpactReason.gazetterAcknowledged);
-    }
-
-    // future: civic acknowledgement
-    // if (acknowledgedByCitizens) ...
-
-    return reasons;
+  String? get thumbnailUrl {
+    if (imageUrls.isEmpty) return null;
+    return imageUrls.first;
   }
-
-  bool get isImpact => impactReasons.isNotEmpty;
 }
+
+/// ------------------------------------------------------------
+/// DERIVED MEDIA HELPERS (UI SAFE)
+/// ------------------------------------------------------------

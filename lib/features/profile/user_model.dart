@@ -22,7 +22,7 @@ class UserModel {
   final String? videoDpUrl;
   final String? videoDpThumbUrl;
   final String bio;
-  final String? profileBannerUrl; // ✅ NEW
+  final String? profileBannerUrl; //
 
   // ------------------------------------------------------------
   // UI ALIAS (CANONICAL HANDLE)
@@ -94,8 +94,7 @@ class UserModel {
 
     final data = raw;
 
-    DateTime _parseTs(dynamic v) =>
-        v is Timestamp ? v.toDate() : DateTime.now();
+    DateTime parseTs(dynamic v) => v is Timestamp ? v.toDate() : DateTime.now();
 
     return UserModel(
       uid: data['uid'] ?? doc.id,
@@ -123,8 +122,8 @@ class UserModel {
       followersCount: data['followersCount'] ?? 0,
       followingCount: data['followingCount'] ?? 0,
       mutualCount: data['mutualCount'] ?? 0,
-      createdAt: _parseTs(data['createdAt']),
-      updatedAt: _parseTs(data['updatedAt']),
+      createdAt: parseTs(data['createdAt']),
+      updatedAt: parseTs(data['updatedAt']),
     );
   }
 

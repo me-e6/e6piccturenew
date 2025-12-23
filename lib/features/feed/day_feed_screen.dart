@@ -162,9 +162,12 @@ class _FeedContent extends StatelessWidget {
         return PageView.builder(
           itemCount: state.posts.length,
           itemBuilder: (context, index) {
+            final post = state.posts[index];
+
             return ChangeNotifierProvider(
-              create: (_) => EngagementController(),
-              child: _PostCard(post: state.posts[index]),
+              create: (_) =>
+                  EngagementController(postId: post.postId, initialPost: post),
+              child: _PostCard(post: post),
             );
           },
         );
@@ -285,31 +288,35 @@ class _EngagementBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<EngagementController>(
-      builder: (context, controller, _) {
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.thumb_up_alt_outlined),
-              onPressed: () => controller.likePost(post),
-            ),
-            IconButton(
-              icon: const Icon(Icons.thumb_down_alt_outlined),
-              onPressed: () => controller.dislikePost(post),
-            ),
-            IconButton(
-              icon: const Icon(Icons.bookmark_border),
-              onPressed: () => controller.savePost(post),
-            ),
-            IconButton(
-              icon: const Icon(Icons.share_outlined),
-              onPressed: () => controller.sharePost(post),
-            ),
-            IconButton(icon: const Icon(Icons.more_horiz), onPressed: () {}),
-          ],
-        );
-      },
+    final engagement = context.watch<EngagementController>();
+    final post = engagement.post;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        // LIKE
+        IconButton(
+          icon: Icon(
+            post.hasLiked ? Icons.thumb_up : Icons.thumb_up_alt_outlined,
+          ),
+          onPressed: engagement.isProcessing ? null : engagement.toggleLike,
+        ),
+
+        // REPIC
+        IconButton(
+          icon: const Icon(Icons.repeat),
+          onPressed: engagement.isProcessing ? null : engagement.toggleRepic,
+        ),
+
+        // SAVE
+        IconButton(
+          icon: Icon(post.hasSaved ? Icons.bookmark : Icons.bookmark_border),
+          onPressed: engagement.isProcessing ? null : engagement.toggleSave,
+        ),
+
+        // MORE
+        IconButton(icon: const Icon(Icons.more_horiz), onPressed: () {}),
+      ],
     );
   }
 }

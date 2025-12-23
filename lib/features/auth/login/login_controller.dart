@@ -56,15 +56,18 @@ class LoginController extends ChangeNotifier {
     _setLoading(false);
 
     if (result == "success") {
+      // ignore: use_build_context_synchronously
       _showMessage(context, "Login Successful!");
 
       // Slight delay for UX smoothness before navigating
       Future.delayed(const Duration(milliseconds: 400), () {
+        // ignore: use_build_context_synchronously
         Navigator.pushReplacementNamed(context, "/home");
       });
     } else {
       // Convert Firebase errors into friendly messages
       final friendly = LoginErrorMapper.map(result);
+      // ignore: use_build_context_synchronously
       _showMessage(context, friendly);
     }
   }

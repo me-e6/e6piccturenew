@@ -23,9 +23,11 @@ class AuthController extends ChangeNotifier {
       await authService.logout();
 
       // 🔁 Reset app navigation completely
+      // ignore: use_build_context_synchronously
       Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
     } catch (_) {
       ScaffoldMessenger.of(
+        // ignore: use_build_context_synchronously
         context,
       ).showSnackBar(const SnackBar(content: Text('Logout failed')));
     } finally {

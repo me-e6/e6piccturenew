@@ -1,35 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-/// ------------------------------------------------------------
-/// VIDEO DP VIEWER (UI ONLY)
-/// ------------------------------------------------------------
 import 'video_dp_viewer_screen.dart';
-
-/// ------------------------------------------------------------
-/// FOLLOW / MUTUALS FEATURES
-/// ------------------------------------------------------------
 import 'package:e6piccturenew/features/follow/mutuals_list_screen.dart';
 import 'package:e6piccturenew/features/follow/mutual_controller.dart';
 import '../../features/follow/following_list_screen.dart';
 import '../../features/follow/follower_list_screen.dart';
-
-/// ------------------------------------------------------------
-/// PROFILE FEATURE
-/// ------------------------------------------------------------
 import 'profile_controller.dart';
 import 'widgets/profile_identity_banner.dart';
 import 'widgets/profile_tabs_bar.dart';
 import 'widgets/profile_tab_content.dart';
 import 'edit_profile_screen.dart';
 
-/// ---------------------------------------------------------------------------
-/// PROFILE SCREEN
-///
-/// ✅ UI ONLY
-/// ❌ NO providers created here
-/// ❌ NO controller lifecycle here
-/// ---------------------------------------------------------------------------
 class ProfileScreen extends StatelessWidget {
   final String userId;
 
@@ -41,9 +22,6 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
-/// ---------------------------------------------------------------------------
-/// PROFILE SCREEN BODY
-/// ---------------------------------------------------------------------------
 class _ProfileScreenBody extends StatelessWidget {
   const _ProfileScreenBody();
 
@@ -51,7 +29,6 @@ class _ProfileScreenBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final profile = context.watch<ProfileController>();
     final mutuals = context.watch<MutualController>();
-    // final follow = context.watch<FollowController>();
 
     if (profile.isLoading || profile.user == null) {
       return const Scaffold(
@@ -61,152 +38,108 @@ class _ProfileScreenBody extends StatelessWidget {
 
     final user = profile.user!;
     final isOwner = profile.isOwner;
-
     final bool hasVideoDp =
         user.videoDpUrl != null && user.videoDpUrl!.isNotEmpty;
-    debugPrint('🔥 videoDpUrl from model = ${user.videoDpUrl}');
-    debugPrint('🔥 hasVideoDp = $hasVideoDp');
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile'), centerTitle: true),
-      body: SingleChildScrollView(
+      body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
-        child: Column(
-          children: [
-            const SizedBox(height: 16),
-
-            /// ------------------------------------------------------------
-            /// PROFILE IDENTITY BANNER
-            /// ------------------------------------------------------------
-            ProfileIdentityBanner(
-              displayName: user.displayName,
-              handle: user.handle,
-              avatarUrl: user.profileImageUrl,
-              bannerUrl: user.profileBannerUrl,
-              bio: user.bio,
-
-              /// Verification
-              isVerified: user.isVerified,
-
-              /// Video DP
-              hasVideoDp: hasVideoDp,
-              isUpdatingVideoDp: profile.isUpdatingVideoDp,
-
-              /// Ownership / follow
-              isOwner: isOwner,
-              isFollowing: profile.isFollowing,
-
-              /// Loading flags
-              isUpdatingAvatar: profile.isUpdatingPhoto,
-              isUpdatingBanner: profile.isUpdatingBanner,
-
-              /// Avatar / banner actions
-              /// Avatar / banner actions
-              onEditAvatar: isOwner ? () => profile.updatePhoto(context) : null,
-
-              onEditBanner: isOwner
-                  ? () => profile.updateBanner(context)
-                  : null,
-
-              /// Video DP interactions
-              onVideoDpTap: hasVideoDp
-                  ? () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              VideoDpViewerScreen(videoUrl: user.videoDpUrl!),
-                        ),
-                      );
-                    }
-                  : null,
-
-              onEditVideoDp: isOwner
-                  ? () => profile.updateVideoDp(context)
-                  : null,
-
-              onReplaceVideo: () => profile.replaceVideoDp(context),
-              onDeleteVideo: () => profile.deleteVideoDp(context),
-
-              /// Profile edit
-              onEditProfile: isOwner
-                  ? () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ChangeNotifierProvider.value(
-                            value: profile,
-                            child: const EditProfileScreen(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                const SizedBox(height: 16),
+                ProfileIdentityBanner(
+                  displayName: user.displayName,
+                  handle: user.handle,
+                  avatarUrl: user.profileImageUrl,
+                  bannerUrl: user.profileBannerUrl,
+                  bio: user.bio,
+                  isVerified: user.isVerified,
+                  hasVideoDp: hasVideoDp,
+                  isUpdatingVideoDp: profile.isUpdatingVideoDp,
+                  isOwner: isOwner,
+                  isFollowing: profile.isFollowing,
+                  isUpdatingAvatar: profile.isUpdatingPhoto,
+                  isUpdatingBanner: profile.isUpdatingBanner,
+                  onEditAvatar: isOwner
+                      ? () => profile.updatePhoto(context)
+                      : null,
+                  onEditBanner: isOwner
+                      ? () => profile.updateBanner(context)
+                      : null,
+                  onVideoDpTap: hasVideoDp
+                      ? () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                VideoDpViewerScreen(videoUrl: user.videoDpUrl!),
                           ),
-                        ),
-                      );
-                    }
-                  : null,
-
-              /// Follow / unfollow
-              onFollowToggle: !isOwner ? profile.toggleFollow : null,
+                        )
+                      : null,
+                  onEditVideoDp: isOwner
+                      ? () => profile.updateVideoDp(context)
+                      : null,
+                  onReplaceVideo: () => profile.replaceVideoDp(context),
+                  onDeleteVideo: () => profile.deleteVideoDp(context),
+                  onEditProfile: isOwner
+                      ? () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ChangeNotifierProvider.value(
+                              value: profile,
+                              child: const EditProfileScreen(),
+                            ),
+                          ),
+                        )
+                      : null,
+                  onFollowToggle: !isOwner ? profile.toggleFollow : null,
+                ),
+                const SizedBox(height: 24),
+                _ProfileStatsRow(
+                  posts: profile.posts.length,
+                  mutuals: mutuals.count,
+                  followers: profile.followersCount,
+                  following: profile.followingCount,
+                  onMutualsTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => MutualsListScreen(userId: user.uid),
+                    ),
+                  ),
+                  onFollowersTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => FollowersListScreen(userId: user.uid),
+                    ),
+                  ),
+                  onFollowingTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => FollowingListScreen(userId: user.uid),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const ProfileTabsBar(),
+                const SizedBox(height: 12),
+              ],
             ),
-
-            const SizedBox(height: 24),
-
-            /// ------------------------------------------------------------
-            /// PROFILE STATS
-            /// ------------------------------------------------------------
-            _ProfileStatsRow(
-              posts: profile.posts.length,
-              mutuals: mutuals.count,
-              followers: profile.followersCount,
-              following: profile.followingCount,
-              onMutualsTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => MutualsListScreen(userId: user.uid),
-                  ),
-                );
-              },
-              onFollowersTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => FollowersListScreen(userId: user.uid),
-                  ),
-                );
-              },
-              onFollowingTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => FollowingListScreen(userId: user.uid),
-                  ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 24),
-
-            /// ------------------------------------------------------------
-            /// PROFILE CONTENT
-            /// ------------------------------------------------------------
-            const ProfileTabsBar(),
-            const SizedBox(height: 12),
-            const ProfileTabContent(),
-          ],
-        ),
+          ),
+          const ProfileTabContent(),
+          const SliverToBoxAdapter(child: SizedBox(height: 32)),
+        ],
       ),
     );
   }
 }
 
-/// ---------------------------------------------------------------------------
-/// PROFILE STATS ROW (UI-ONLY)
-/// ---------------------------------------------------------------------------
 class _ProfileStatsRow extends StatelessWidget {
   final int posts;
   final int mutuals;
   final int followers;
   final int following;
-
   final VoidCallback onMutualsTap;
   final VoidCallback onFollowersTap;
   final VoidCallback onFollowingTap;

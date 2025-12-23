@@ -262,116 +262,142 @@ Search results show:
 
 ```
 
+Folder map of c:\flutter-projects\e6piccturenew\lib
+==================================================
 
+├── core/
+│   ├── theme/
+│   │   ├── app_theme.dart
+│   │   └── theme_controller.dart
+│   └── widgets/
+│       ├── app_app_bar.dart
+│       ├── app_scaffold.dart
+│       └── list_skeleton.dart
+├── debug/
+├── features/
+│   ├── admin/
+│   │   ├── admin_moderation_service.dart
+│   │   ├── admin_user_controller.dart
+│   │   ├── admin_user_service.dart
+│   │   └── verification_admin_service.dart
+│   ├── audit/
+│   │   ├── audit_log_model.dart
+│   │   └── audit_log_service.dart
+│   ├── auth/
+│   │   ├── login/
+│   │   │   ├── login_controller.dart
+│   │   │   ├── login_errors.dart
+│   │   │   ├── login_screen.dart
+│   │   │   └── login_service.dart
+│   │   ├── signup/
+│   │   │   ├── signup_controller.dart
+│   │   │   ├── signup_errors.dart
+│   │   │   ├── signup_screen.dart
+│   │   │   └── signup_service.dart
+│   │   ├── auth_contoller.dart
+│   │   ├── auth_gate.dart
+│   │   └── auth_service.dart
+│   ├── common/
+│   │   └── widgets/
+│   │       └── gazetter_badge.dart
+│   ├── engagement/
+│   │   ├── engagement_controller.dart
+│   │   └── engagement_service.dart
+│   ├── feed/
+│   │   ├── day_album_tracker.dart
+│   │   ├── day_album_viewer_screen.dart
+│   │   ├── day_feed_controller.dart
+│   │   ├── day_feed_screen.dart
+│   │   └── day_feed_service.dart
+│   ├── follow/
+│   │   ├── widgets/
+│   │   │   ├── follow_button.dart
+│   │   │   ├── follow_list_body.dart
+│   │   │   ├── follow_user_row.dart
+│   │   │   └── user_list_row.dart
+│   │   ├── follow_controller.dart
+│   │   ├── follow_list_controller.dart
+│   │   ├── follow_list_mode.dart
+│   │   ├── follow_list_service.dart
+│   │   ├── follow_service.dart
+│   │   ├── follower_list_screen.dart
+│   │   ├── following_list_screen.dart
+│   │   ├── mutual_controller.dart
+│   │   ├── mutual_service.dart
+│   │   └── mutuals_list_screen.dart
+│   ├── home/
+│   │   ├── home_screen_v3.dart
+│   │   ├── home_service.dart
+│   │   └── testwidget.dart
+│   ├── navigation/
+│   │   ├── best_bottom_Menubar.md
+│   │   ├── main_navigation.dart
+│   │   ├── navigator_state_controller.dart
+│   │   └── plus_menu_controller.dart
+│   ├── post/
+│   │   ├── create/
+│   │   │   ├── create_post_controller.dart
+│   │   │   ├── create_post_screen.dart
+│   │   │   ├── create_post_service.dart
+│   │   │   ├── media_picker_service.dart
+│   │   │   └── post_model.dart
+│   │   ├── details/
+│   │   │   ├── post_details_controller.dart
+│   │   │   ├── post_details_screen.dart
+│   │   │   └── post_details_service.dart
+│   │   └── reply/
+│   │       ├── quote_replies_list_screen.dart
+│   │       ├── quote_reply_screen.dart
+│   │       ├── replies_list_controller.dart
+│   │       ├── replies_list_screen.dart
+│   │       ├── replies_list_service.dart
+│   │       ├── reply_controller.dart
+│   │       ├── reply_model.dart
+│   │       ├── reply_screen.dart
+│   │       └── reply_service.dart
+│   ├── profile/
+│   │   ├── widgets/
+│   │   │   ├── impact_grid_tile.dart
+│   │   │   ├── profile_header.dart
+│   │   │   ├── profile_identity_banner.dart
+│   │   │   ├── profile_tab_content.dart
+│   │   │   ├── profile_tabs_bar.dart
+│   │   │   ├── repic_grid_tile.dart
+│   │   │   └── verified_badge.dart
+│   │   ├── edit_profile_screen.dart
+│   │   ├── officer_capability.dart
+│   │   ├── permission_matrix.dart
+│   │   ├── profile_controller.dart
+│   │   ├── profile_entry.dart
+│   │   ├── profile_screen.dart
+│   │   ├── profile_service.dart
+│   │   ├── user_model.dart
+│   │   ├── verification_request_controller.dart
+│   │   ├── verification_request_service.dart
+│   │   ├── video_dp_upload_screen.dart
+│   │   └── video_dp_viewer_screen.dart
+│   ├── search/
+│   │   ├── search_controllers.dart
+│   │   ├── search_result_tile.dart
+│   │   ├── search_screen.dart
+│   │   └── search_service.dart
+│   ├── settingsbreadcrumb/
+│   │   ├── settings_controller.dart
+│   │   ├── settings_services.dart
+│   │   └── settings_snapout_screen.dart
+│   └── user/
+│       ├── models/
+│       │   └── user_model.dart
+│       ├── services/
+│       │   ├── account_state_guard.dart
+│       │   └── user_service.dart
+│       └── user_avatar_controller.dart
+├── routes/
+│   └── app_routes.dart
+├── firebase_options.dart
+├── main.dart
+└── picctureapp.dart
 
-lib/
-├─ core/
-│  ├─ theme/
-│  │  ├─ app_theme.dart
-│  │  └─ theme_controller.dart
-│  └─ widgets/
-│     ├─ app_app_bar.dart
-│     └─ app_scaffold.dart
-│
-├─ debug/
-│  └─ day_feed_probe_screen.dart
-│
-├─ features/
-│  ├─ admin/
-│  │  ├─ admin_moderation_service.dart
-│  │  ├─ admin_user_controller.dart
-│  │  ├─ admin_user_service.dart
-│  │  └─ verification_admin_service.dart
-│  │
-│  ├─ audit/
-│  │  ├─ audit_log_model.dart
-│  │  └─ audit_log_service.dart
-│  │
-│  ├─ auth/
-│  │  ├─ login/
-│  │  │  ├─ login_controller.dart
-│  │  │  ├─ login_errors.dart
-│  │  │  ├─ login_screen.dart
-│  │  │  └─ login_service.dart
-│  │  └─ signup/
-│  │     ├─ signup_controller.dart
-│  │     ├─ signup_errors.dart
-│  │     ├─ signup_screen.dart
-│  │     └─ signup_service.dart
-│  │
-│  ├─ common/
-│  │  └─ widgets/
-│  │     └─ gazetter_badge.dart
-│  │
-│  ├─ engagement/
-│  │  ├─ engagement_controller.dart
-│  │  └─ engagement_service.dart
-│  │
-│  ├─ feed/
-│  │  ├─ day_feed_controller.dart
-│  │  ├─ day_feed_screen.dart
-│  │  └─ day_feed_service.dart
-│  │
-│  ├─ follow/
-│  │  ├─ widgets/
-│  │  │  └─ follow_button.dart
-│  │  ├─ follow_controller.dart
-│  │  ├─ follow_service.dart
-│  │  ├─ mutual_controller.dart
-│  │  └─ mutual_service.dart
-│  │
-│  ├─ home/
-│  │  ├─ home_controller.dart
-│  │  ├─ home_controller_v2.dart
-│  │  ├─ home_screen.dart
-│  │  └─ home_service.dart
-│  │
-│  ├─ navigation/
-│  │  └─ main_navigation.dart
-│  │
-│  ├─ post/
-│  │  ├─ create/
-│  │  │  ├─ create_post_controller.dart
-│  │  │  ├─ create_post_screen.dart
-│  │  │  ├─ create_post_service.dart
-│  │  │  └─ post_model.dart
-│  │  ├─ details/
-│  │  ├─ reply/
-│  │  └─ viewer/
-│  │     ├─ immersive_post_controller.dart
-│  │     ├─ immersive_post_service.dart
-│  │     └─ immersive_post_viewer.dart
-│  │
-│  ├─ profile/
-│  │  ├─ widgets/
-│  │  │  ├─ profile_header.dart
-│  │  │  └─ verified_badge.dart
-│  │  ├─ officer_capability.dart
-│  │  ├─ permission_matrix.dart
-│  │  ├─ profile_controller.dart
-│  │  ├─ profile_screen.dart
-│  │  ├─ profile_service.dart
-│  │  ├─ user_model.dart
-│  │  ├─ verification_request_controller.dart
-│  │  └─ verification_request_service.dart
-│  │
-│  ├─ search/
-│  │  ├─ app_search_controller.dart
-│  │  ├─ search_result_tile.dart
-│  │  ├─ search_screen.dart
-│  │  └─ search_service.dart
-│  │
-│  ├─ settingsbreadcrumb/
-│  │  ├─ settings_controller.dart
-│  │  ├─ settings_services.dart
-│  │  └─ settings_snapout_screen.dart
-│  │
-│  └─ user/
-│
-├─ routes/
-├─ firebase_options.dart
-├─ main.dart
-└─ pictureapp.dart
 
 ```
 
