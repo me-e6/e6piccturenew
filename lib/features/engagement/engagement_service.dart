@@ -2,6 +2,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'engagement_snapshot.dart';
 
+/// ============================================================
+/// ENGAGEMENT SERVICE V2
+/// ============================================================
+/// FEATURES:
+/// - Counter-first architecture
+/// - Transactional dual-writes
+/// - Idempotent operations
+/// - User-side engagement index
+/// - Failure-safe rollback
+/// ============================================================
 class EngagementService {
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
@@ -10,9 +20,9 @@ class EngagementService {
     : _firestore = firestore ?? FirebaseFirestore.instance,
       _auth = auth ?? FirebaseAuth.instance;
 
-  // ------------------------------------------------------------
+  // ============================================================
   // LIKE
-  // ------------------------------------------------------------
+  // ============================================================
   Future<bool> likePost(String postId) async {
     final uid = _auth.currentUser!.uid;
 
@@ -28,9 +38,10 @@ class EngagementService {
       final likeSnap = await tx.get(likeRef);
 
       if (likeSnap.exists) {
-        return true; // idempotent
+        return true; // ✅ Idempotent
       }
 
+      // ✅ DUAL-WRITE: Post-side + User-side
       tx.set(likeRef, {'uid': uid, 'createdAt': FieldValue.serverTimestamp()});
 
       tx.set(userLikeRef, {
@@ -38,6 +49,7 @@ class EngagementService {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
+      // ✅ COUNTER UPDATE
       tx.update(postRef, {'likeCount': FieldValue.increment(1)});
 
       return true;
@@ -59,21 +71,22 @@ class EngagementService {
       final likeSnap = await tx.get(likeRef);
 
       if (!likeSnap.exists) {
-        return true; // idempotent
+        return true; // ✅ Idempotent
       }
 
       tx.delete(likeRef);
       tx.delete(userLikeRef);
 
+      // ✅ COUNTER DECREMENT
       tx.update(postRef, {'likeCount': FieldValue.increment(-1)});
 
       return true;
     });
   }
 
-  // ------------------------------------------------------------
+  // ============================================================
   // SAVE
-  // ------------------------------------------------------------
+  // ============================================================
   Future<bool> savePost(String postId) async {
     final uid = _auth.currentUser!.uid;
 
@@ -132,9 +145,9 @@ class EngagementService {
     });
   }
 
-  // ------------------------------------------------------------
-  // REPIC (REPOST WITHOUT TEXT)
-  // ------------------------------------------------------------
+  // ============================================================
+  // REPIC (REPOST)
+  // ============================================================
   Future<bool> repicPost(String postId) async {
     final uid = _auth.currentUser!.uid;
 
@@ -193,25 +206,47 @@ class EngagementService {
     });
   }
 
-  // ------------------------------------------------------------
-  // QUOTE REPLY (COUNTER ONLY — POST CREATION HANDLED ELSEWHERE)
-  // ------------------------------------------------------------
-  Future<void> incrementQuoteReplyCount(String postId) async {
-    await _firestore.collection('posts').doc(postId).update({
-      'quoteReplyCount': FieldValue.increment(1),
+  // ============================================================
+  // QUOTE REPLY COUNTER (✅ NOW TRANSACTIONAL)
+  // ============================================================
+  Future<bool> incrementQuoteReplyCount(String postId) async {
+    final postRef = _firestore.collection('posts').doc(postId);
+
+    return _firestore.runTransaction((tx) async {
+      final postSnap = await tx.get(postRef);
+
+      if (!postSnap.exists) {
+        return false;
+      }
+
+      tx.update(postRef, {'quoteReplyCount': FieldValue.increment(1)});
+
+      return true;
     });
   }
 
-  // ------------------------------------------------------------
-  // REPLY (LIGHTWEIGHT, FUTURE-SAFE)
-  // ------------------------------------------------------------
-  Future<void> incrementReplyCount(String postId) async {
-    await _firestore.collection('posts').doc(postId).update({
-      'replyCount': FieldValue.increment(1),
+  // ============================================================
+  // REPLY COUNTER (✅ NOW TRANSACTIONAL)
+  // ============================================================
+  Future<bool> incrementReplyCount(String postId) async {
+    final postRef = _firestore.collection('posts').doc(postId);
+
+    return _firestore.runTransaction((tx) async {
+      final postSnap = await tx.get(postRef);
+
+      if (!postSnap.exists) {
+        return false;
+      }
+
+      tx.update(postRef, {'replyCount': FieldValue.increment(1)});
+
+      return true;
     });
   }
 
-  // ---------------------------- Enagatement Snapshot ----------------------------
+  // ============================================================
+  // LOAD ENGAGEMENT STATE (PER-USER FLAGS)
+  // ============================================================
   Future<EngagementSnapshot> loadEngagementState(String postId) async {
     final uid = _auth.currentUser!.uid;
     final postRef = _firestore.collection('posts').doc(postId);
