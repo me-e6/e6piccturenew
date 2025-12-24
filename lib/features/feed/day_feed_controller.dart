@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+/* import 'package:flutter/foundation.dart';
 import 'day_album_tracker.dart';
 import '../post/create/post_model.dart';
 import 'day_feed_service.dart';
@@ -18,7 +18,7 @@ class DayFeedState {
   // NEW: DayAlbum tracking
   final DayAlbumStatus? albumStatus;
 
-  const DayFeedState({
+  const DayFeedState({/*  */
     required this.posts,
     required this.isLoading,
     required this.hasNewPosts,
@@ -238,6 +238,253 @@ class DayFeedController extends ChangeNotifier {
   @override
   void dispose() {
     // Clean up if needed
+    super.dispose();
+  }
+}
+ */
+import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'day_album_tracker.dart';
+import '../post/create/post_model.dart';
+import 'day_feed_service.dart';
+
+/// ------------------------------
+/// DayFeedState
+/// ------------------------------
+/// Immutable state object for the Day Feed session.
+class DayFeedState {
+  final List<PostModel> posts;
+  final bool isLoading;
+  final bool hasNewPosts;
+  final DateTime sessionStartedAt;
+  final String? errorMessage;
+  final DayAlbumStatus? albumStatus;
+
+  const DayFeedState({
+    required this.posts,
+    required this.isLoading,
+    required this.hasNewPosts,
+    required this.sessionStartedAt,
+    this.errorMessage,
+    this.albumStatus,
+  });
+
+  DayFeedState copyWith({
+    List<PostModel>? posts,
+    bool? isLoading,
+    bool? hasNewPosts,
+    DateTime? sessionStartedAt,
+    String? errorMessage,
+    DayAlbumStatus? albumStatus,
+    bool clearAlbumStatus = false,
+  }) {
+    return DayFeedState(
+      posts: posts ?? this.posts,
+      isLoading: isLoading ?? this.isLoading,
+      hasNewPosts: hasNewPosts ?? this.hasNewPosts,
+      sessionStartedAt: sessionStartedAt ?? this.sessionStartedAt,
+      errorMessage: errorMessage,
+      albumStatus: clearAlbumStatus ? null : (albumStatus ?? this.albumStatus),
+    );
+  }
+}
+
+/// ------------------------------
+/// DayFeedController
+/// ------------------------------
+/// ✅ FIXED: Added real-time stream subscription
+///
+/// NEW FEATURES:
+/// - Real-time engagement counter updates
+/// - Automatic post list updates
+/// - Stream lifecycle management
+/// - Memory leak prevention
+class DayFeedController extends ChangeNotifier {
+  final DayFeedService _service;
+  final DayAlbumTracker _albumTracker = DayAlbumTracker();
+
+  // ✅ NEW: Stream subscription for real-time updates
+  StreamSubscription<List<PostModel>>? _feedSubscription;
+
+  DayFeedState _state = DayFeedState(
+    posts: const [],
+    isLoading: true,
+    hasNewPosts: false,
+    sessionStartedAt: DateTime.now(),
+    albumStatus: null,
+  );
+
+  /// ------------------------------
+  /// COMPUTED GETTERS
+  /// ------------------------------
+  int get totalPostCount => _state.posts.length;
+  DayFeedState get state => _state;
+  DayAlbumStatus? get albumStatus => _state.albumStatus;
+  bool get hasUnseenPosts => _state.albumStatus?.hasUnseen ?? false;
+
+  DayFeedController(this._service);
+
+  /// ------------------------------
+  /// init() - ✅ ENHANCED WITH STREAM
+  /// ------------------------------
+  /// Starts real-time subscription for automatic updates
+  Future<void> init() async {
+    _setLoading(true);
+
+    try {
+      // Check DayAlbum status
+      final albumStatus = await _albumTracker.checkUnseenPosts();
+
+      // ✅ NEW: Subscribe to real-time feed
+      _startStreamSubscription();
+
+      _state = _state.copyWith(isLoading: false, albumStatus: albumStatus);
+
+      debugPrint('✅ DayFeed initialized with real-time stream');
+    } catch (e) {
+      _setError(e.toString());
+    }
+
+    notifyListeners();
+  }
+
+  /// ------------------------------
+  /// _startStreamSubscription() - ✅ NEW
+  /// ------------------------------
+  /// Subscribe to real-time feed updates
+  void _startStreamSubscription() {
+    // Cancel existing subscription
+    _feedSubscription?.cancel();
+
+    _feedSubscription = _service.watchTodayFeed().listen(
+      (posts) {
+        // Update state with new posts
+        _state = _state.copyWith(posts: posts, isLoading: false);
+        notifyListeners();
+
+        debugPrint('🔄 Feed updated: ${posts.length} posts');
+      },
+      onError: (error) {
+        debugPrint('❌ Feed stream error: $error');
+        _setError(error.toString());
+      },
+    );
+  }
+
+  /// ------------------------------
+  /// refresh() - ✅ OPTIMIZED
+  /// ------------------------------
+  /// Manual refresh (pull-to-refresh)
+  /// Stream will automatically pick up new data
+  Future<void> refresh() async {
+    _setLoading(true);
+
+    try {
+      // Mark DayAlbum as viewed
+      await _albumTracker.markAsViewed();
+
+      // Stream will automatically update with fresh data
+      _state = _state.copyWith(
+        hasNewPosts: false,
+        sessionStartedAt: DateTime.now(),
+        albumStatus: null,
+      );
+
+      debugPrint('✅ Feed refreshed & DayAlbum marked as viewed');
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+
+    notifyListeners();
+  }
+
+  /// ------------------------------
+  /// dismissAlbumPill() - ✅ NEW
+  /// ------------------------------
+  Future<void> dismissAlbumPill() async {
+    if (_state.albumStatus == null || !_state.albumStatus!.hasUnseen) {
+      return;
+    }
+
+    await _albumTracker.markAsViewed();
+    await refresh();
+
+    debugPrint('✅ DayAlbum pill dismissed');
+  }
+
+  /// ------------------------------
+  /// checkAlbumStatus() - ✅ NEW
+  /// ------------------------------
+  Future<void> checkAlbumStatus() async {
+    try {
+      final albumStatus = await _albumTracker.checkUnseenPosts();
+
+      _state = _state.copyWith(albumStatus: albumStatus);
+      notifyListeners();
+
+      debugPrint('✅ Album status checked: $albumStatus');
+    } catch (e) {
+      debugPrint('❌ Error checking album status: $e');
+    }
+  }
+
+  /// ------------------------------
+  /// markBannerSeen()
+  /// ------------------------------
+  void markBannerSeen() {
+    if (!_state.hasNewPosts) return;
+
+    _state = _state.copyWith(hasNewPosts: false);
+    notifyListeners();
+  }
+
+  /// ------------------------------
+  /// resetAlbumOnLogout()
+  /// ------------------------------
+  Future<void> resetAlbumOnLogout() async {
+    await _albumTracker.resetSession();
+    debugPrint('✅ DayAlbum session reset on logout');
+  }
+
+  /// ------------------------------
+  /// INTERNAL HELPERS
+  /// ------------------------------
+  void _setLoading(bool loading) {
+    _state = _state.copyWith(isLoading: loading, errorMessage: null);
+    notifyListeners();
+  }
+
+  void _setError(String message) {
+    _state = DayFeedState(
+      posts: const [],
+      isLoading: false,
+      hasNewPosts: false,
+      sessionStartedAt: DateTime.now(),
+      errorMessage: message,
+      albumStatus: _state.albumStatus,
+    );
+    notifyListeners();
+  }
+
+  void flagNewPostsAvailable() {
+    if (_state.hasNewPosts) return;
+
+    _state = _state.copyWith(hasNewPosts: true);
+    notifyListeners();
+  }
+
+  /// ------------------------------
+  /// dispose() - ✅ CRITICAL: PREVENT MEMORY LEAKS
+  /// ------------------------------
+  @override
+  void dispose() {
+    // Cancel stream subscription
+    _feedSubscription?.cancel();
+    _feedSubscription = null;
+
+    debugPrint('✅ DayFeedController disposed, stream cancelled');
     super.dispose();
   }
 }

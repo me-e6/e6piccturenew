@@ -21,6 +21,7 @@ class PostModel {
   final String authorName;
   final String? authorAvatarUrl;
   final bool isVerifiedOwner;
+  final String? authorHandle; // ✅ ADD THIS
 
   // -------------------------
   // VISIBILITY
@@ -62,6 +63,7 @@ class PostModel {
     required this.postId,
     required this.authorId,
     required this.authorName,
+    this.authorHandle,
     this.authorAvatarUrl,
     required this.isVerifiedOwner,
     required this.visibility,

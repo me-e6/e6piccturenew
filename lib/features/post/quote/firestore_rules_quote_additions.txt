@@ -1,0 +1,193 @@
+// ============================================================
+// FIRESTORE SECURITY RULES - QUOTE SYSTEM ADDITIONS
+// ============================================================
+// Add these rules to your existing firestore.rules file.
+// DO NOT replace your entire rules file - merge these additions.
+// ============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // --------------------------------------------------------
+    // HELPER FUNCTIONS
+    // --------------------------------------------------------
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if user is the document owner
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Check if the request is a valid quote post creation
+    function isValidQuotePost() {
+      let data = request.resource.data;
+      return data.isQuote == true
+          && data.quotedPostId is string
+          && data.quotedPostId.size() > 0
+          && data.quotedPreview is map
+          && data.authorId == request.auth.uid;
+    }
+    
+    // Check if commentary length is valid (500 chars max)
+    function isValidCommentary() {
+      let commentary = request.resource.data.commentary;
+      return commentary == null 
+          || (commentary is string && commentary.size() <= 500);
+    }
+    
+    // --------------------------------------------------------
+    // POSTS COLLECTION (Updated for Quotes)
+    // --------------------------------------------------------
+    match /posts/{postId} {
+      // Anyone can read public posts
+      allow read: if resource.data.visibility == 'public'
+                  || resource.data.authorId == request.auth.uid;
+      
+      // Create: Authenticated user can create their own posts
+      // For quotes: validate quote-specific fields
+      allow create: if isAuthenticated()
+                    && request.resource.data.authorId == request.auth.uid
+                    && (
+                      // Regular post (not a quote)
+                      request.resource.data.isQuote != true
+                      // OR valid quote post
+                      || (isValidQuotePost() && isValidCommentary())
+                    );
+      
+      // Update: Only author can update their own posts
+      // Quote counter can be incremented by anyone (for transactional writes)
+      allow update: if isAuthenticated()
+                    && (
+                      // Author updating their own post
+                      resource.data.authorId == request.auth.uid
+                      // OR only quoteReplyCount is being incremented
+                      || (
+                        request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['quoteReplyCount'])
+                        && request.resource.data.quoteReplyCount == 
+                           resource.data.quoteReplyCount + 1
+                      )
+                      // OR quoteReplyCount is being decremented (for quote deletion)
+                      || (
+                        request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['quoteReplyCount'])
+                        && request.resource.data.quoteReplyCount == 
+                           resource.data.quoteReplyCount - 1
+                        && request.resource.data.quoteReplyCount >= 0
+                      )
+                    );
+      
+      // Delete: Only author can delete their own posts
+      allow delete: if isOwner(resource.data.authorId);
+      
+      // --------------------------------------------------------
+      // EXISTING SUBCOLLECTIONS (likes, saves, repics, replies)
+      // --------------------------------------------------------
+      
+      match /likes/{likeId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && likeId == request.auth.uid;
+        allow delete: if isOwner(likeId);
+      }
+      
+      match /saves/{saveId} {
+        allow read: if isOwner(saveId);
+        allow create: if isAuthenticated() && saveId == request.auth.uid;
+        allow delete: if isOwner(saveId);
+      }
+      
+      match /repics/{repicId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && repicId == request.auth.uid;
+        allow delete: if isOwner(repicId);
+      }
+      
+      match /replies/{replyId} {
+        allow read: if true;
+        allow create: if isAuthenticated();
+        allow update: if isOwner(resource.data.uid);
+        allow delete: if isOwner(resource.data.uid);
+      }
+      
+      // NOTE: quoteReplies subcollection is DEPRECATED
+      // Quotes are now stored as independent posts with isQuote: true
+      match /quoteReplies/{quoteId} {
+        allow read: if true;
+        // No new writes allowed - migrate to new system
+        allow create: if false;
+        allow update: if false;
+        allow delete: if isAuthenticated();
+      }
+    }
+    
+    // --------------------------------------------------------
+    // USERS COLLECTION (Updated for Quote Index)
+    // --------------------------------------------------------
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if false;
+      
+      // User's quoted posts index (for profile "Quotes" tab)
+      match /quoted_posts/{quotePostId} {
+        allow read: if true;
+        allow create: if isOwner(userId);
+        allow delete: if isOwner(userId);
+        // No updates needed - these are just indexes
+        allow update: if false;
+      }
+      
+      // Existing user subcollections...
+      match /liked_posts/{postId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId);
+      }
+      
+      match /saved_posts/{postId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId);
+      }
+      
+      match /repic_posts/{postId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId);
+      }
+      
+      match /followers/{followerId} {
+        allow read: if true;
+        allow create: if isOwner(followerId);
+        allow delete: if isOwner(followerId) || isOwner(userId);
+      }
+      
+      match /following/{followingId} {
+        allow read: if true;
+        allow create: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}
+
+// ============================================================
+// FIRESTORE INDEXES REQUIRED
+// ============================================================
+// Add these composite indexes in Firebase Console or firestore.indexes.json
+//
+// 1. Quote posts by quoted post (for quotes list):
+//    Collection: posts
+//    Fields: isQuote (Ascending), quotedPostId (Ascending), createdAt (Descending)
+//
+// 2. User's quotes (for profile tab):
+//    Collection: posts  
+//    Fields: authorId (Ascending), isQuote (Ascending), createdAt (Descending)
+//
+// 3. Check if user already quoted:
+//    Collection: posts
+//    Fields: authorId (Ascending), isQuote (Ascending), quotedPostId (Ascending)
+// ============================================================

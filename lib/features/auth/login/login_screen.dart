@@ -99,6 +99,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             "assets/logo/google.jpg",
                             height: 16,
                             width: 16,
+                            cacheWidth:
+                                48, // ← Cache at 3x size (for different screen densities)
+                            cacheHeight: 48, // ← Cache at 3x size
+                            fit: BoxFit.contain,
                           ),
                           label: "Continue with Google",
                         ),

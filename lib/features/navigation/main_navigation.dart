@@ -49,7 +49,7 @@ class _MainNavigationState extends State<MainNavigation>
 
     _rotationAnimation = Tween<double>(
       begin: 0,
-      end: 0.125, // 45°
+      end: 0.125,
     ).animate(_expandAnimation);
   }
 
@@ -82,21 +82,18 @@ class _MainNavigationState extends State<MainNavigation>
         children: [
           _buildCurrentTab(),
 
-          /// TAP OUTSIDE (BLOCKS BACKGROUND ONLY)
           if (_isPlusExpanded)
             GestureDetector(
               onTap: _closePlus,
               behavior: HitTestBehavior.opaque,
-              child: Container(color: Colors.black.withValues(alpha: 0.15)),
+              child: Container(color: Colors.black.withOpacity(0.15)),
             ),
 
-          /// BOTTOM NAV (BELOW PLUS)
           Align(
             alignment: Alignment.bottomCenter,
             child: _buildBottomNavigation(),
           ),
 
-          /// PLUS EXPANSION (TOPMOST — MUST BE LAST)
           if (_isPlusExpanded)
             Align(
               alignment: Alignment.bottomCenter,
@@ -116,25 +113,29 @@ class _MainNavigationState extends State<MainNavigation>
       case 0:
         return ChangeNotifierProvider.value(
           value: _dayFeedController,
-
-          /// ***** CALLS the HOME_SCREEN_V3.dart ***
           child: const HomeScreenV3(),
         );
 
-      case 4: // PROFILE TAB
+      case 4: // ✅ PROFILE TAB (FIXED INITIALIZATION)
         final uid = FirebaseAuth.instance.currentUser?.uid;
         if (uid == null) return const SizedBox.shrink();
 
         return MultiProvider(
           providers: [
+            // ✅ FIXED: Initialize controllers with userId
             ChangeNotifierProvider(
-              create: (_) => ProfileController()..loadProfile(uid),
+              create: (_) =>
+                  ProfileController()
+                    ..loadProfileData(targetUserId: uid), // ✅ ADDED
             ),
             ChangeNotifierProvider(
-              create: (_) => MutualController()..loadMutuals(uid),
+              create: (_) =>
+                  MutualController()..loadMutual(targetUserId: uid), // ✅ ADDED
             ),
             ChangeNotifierProvider(
-              create: (_) => FollowController()..load(uid),
+              create: (_) =>
+                  FollowController()
+                    ..loadFollower(targetUserId: uid), // ✅ ADDED
             ),
           ],
           child: ProfileScreen(userId: uid),
@@ -155,7 +156,6 @@ class _MainNavigationState extends State<MainNavigation>
       selectedItemColor: Theme.of(context).colorScheme.primary,
       unselectedItemColor: Colors.grey,
       onTap: (index) {
-        // PLUS BUTTON
         if (index == 2) {
           _togglePlus();
           return;
@@ -163,7 +163,6 @@ class _MainNavigationState extends State<MainNavigation>
 
         _closePlus();
 
-        // NORMAL TABS
         setState(() {
           _currentIndex = index;
           _isProfileActive = index == 4;
@@ -184,7 +183,6 @@ class _MainNavigationState extends State<MainNavigation>
                     alignment: Alignment.center,
                     clipBehavior: Clip.none,
                     children: [
-                      // 🔵 MAIN CIRCLE (+ / X)
                       Container(
                         width: 44,
                         height: 44,
@@ -193,7 +191,7 @@ class _MainNavigationState extends State<MainNavigation>
                           color: Theme.of(context).colorScheme.primary,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.25),
+                              color: Colors.black.withOpacity(0.25),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
@@ -209,10 +207,9 @@ class _MainNavigationState extends State<MainNavigation>
                         ),
                       ),
 
-                      // 🟢 PROTRUDING EXTENSION (Camera / Upload)
                       if (_isPlusExpanded)
                         Positioned(
-                          bottom: 50, // attaches to plus
+                          bottom: 50,
                           child: Transform.scale(
                             scale: _expandAnimation.value,
                             child: Container(
@@ -225,7 +222,7 @@ class _MainNavigationState extends State<MainNavigation>
                                 borderRadius: BorderRadius.circular(24),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.2),
+                                    color: Colors.black.withOpacity(0.2),
                                     blurRadius: 8,
                                   ),
                                 ],
@@ -271,16 +268,11 @@ class _MainNavigationState extends State<MainNavigation>
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // PLUS ACTION HANDLERS (FIXED)
-  // ---------------------------------------------------------------------------
-
   Future<void> _handleCamera() async {
     debugPrint('📸 Camera tapped');
     _closePlus();
 
     try {
-      // Use the new pickImage method with camera source
       final file = await _mediaPicker.pickImage(source: ImageSource.camera);
 
       if (file == null) {
@@ -290,7 +282,6 @@ class _MainNavigationState extends State<MainNavigation>
 
       if (!mounted) return;
 
-      // Convert File to XFile
       final xFile = XFile(file.path);
 
       Navigator.push(
@@ -312,7 +303,6 @@ class _MainNavigationState extends State<MainNavigation>
     _closePlus();
 
     try {
-      // Use the new pickMultipleImages method
       final files = await _mediaPicker.pickMultipleImages();
 
       if (files.isEmpty) {
@@ -322,7 +312,6 @@ class _MainNavigationState extends State<MainNavigation>
 
       if (!mounted) return;
 
-      // Convert List<File> to List<XFile>
       final xFiles = files.map((file) => XFile(file.path)).toList();
 
       Navigator.push(
@@ -339,10 +328,6 @@ class _MainNavigationState extends State<MainNavigation>
     }
   }
 }
-
-/// ---------------------------------------------------------------------------
-/// PLUS EXPANSION (NO IgnorePointer — TOPMOST)
-/// ---------------------------------------------------------------------------
 
 class _PlusExpansion extends StatelessWidget {
   final Animation<double> animation;
@@ -380,7 +365,7 @@ class _PlusExpansion extends StatelessWidget {
                 boxShadow: [
                   BoxShadow(
                     blurRadius: 12,
-                    color: Colors.black.withValues(alpha: 0.15),
+                    color: Colors.black.withOpacity(0.15),
                   ),
                 ],
               ),

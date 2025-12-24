@@ -40,6 +40,8 @@ class RepliesListScreen extends StatelessWidget {
                 return ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: c.replies.length,
+                  addAutomaticKeepAlives: false, // ← Add this
+                  addRepaintBoundaries: true,
                   itemBuilder: (context, index) {
                     final r = c.replies[index];
 

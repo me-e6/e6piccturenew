@@ -1,8 +1,8 @@
-import 'dart:io';
-
+/* import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import './post_model.dart';
 
 class CreatePostService {
   final FirebaseFirestore _firestore;
@@ -42,6 +42,7 @@ class CreatePostService {
     final String? avatarUrl =
         (userData?['profileImageUrl'] as String?) ??
         (userData?['photoURL'] as String?);
+    final bool isVerified = userData?['isVerified'] ?? false;
 
     final postRef = _firestore.collection('posts').doc();
     final postId = postRef.id;
@@ -71,25 +72,152 @@ class CreatePostService {
       }
 
       // ------------------------------------------------------------
-      // 2. WRITE FIRESTORE
+      // 2. WRITE FIRESTORE WITH ALL COUNTERS
       // ------------------------------------------------------------
       await postRef.set({
         'postId': postId,
         'authorId': authorId,
         'authorName': authorName,
+
         'authorAvatarUrl': avatarUrl,
         'imageUrls': imageUrls,
         'isRepost': false,
+        'isVerifiedOwner': isVerified,
         'visibility': 'public',
         'createdAt': FieldValue.serverTimestamp(),
+
+        // ✅ ALL ENGAGEMENT COUNTERS (CRITICAL FOR V2)
         'likeCount': 0,
+        'saveCount': 0, // ✅ ADDED
+        'repicCount': 0, // ✅ ADDED
         'replyCount': 0,
         'quoteReplyCount': 0,
-        'isVerifiedOwner': false,
       });
     } catch (e) {
       // ------------------------------------------------------------
       // 3. ROLLBACK STORAGE
+      // ------------------------------------------------------------
+      for (final ref in uploadedRefs) {
+        try {
+          await ref.delete();
+        } catch (_) {}
+      }
+      rethrow;
+    }
+  }
+}
+ */
+
+import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+
+class CreatePostService {
+  final FirebaseFirestore _firestore;
+  final FirebaseStorage _storage;
+
+  CreatePostService({FirebaseFirestore? firestore, FirebaseStorage? storage})
+    : _firestore = firestore ?? FirebaseFirestore.instance,
+      _storage = storage ?? FirebaseStorage.instance;
+
+  /// Creates a multi-image post with full rollback safety.
+  /// - Uploads all images to Storage
+  /// - Rolls back partial uploads on failure
+  /// - Writes Firestore document only after success
+  Future<void> createImagePost({required List<File> images}) async {
+    if (images.isEmpty) {
+      throw Exception('No images provided');
+    }
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+
+    // 🔒 Force token refresh
+    await user.getIdToken(true);
+
+    final String authorId = user.uid;
+
+    // ------------------------------------------------------------
+    // FETCH USER SNAPSHOT (AUTHOR IDENTITY)
+    // ------------------------------------------------------------
+    final userDoc = await _firestore.collection('users').doc(authorId).get();
+    final Map<String, dynamic>? userData = userDoc.data();
+
+    final String authorName =
+        (userData?['displayName'] as String?)?.trim().isNotEmpty == true
+        ? userData!['displayName']
+        : 'Unknown';
+
+    final String? authorHandle =
+        (userData?['handle'] as String?)?.trim().isNotEmpty == true
+        ? userData!['handle']
+        : null;
+
+    final String? avatarUrl =
+        (userData?['profileImageUrl'] as String?) ??
+        (userData?['photoURL'] as String?);
+
+    final bool isVerified = userData?['isVerified'] ?? false;
+
+    final postRef = _firestore.collection('posts').doc();
+    final postId = postRef.id;
+
+    final List<String> imageUrls = [];
+    final List<Reference> uploadedRefs = [];
+
+    try {
+      // ------------------------------------------------------------
+      // 1. UPLOAD ALL IMAGES
+      // ------------------------------------------------------------
+      for (int i = 0; i < images.length; i++) {
+        final ref = _storage
+            .ref()
+            .child('posts')
+            .child(authorId)
+            .child(postId)
+            .child('image_$i.jpg');
+
+        await ref.putFile(
+          images[i],
+          SettableMetadata(contentType: 'image/jpeg'),
+        );
+
+        uploadedRefs.add(ref);
+        imageUrls.add(await ref.getDownloadURL());
+      }
+
+      // ------------------------------------------------------------
+      // 2. WRITE FIRESTORE DOCUMENT (AUTHOR SNAPSHOT + COUNTERS)
+      // ------------------------------------------------------------
+      await postRef.set({
+        'postId': postId,
+        'authorId': authorId,
+        'authorName': authorName,
+        'authorHandle': authorHandle, // ✅ ADDED (CRITICAL)
+
+        'authorAvatarUrl': avatarUrl,
+        'isVerifiedOwner': isVerified,
+
+        'imageUrls': imageUrls,
+        'isRepost': false,
+        'visibility': 'public',
+        'createdAt': FieldValue.serverTimestamp(),
+
+        // --------------------------------------------------------
+        // ENGAGEMENT COUNTERS (SERVER-OWNED)
+        // --------------------------------------------------------
+        'likeCount': 0,
+        'saveCount': 0,
+        'repicCount': 0,
+        'replyCount': 0,
+        'quoteReplyCount': 0,
+      });
+    } catch (e) {
+      // ------------------------------------------------------------
+      // 3. ROLLBACK STORAGE ON FAILURE
       // ------------------------------------------------------------
       for (final ref in uploadedRefs) {
         try {

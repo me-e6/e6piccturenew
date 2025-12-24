@@ -2,51 +2,114 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // ============================================================
+    // HELPER FUNCTIONS
+    // ============================================================
+    
+    // Check if user is authenticated
     function isAuthenticated() {
       return request.auth != null;
     }
     
+    // Check if user is the document owner
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Check if the request is a valid quote post creation
+    function isValidQuotePost() {
+      let data = request.resource.data;
+      return data.isQuote == true
+          && data.quotedPostId is string
+          && data.quotedPostId.size() > 0
+          && data.quotedPreview is map
+          && data.authorId == request.auth.uid;
+    }
+    
+    // Check if commentary length is valid (500 chars max)
+    function isValidCommentary() {
+      let commentary = request.resource.data.commentary;
+      return commentary == null 
+          || (commentary is string && commentary.size() <= 500);
     }
     
     // ============================================================
     // USERS COLLECTION
     // ============================================================
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if isOwner(userId);
+      // Anyone can read user profiles
+      allow read: if true;
       
-      // ✅ ENGAGEMENT INDEX COLLECTIONS (USER-SIDE)
+      // Owner can create their own profile
+      allow create: if isOwner(userId);
+      
+      // Owner can update their own profile
+      allow update: if isOwner(userId);
+      
+      // Prevent accidental deletion (optional: change to isOwner(userId) if needed)
+      allow delete: if false;
+      
+      // ------------------------------------------------------
+      // User's quoted posts index (for profile "Quotes" tab)
+      // ------------------------------------------------------
+      match /quoted_posts/{quotePostId} {
+        allow read: if true;
+        allow create: if isOwner(userId);
+        allow delete: if isOwner(userId);
+        allow update: if false;
+      }
+      
+      // ------------------------------------------------------
+      // Liked posts index
+      // ------------------------------------------------------
       match /liked_posts/{postId} {
         allow read: if isOwner(userId);
         allow write: if isOwner(userId);
       }
       
+      // ------------------------------------------------------
+      // Saved posts index
+      // ------------------------------------------------------
       match /saved_posts/{postId} {
         allow read: if isOwner(userId);
         allow write: if isOwner(userId);
       }
       
+      // ------------------------------------------------------
+      // Repic posts index
+      // ------------------------------------------------------
       match /repic_posts/{postId} {
         allow read: if isOwner(userId);
         allow write: if isOwner(userId);
       }
       
-      // ✅ DEPRECATED: Old "saved" path (keep for migration)
-      match /saved/{postId} {
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId);
-      }
-      
-      // Following/followers
-      match /following/{targetId} {
-        allow read: if isAuthenticated();
-        allow write: if isOwner(userId);
-      }
-      
+      // ------------------------------------------------------
+      // Followers subcollection
+      // ------------------------------------------------------
       match /followers/{followerId} {
-        allow read: if isAuthenticated();
+        allow read: if true;
+        allow create: if isOwner(followerId);
+        // Follower can remove themselves OR user can remove a follower
+        allow delete: if isOwner(followerId) || isOwner(userId);
+        allow update: if isOwner(followerId) || isOwner(userId);
+      }
+      
+      // ------------------------------------------------------
+      // Following subcollection
+      // ------------------------------------------------------
+      match /following/{followingId} {
+        allow read: if true;
+        allow create: if isOwner(userId);
+        allow delete: if isOwner(userId);
+        allow update: if isOwner(userId);
+      }
+      
+      // ------------------------------------------------------
+      // Catch-all for any other user subcollections
+      // (notifications, settings, etc.)
+      // ------------------------------------------------------
+      match /{otherSubcollection}/{docId} {
+        allow read: if true;
         allow write: if isAuthenticated();
       }
     }
@@ -55,32 +118,195 @@ service cloud.firestore {
     // POSTS COLLECTION
     // ============================================================
     match /posts/{postId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() && 
-                              resource.data.authorId == request.auth.uid;
+      // Anyone can read public posts, author can always read their own
+      allow read: if true;
       
-      // ✅ ENGAGEMENT SUBCOLLECTIONS (POST-SIDE)
-      match /likes/{userId} {
-        allow read: if isAuthenticated();
-        allow write: if isOwner(userId);
+      // Create: Authenticated user can create their own posts
+      // For quotes: validate quote-specific fields
+      allow create: if isAuthenticated()
+                    && request.resource.data.authorId == request.auth.uid
+                    && (
+                      // Regular post (not a quote)
+                      request.resource.data.isQuote != true
+                      // OR valid quote post with valid commentary
+                      || (isValidQuotePost() && isValidCommentary())
+                    );
+      
+      // Update: Author can update OR quote counter can be modified
+      allow update: if isAuthenticated()
+                    && (
+                      // Author updating their own post
+                      resource.data.authorId == request.auth.uid
+                      // OR only quoteReplyCount is being incremented
+                      || (
+                        request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['quoteReplyCount'])
+                        && request.resource.data.quoteReplyCount == 
+                           resource.data.quoteReplyCount + 1
+                      )
+                      // OR quoteReplyCount is being decremented (for quote deletion)
+                      || (
+                        request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['quoteReplyCount'])
+                        && request.resource.data.quoteReplyCount == 
+                           resource.data.quoteReplyCount - 1
+                        && request.resource.data.quoteReplyCount >= 0
+                      )
+                      // OR other engagement counters (likes, comments, etc.)
+                      || request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['likeCount', 'commentCount', 'saveCount', 'repicCount', 'shareCount'])
+                    );
+      
+      // Delete: Only author can delete their own posts
+      allow delete: if isAuthenticated() 
+                    && resource.data.authorId == request.auth.uid;
+      
+      // ------------------------------------------------------
+      // Likes subcollection
+      // ------------------------------------------------------
+      match /likes/{likeId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && likeId == request.auth.uid;
+        allow delete: if isOwner(likeId);
+        allow update: if false;
       }
       
-      match /saves/{userId} {
-        allow read: if isAuthenticated();
-        allow write: if isOwner(userId);
+      // ------------------------------------------------------
+      // Saves subcollection
+      // ------------------------------------------------------
+      match /saves/{saveId} {
+        allow read: if isOwner(saveId);
+        allow create: if isAuthenticated() && saveId == request.auth.uid;
+        allow delete: if isOwner(saveId);
+        allow update: if false;
       }
       
-      match /repics/{userId} {
-        allow read: if isAuthenticated();
-        allow write: if isOwner(userId);
+      // ------------------------------------------------------
+      // Repics subcollection
+      // ------------------------------------------------------
+      match /repics/{repicId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && repicId == request.auth.uid;
+        allow delete: if isOwner(repicId);
+        allow update: if false;
       }
       
-      // ✅ REPLY SUBCOLLECTION (for future threading)
+      // ------------------------------------------------------
+      // Replies/Comments subcollection
+      // ------------------------------------------------------
       match /replies/{replyId} {
-        allow read: if isAuthenticated();
+        allow read: if true;
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated() && resource.data.uid == request.auth.uid;
+        allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
+      }
+      
+      // ------------------------------------------------------
+      // Comments subcollection (alias for replies if used separately)
+      // ------------------------------------------------------
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated() && resource.data.uid == request.auth.uid;
+        allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
+      }
+      
+      // ------------------------------------------------------
+      // Shares subcollection
+      // ------------------------------------------------------
+      match /shares/{shareId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && shareId == request.auth.uid;
+        allow delete: if isOwner(shareId);
+        allow update: if false;
+      }
+      
+      // ------------------------------------------------------
+      // DEPRECATED: quoteReplies subcollection
+      // Quotes are now stored as independent posts with isQuote: true
+      // ------------------------------------------------------
+      match /quoteReplies/{quoteId} {
+        allow read: if true;
+        // No new writes allowed - migrate to new system
+        allow create: if false;
+        allow update: if false;
+        // Allow deletion for cleanup
+        allow delete: if isAuthenticated();
+      }
+      
+      // ------------------------------------------------------
+      // Catch-all for any other post subcollections
+      // ------------------------------------------------------
+      match /{otherSubcollection}/{docId} {
+        allow read: if true;
         allow write: if isAuthenticated();
       }
     }
+    
+    // ============================================================
+    // NOTIFICATIONS COLLECTION (if top-level)
+    // ============================================================
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() 
+                  && resource.data.recipientId == request.auth.uid;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() 
+                    && resource.data.recipientId == request.auth.uid;
+      allow delete: if isAuthenticated() 
+                    && resource.data.recipientId == request.auth.uid;
+    }
+    
+    // ============================================================
+    // REPORTS COLLECTION (for content moderation)
+    // ============================================================
+    match /reports/{reportId} {
+      allow read: if false; // Only admins via Admin SDK
+      allow create: if isAuthenticated();
+      allow update: if false;
+      allow delete: if false;
+    }
+    
+    // ============================================================
+    // HASHTAGS / TRENDING COLLECTION
+    // ============================================================
+    match /hashtags/{hashtagId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+    
+    // ============================================================
+    // CATCH-ALL FOR OTHER TOP-LEVEL COLLECTIONS
+    // (Allows flexibility for future collections during development)
+    // ============================================================
+    match /{collection}/{document=**} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
   }
 }
+
+// ============================================================
+// FIRESTORE INDEXES REQUIRED
+// ============================================================
+// Add these composite indexes in Firebase Console or firestore.indexes.json
+//
+// 1. Quote posts by quoted post (for quotes list):
+//    Collection: posts
+//    Fields: isQuote (Ascending), quotedPostId (Ascending), createdAt (Descending)
+//
+// 2. User's quotes (for profile tab):
+//    Collection: posts  
+//    Fields: authorId (Ascending), isQuote (Ascending), createdAt (Descending)
+//
+// 3. Check if user already quoted:
+//    Collection: posts
+//    Fields: authorId (Ascending), isQuote (Ascending), quotedPostId (Ascending)
+//
+// 4. Feed posts by date:
+//    Collection: posts
+//    Fields: createdAt (Descending)
+//
+// 5. User's posts:
+//    Collection: posts
+//    Fields: authorId (Ascending), createdAt (Descending)
+// ============================================================

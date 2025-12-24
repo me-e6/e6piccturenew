@@ -6,9 +6,6 @@ import '../post/create/post_model.dart';
 import 'user_model.dart';
 
 class ProfileService {
-  // --------------------------------------------------
-  // FIRESTORE & STORAGE
-  // --------------------------------------------------
   final FirebaseFirestore _firestore;
   final FirebaseStorage _storage;
 
@@ -54,13 +51,14 @@ class ProfileService {
   }
 
   // --------------------------------------------------
-  // FETCH SAVED POSTS (OWNER ONLY)
+  // FETCH SAVED POSTS (✅ FIXED PATH)
   // --------------------------------------------------
   Future<List<PostModel>> getSavedPosts(String uid) async {
+    // ✅ FIXED: Use 'saved_posts' to match Firestore rules
     final savedSnap = await _firestore
         .collection('users')
         .doc(uid)
-        .collection('saved')
+        .collection('saved_posts') // ✅ CHANGED from 'saved'
         .get();
 
     if (savedSnap.docs.isEmpty) return [];
@@ -68,7 +66,22 @@ class ProfileService {
     final ids = savedSnap.docs.map((d) => d.id).toList();
 
     // Firestore whereIn safeguard
-    if (ids.length > 10) return [];
+    if (ids.isEmpty) return [];
+    if (ids.length > 10) {
+      // Handle large lists by batching
+      final List<PostModel> allPosts = [];
+      for (int i = 0; i < ids.length; i += 10) {
+        final batch = ids.skip(i).take(10).toList();
+        final postsSnap = await _firestore
+            .collection('posts')
+            .where(FieldPath.documentId, whereIn: batch)
+            .get();
+        allPosts.addAll(
+          postsSnap.docs.map((doc) => PostModel.fromFirestore(doc)).toList(),
+        );
+      }
+      return allPosts;
+    }
 
     final postsSnap = await _firestore
         .collection('posts')
@@ -104,7 +117,7 @@ class ProfileService {
   }
 
   // ------------------------------------------------------------
-  // VIDEO DP — REPLACE (overwrite same path)
+  // VIDEO DP – REPLACE (overwrite same path)
   // ------------------------------------------------------------
   Future<String> updateVideoDp({
     required String uid,
@@ -122,7 +135,7 @@ class ProfileService {
   }
 
   // ------------------------------------------------------------
-  // VIDEO DP — DELETE
+  // VIDEO DP – DELETE
   // ------------------------------------------------------------
   Future<void> deleteVideoDp(String uid) async {
     final ref = _storage.ref('users/$uid/video_dp.mp4');
@@ -130,14 +143,14 @@ class ProfileService {
     try {
       await ref.delete();
     } catch (_) {
-      // file may not exist — ignore
+      // file may not exist – ignore
     }
 
     await _firestore.collection('users').doc(uid).update({'videoDpUrl': null});
   }
 
   // --------------------------------------------------
-  // 🔐 ADMIN — TOGGLE GAZETTER (VERIFIED)
+  // 🔐 ADMIN – TOGGLE GAZETTER (VERIFIED)
   // --------------------------------------------------
   Future<void> toggleGazetter({
     required String targetUid,
@@ -150,7 +163,7 @@ class ProfileService {
   }
 
   // --------------------------------------------------
-  //  Profiel Identity Banner
+  // UPDATE PROFILE BANNER
   // --------------------------------------------------
   Future<String?> updateProfileBanner({
     required String uid,
@@ -169,10 +182,6 @@ class ProfileService {
       'profileBannerUrl': bannerurl,
       'updatedAt': FieldValue.serverTimestamp(),
     });
-
-    //--------------------------------------------------
-    //  -Update Profile Details
-    // --------------------------------------------------
 
     return bannerurl;
   }
