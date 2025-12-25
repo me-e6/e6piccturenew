@@ -2,12 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import './widgets/user_list_row.dart';
 import 'follow_list_controller.dart';
-import '../profile/profile_screen.dart';
 import '../../core/widgets/list_skeleton.dart';
-
-import '../follow/mutual_controller.dart';
-import '../profile/profile_controller.dart';
-import '../follow/follow_controller.dart';
+import '../../features/profile/profile_entry.dart';
 
 /// ---------------------------------------------------------------------------
 /// FOLLOWERS LIST SCREEN (API-AWARE, CONTROLLER-DRIVEN)
@@ -70,8 +66,15 @@ class _FollowersListBody extends StatelessWidget {
           onTap: () {
             Navigator.push(
               context,
+              MaterialPageRoute(builder: (_) => ProfileEntry(userId: user.uid)),
+            );
+          },
+
+          /*  onTap: () {
+            Navigator.push(
+              context,
               MaterialPageRoute(
-                builder: (_) => MultiProvider(
+                builder: (_) => withValues(alpha:der(
                   providers: [
                     ChangeNotifierProvider(
                       create: (_) => ProfileController()..loadProfile(user.uid),
@@ -85,14 +88,6 @@ class _FollowersListBody extends StatelessWidget {
                   ],
                   child: ProfileScreen(userId: user.uid),
                 ),
-              ),
-            );
-          },
-          /*  onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ProfileScreen(userId: user.uid),
               ),
             );
           }, */

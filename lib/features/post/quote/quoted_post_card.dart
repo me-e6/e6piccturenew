@@ -11,7 +11,7 @@ import 'quote_model.dart';
 /// - Quote creation screen (preview what's being quoted)
 /// - Feed (embedded in quote posts)
 /// - Post details (show quoted content)
-/// 
+///
 /// Features:
 /// - Thumbnail image preview
 /// - Author info with verification badge
@@ -60,7 +60,9 @@ class QuotedPostCard extends StatelessWidget {
                 )
               : null,
         ),
-        child: compact ? _buildCompactLayout(theme, scheme) : _buildFullLayout(theme, scheme),
+        child: compact
+            ? _buildCompactLayout(theme, scheme)
+            : _buildFullLayout(theme, scheme),
       ),
     );
   }
@@ -92,7 +94,8 @@ class QuotedPostCard extends StatelessWidget {
                 const SizedBox(height: 6),
 
                 // PREVIEW TEXT OR IMAGE INDICATOR
-                if (preview.previewText != null && preview.previewText!.isNotEmpty)
+                if (preview.previewText != null &&
+                    preview.previewText!.isNotEmpty)
                   Text(
                     preview.previewText!,
                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -153,12 +156,15 @@ class QuotedPostCard extends StatelessWidget {
                 width: 40,
                 height: 40,
                 fit: BoxFit.cover,
-                placeholder: (_, __) => Container(
-                  color: scheme.surfaceContainerHighest,
-                ),
+                placeholder: (_, __) =>
+                    Container(color: scheme.surfaceContainerHighest),
                 errorWidget: (_, __, ___) => Container(
                   color: scheme.surfaceContainerHighest,
-                  child: Icon(Icons.broken_image, size: 16, color: scheme.onSurfaceVariant),
+                  child: Icon(
+                    Icons.broken_image,
+                    size: 16,
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ),
@@ -203,7 +209,9 @@ class QuotedPostCard extends StatelessWidget {
         if (preview.authorAvatarUrl != null)
           CircleAvatar(
             radius: 12,
-            backgroundImage: CachedNetworkImageProvider(preview.authorAvatarUrl!),
+            backgroundImage: CachedNetworkImageProvider(
+              preview.authorAvatarUrl!,
+            ),
             backgroundColor: scheme.surfaceContainerHighest,
           )
         else
@@ -231,11 +239,7 @@ class QuotedPostCard extends StatelessWidget {
         // VERIFICATION BADGE
         if (preview.isVerifiedOwner) ...[
           const SizedBox(width: 4),
-          Icon(
-            Icons.verified,
-            size: 14,
-            color: scheme.primary,
-          ),
+          Icon(Icons.verified, size: 14, color: scheme.primary),
         ],
 
         // HANDLE
@@ -300,9 +304,7 @@ class QuotedPostCard extends StatelessWidget {
           width: 64,
           height: 64,
           color: scheme.surfaceContainerHighest,
-          child: const Center(
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
+          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
         ),
         errorWidget: (_, __, ___) => Container(
           width: 64,

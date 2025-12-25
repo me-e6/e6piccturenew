@@ -86,7 +86,7 @@ class _MainNavigationState extends State<MainNavigation>
             GestureDetector(
               onTap: _closePlus,
               behavior: HitTestBehavior.opaque,
-              child: Container(color: Colors.black.withOpacity(0.15)),
+              child: Container(color: Colors.black.withValues(alpha: 0.15)),
             ),
 
           Align(
@@ -191,7 +191,7 @@ class _MainNavigationState extends State<MainNavigation>
                           color: Theme.of(context).colorScheme.primary,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.25),
+                              color: Colors.black.withValues(alpha: 0.25),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
@@ -222,7 +222,7 @@ class _MainNavigationState extends State<MainNavigation>
                                 borderRadius: BorderRadius.circular(24),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
+                                    color: Colors.black.withValues(alpha: 0.2),
                                     blurRadius: 8,
                                   ),
                                 ],
@@ -365,7 +365,7 @@ class _PlusExpansion extends StatelessWidget {
                 boxShadow: [
                   BoxShadow(
                     blurRadius: 12,
-                    color: Colors.black.withOpacity(0.15),
+                    color: Colors.black.withValues(alpha: 0.15),
                   ),
                 ],
               ),

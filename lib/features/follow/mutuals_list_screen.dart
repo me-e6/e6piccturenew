@@ -7,6 +7,7 @@ import '../profile/profile_screen.dart';
 import '../profile/profile_service.dart';
 import '../profile/user_model.dart';
 import 'widgets/user_list_row.dart';
+import '../../features/profile/profile_entry.dart';
 
 /// ---------------------------------------------------------------------------
 /// MUTUALS LIST SCREEN (API-AWARE, UNIFIED ROW UI)
@@ -95,8 +96,15 @@ class _MutualUserTile extends StatelessWidget {
           onTap: () {
             Navigator.push(
               context,
+              MaterialPageRoute(builder: (_) => ProfileEntry(userId: user.uid)),
+            );
+          },
+        );
+        /*   onTap: () {
+            Navigator.push(
+              context,
               MaterialPageRoute(
-                builder: (_) => MultiProvider(
+                builder: (_) => withValues(alpha:der(
                   providers: [
                     ChangeNotifierProvider(
                       create: (_) => ProfileController()..loadProfile(user.uid),
@@ -112,8 +120,7 @@ class _MutualUserTile extends StatelessWidget {
                 ),
               ),
             );
-          },
-        );
+          }, */
       },
     );
   }

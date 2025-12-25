@@ -5,6 +5,7 @@ import '.././follow/follow_controller.dart';
 import '.././profile/profile_controller.dart';
 import '.././follow/mutual_controller.dart';
 import '.././profile/profile_screen.dart';
+import '../../features/profile/profile_entry.dart';
 
 class SearchResultTile extends StatelessWidget {
   final UserModel user;
@@ -89,8 +90,13 @@ class _SearchResultTileBody extends StatelessWidget {
                 ),
               ),
             ),
-
       onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => ProfileEntry(userId: user.uid)),
+        );
+      },
+      /* onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -110,7 +116,7 @@ class _SearchResultTileBody extends StatelessWidget {
             ),
           ),
         );
-      },
+      }, */
     );
   }
 }

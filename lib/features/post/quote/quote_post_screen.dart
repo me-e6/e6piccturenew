@@ -9,14 +9,14 @@ import 'quoted_post_card.dart';
 /// QUOTE POST SCREEN
 /// ------------------------------------------------------------
 /// Full-screen UI for creating a quote post.
-/// 
+///
 /// Features:
 /// - Preview of original post being quoted
 /// - Commentary input with character counter
 /// - Validation feedback
 /// - Loading states
 /// - Dark mode support
-/// 
+///
 /// Usage:
 /// ```dart
 /// Navigator.push(
@@ -85,12 +85,12 @@ class _QuotePostScreenContent extends StatelessWidget {
     return TextButton(
       onPressed: canSubmit ? () => controller.submitQuote(context) : null,
       style: TextButton.styleFrom(
-        backgroundColor: canSubmit ? scheme.primary : scheme.surfaceContainerHighest,
+        backgroundColor: canSubmit
+            ? scheme.primary
+            : scheme.surfaceContainerHighest,
         foregroundColor: canSubmit ? scheme.onPrimary : scheme.onSurfaceVariant,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
       child: isLoading
           ? SizedBox(
@@ -101,10 +101,7 @@ class _QuotePostScreenContent extends StatelessWidget {
                 color: scheme.onPrimary,
               ),
             )
-          : const Text(
-              'Post',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
+          : const Text('Post', style: TextStyle(fontWeight: FontWeight.w600)),
     );
   }
 
@@ -156,7 +153,8 @@ class _QuotePostScreenContent extends StatelessWidget {
           const SizedBox(height: 24),
 
           // NESTED QUOTE WARNING (if applicable)
-          if (controller.validationResult?.error == QuoteValidationError.cannotQuoteQuote)
+          if (controller.validationResult?.error ==
+              QuoteValidationError.cannotQuoteQuote)
             _buildNestedQuoteWarning(scheme),
         ],
       ),
@@ -178,10 +176,7 @@ class _QuotePostScreenContent extends StatelessWidget {
           Expanded(
             child: Text(
               controller.errorMessage!,
-              style: TextStyle(
-                color: scheme.onErrorContainer,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: scheme.onErrorContainer, fontSize: 14),
             ),
           ),
         ],
@@ -203,9 +198,11 @@ class _QuotePostScreenContent extends StatelessWidget {
       style: theme.textTheme.bodyLarge,
       decoration: InputDecoration(
         hintText: 'Add your thoughts... (optional)',
-        hintStyle: TextStyle(color: scheme.onSurfaceVariant.withOpacity(0.6)),
+        hintStyle: TextStyle(
+          color: scheme.onSurfaceVariant.withValues(alpha: .6),
+        ),
         filled: true,
-        fillColor: scheme.surfaceContainerHighest.withOpacity(0.5),
+        fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
@@ -223,7 +220,10 @@ class _QuotePostScreenContent extends StatelessWidget {
     );
   }
 
-  Widget _buildCharacterCounter(QuoteController controller, ColorScheme scheme) {
+  Widget _buildCharacterCounter(
+    QuoteController controller,
+    ColorScheme scheme,
+  ) {
     final remaining = controller.remainingCharacters;
     final isOverLimit = remaining < 0;
     final isNearLimit = remaining <= 50 && remaining >= 0;
@@ -243,7 +243,11 @@ class _QuotePostScreenContent extends StatelessWidget {
         if (isOverLimit)
           Padding(
             padding: const EdgeInsets.only(right: 8),
-            child: Icon(Icons.warning_amber_rounded, size: 16, color: scheme.error),
+            child: Icon(
+              Icons.warning_amber_rounded,
+              size: 16,
+              color: scheme.error,
+            ),
           ),
         Text(
           '$remaining',
@@ -271,9 +275,7 @@ class _QuotePostScreenContent extends StatelessWidget {
         color: scheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: const Center(
-        child: CircularProgressIndicator(strokeWidth: 2),
-      ),
+      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
     );
   }
 
@@ -292,10 +294,7 @@ class _QuotePostScreenContent extends StatelessWidget {
           Expanded(
             child: Text(
               'This is already a quote. You can only quote original posts.',
-              style: TextStyle(
-                color: scheme.onTertiaryContainer,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: scheme.onTertiaryContainer, fontSize: 13),
             ),
           ),
         ],
@@ -359,9 +358,7 @@ class QuoteActionButton extends StatelessWidget {
   void _navigateToQuote(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => QuotePostScreen(postId: postId),
-      ),
+      MaterialPageRoute(builder: (_) => QuotePostScreen(postId: postId)),
     );
   }
 

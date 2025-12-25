@@ -9,6 +9,7 @@ import '../feed/day_album_tracker.dart';
 import '../post/create/post_model.dart';
 
 import '../engagement/engagement_controller.dart';
+import '../engagement/widgets/repic_header_widget.dart'; // ✅ FIXED: widgets/ not widget/
 
 import '../follow/follow_controller.dart';
 
@@ -20,36 +21,38 @@ import '../search/search_controllers.dart';
 import '../user/user_avatar_controller.dart';
 
 import '../../core/theme/theme_controller.dart';
-import '../post/reply/quote_reply_screen.dart';
 
 import '../auth/auth_gate.dart';
 import '../auth/auth_service.dart';
+
+// ✅ Quote System
+import '../post/quote/quote_post_screen.dart';
+import '../post/quote/quotes_list_screen.dart';
+
+// ✅ Reply System
+import '../post/reply/reply_screen.dart';
+import '../post/reply/replies_list_screen.dart';
+
+// ✅ NEW: Engagement Lists (for Repics/Quotes)
+import '../engagement/engagement_lists_sheet.dart';
 
 // ============================================================================
 // CONSTANTS
 // ============================================================================
 
-/// UI constants for consistent design and performance optimization
 class _HomeScreenConstants {
-  // Colors
-  static const Color backgroundColor = Color(0xFFF6F4EF);
-  static const Color textColor = Color(0xFF3D3D3D);
-  static const Color pillBackgroundColor = Color(0xFFE8E3D6);
-  static const Color pillBorderColor = Color(0xFFD0C9B8);
-  static const Color pillIconColor = Color(0xFF8B7355);
-  static const Color pillTextColor = Color(0xFF4A4A4A);
+  static const Color brandAccent = Color(0xFF8B7355);
 
-  // Spacing & Padding
   static const double horizontalPadding = 16.0;
   static const double verticalPadding = 8.0;
   static const double cardMarginHorizontal = 6.0;
   static const double headerPaddingHorizontal = 12.0;
   static const double headerPaddingVertical = 8.0;
   static const double engagementBarPaddingVertical = 6.0;
+  static const double engagementBarPaddingHorizontal = 8.0;
   static const double iconButtonPaddingHorizontal = 8.0;
   static const double iconButtonPaddingVertical = 4.0;
 
-  // Sizing
   static const double appBarIconSize = 26.0;
   static const double searchIconSize = 25.0;
   static const double pillIconSize = 14.0;
@@ -60,28 +63,22 @@ class _HomeScreenConstants {
   static const double suggestedUsersHeight = 120.0;
   static const double sheetHeightFraction = 0.75;
 
-  // Border Radius
   static const double pillBorderRadius = 20.0;
   static const double cardBorderRadius = 12.0;
   static const double iconButtonBorderRadius = 20.0;
   static const double sheetBorderRadius = 24.0;
 
-  // Border Width
   static const double pillBorderWidth = 0.5;
 
-  // Page View
   static const double pageViewportFraction = 0.94;
 
-  // Image Caching
   static const int maxCacheSize = 2048;
   static const int minCacheSize = 400;
   static const int defaultCacheSize = 400;
-  static const int avatarCacheSize = 200; // Small size for avatars
+  static const int avatarCacheSize = 200;
 
-  // Loading
   static const double progressIndicatorStrokeWidth = 2.0;
 
-  // Typography
   static const double appBarTitleSize = 20.0;
   static const double appBarLetterSpacing = 1.5;
   static const FontWeight appBarFontWeight = FontWeight.w800;
@@ -93,37 +90,30 @@ class _HomeScreenConstants {
 }
 
 // ============================================================================
-// HOME SCREEN V3 - Main Screen
+// HOME SCREEN V3
 // ============================================================================
 
-/// Main home screen displaying daily feed with posts
-///
-/// Features:
-/// - Day Album notification pill
-/// - Horizontal scrolling post carousel
-/// - Suggested users section
-/// - Search and notifications
-/// - Profile sheet with settings
 class HomeScreenV3 extends StatelessWidget {
   const HomeScreenV3({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Watch feed controller for state changes
     final feed = context.watch<DayFeedController>();
     final state = feed.state;
     final albumStatus = state.albumStatus;
 
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: _HomeScreenConstants.backgroundColor,
-      appBar: _buildAppBar(context),
+      backgroundColor: scheme.surface,
+      appBar: _buildAppBar(context, scheme),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: feed.refresh,
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              // Day Album notification pill (shows when new posts available)
               if (albumStatus != null && albumStatus.hasUnseen)
                 SliverToBoxAdapter(
                   child: _XStyleDayAlbumPill(
@@ -134,7 +124,6 @@ class HomeScreenV3 extends StatelessWidget {
 
               const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
-              // Main post carousel
               SliverToBoxAdapter(
                 child: _PostCarousel(
                   posts: state.posts,
@@ -145,7 +134,6 @@ class HomeScreenV3 extends StatelessWidget {
 
               const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
-              // Suggested users section (placeholder)
               const SliverToBoxAdapter(child: _SuggestedUsersSection()),
 
               const SliverToBoxAdapter(child: SizedBox(height: 32)),
@@ -156,63 +144,52 @@ class HomeScreenV3 extends StatelessWidget {
     );
   }
 
-  /// Builds app bar with menu, title, search, and notifications
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
+  PreferredSizeWidget _buildAppBar(BuildContext context, ColorScheme scheme) {
     return AppBar(
       elevation: 0,
-      backgroundColor: _HomeScreenConstants.backgroundColor,
-
-      // Menu button (opens profile sheet)
+      backgroundColor: scheme.surface,
       leading: IconButton(
-        icon: const Icon(
+        icon: Icon(
           Icons.menu_rounded,
           size: _HomeScreenConstants.appBarIconSize,
-          color: _HomeScreenConstants.textColor,
+          color: scheme.onSurface,
         ),
         onPressed: () => _showProfileSheet(context),
       ),
-
-      // App title
-      title: const Text(
+      title: Text(
         'PICCTURE',
         style: TextStyle(
           fontWeight: _HomeScreenConstants.appBarFontWeight,
           fontSize: _HomeScreenConstants.appBarTitleSize,
           letterSpacing: _HomeScreenConstants.appBarLetterSpacing,
-          color: _HomeScreenConstants.textColor,
+          color: scheme.onSurface,
         ),
       ),
       centerTitle: true,
-
-      // Action buttons (search, notifications)
       actions: [
-        // Search button
         IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.search_rounded,
             size: _HomeScreenConstants.searchIconSize,
-            color: _HomeScreenConstants.textColor,
+            color: scheme.onSurface,
           ),
           onPressed: () => _openSearch(context),
         ),
-
-        // Notifications button (placeholder)
         IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.notifications_outlined,
             size: _HomeScreenConstants.searchIconSize,
+            color: scheme.onSurface,
           ),
           onPressed: () {
             // TODO: Implement notifications
           },
         ),
-
         const SizedBox(width: 6),
       ],
     );
   }
 
-  /// Opens search screen with dedicated controller
   void _openSearch(BuildContext context) {
     Navigator.push(
       context,
@@ -225,7 +202,6 @@ class HomeScreenV3 extends StatelessWidget {
     );
   }
 
-  /// Shows bottom sheet with profile options and settings
   void _showProfileSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -237,15 +213,9 @@ class HomeScreenV3 extends StatelessWidget {
 }
 
 // ============================================================================
-// DAY ALBUM PILL - Notification Banner
+// DAY ALBUM PILL
 // ============================================================================
 
-/// X/Twitter-style notification pill for new Day Album posts
-///
-/// Features:
-/// - Dismissible on tap
-/// - Shows unseen post count
-/// - Styled to match app theme
 class _XStyleDayAlbumPill extends StatelessWidget {
   final DayAlbumStatus status;
   final VoidCallback onTap;
@@ -254,6 +224,8 @@ class _XStyleDayAlbumPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: _HomeScreenConstants.horizontalPadding,
@@ -270,33 +242,30 @@ class _XStyleDayAlbumPill extends StatelessWidget {
             vertical: _HomeScreenConstants.verticalPadding,
           ),
           decoration: BoxDecoration(
-            color: _HomeScreenConstants.pillBackgroundColor,
+            color: scheme.primaryContainer.withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(
               _HomeScreenConstants.pillBorderRadius,
             ),
             border: Border.all(
-              color: _HomeScreenConstants.pillBorderColor,
+              color: scheme.outline.withValues(alpha: 0.3),
               width: _HomeScreenConstants.pillBorderWidth,
             ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Up arrow icon
-              const Icon(
+              Icon(
                 Icons.arrow_upward_rounded,
                 size: _HomeScreenConstants.pillIconSize,
-                color: _HomeScreenConstants.pillIconColor,
+                color: scheme.primary,
               ),
               const SizedBox(width: 6),
-
-              // Message text
               Text(
                 status.message ?? 'New Picctures available',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: _HomeScreenConstants.pillTextSize,
                   fontWeight: _HomeScreenConstants.pillFontWeight,
-                  color: _HomeScreenConstants.pillTextColor,
+                  color: scheme.onPrimaryContainer,
                 ),
               ),
             ],
@@ -308,16 +277,9 @@ class _XStyleDayAlbumPill extends StatelessWidget {
 }
 
 // ============================================================================
-// POST CAROUSEL - Horizontal Scrolling Posts
+// POST CAROUSEL
 // ============================================================================
 
-/// Horizontal carousel displaying posts
-///
-/// States:
-/// - Loading: Shows progress indicator
-/// - Error: Shows error message
-/// - Empty: Shows empty state message
-/// - Success: Shows post cards in PageView
 class _PostCarousel extends StatelessWidget {
   final List<PostModel> posts;
   final bool isLoading;
@@ -331,7 +293,8 @@ class _PostCarousel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Loading state
+    final scheme = Theme.of(context).colorScheme;
+
     if (isLoading) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 48),
@@ -343,7 +306,6 @@ class _PostCarousel extends StatelessWidget {
       );
     }
 
-    // Error state
     if (errorMessage != null) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 48),
@@ -351,11 +313,11 @@ class _PostCarousel extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              Icon(Icons.error_outline, size: 48, color: scheme.error),
               const SizedBox(height: 16),
               Text(
                 errorMessage!,
-                style: const TextStyle(color: Colors.red),
+                style: TextStyle(color: scheme.error),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -364,24 +326,30 @@ class _PostCarousel extends StatelessWidget {
       );
     }
 
-    // Empty state
     if (posts.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 48),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 48),
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.photo_library_outlined, size: 64, color: Colors.grey),
-              SizedBox(height: 16),
+              Icon(
+                Icons.photo_library_outlined,
+                size: 64,
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.5),
+              ),
+              const SizedBox(height: 16),
               Text(
                 'No pictures yet today',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+                style: TextStyle(fontSize: 16, color: scheme.onSurfaceVariant),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text(
                 'Check back soon for new posts!',
-                style: TextStyle(fontSize: 14, color: Colors.grey),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+                ),
               ),
             ],
           ),
@@ -389,7 +357,6 @@ class _PostCarousel extends StatelessWidget {
       );
     }
 
-    // Success state: Display posts in carousel
     return SizedBox(
       height: _HomeScreenConstants.carouselHeight,
       child: PageView.builder(
@@ -397,33 +364,34 @@ class _PostCarousel extends StatelessWidget {
           viewportFraction: _HomeScreenConstants.pageViewportFraction,
         ),
         itemCount: posts.length,
-        itemBuilder: (_, i) => _PostCard(post: posts[i]),
+        itemBuilder: (_, i) =>
+            _PostCard(post: posts[i], allPosts: posts, postIndex: i),
       ),
     );
   }
 }
 
 // ============================================================================
-// POST CARD - Individual Post Display
+// POST CARD - ✅ UPDATED: Supports Repic Posts
 // ============================================================================
 
-/// Card displaying a single post with image and engagement controls
-///
-/// Features:
-/// - Optimized image caching
-/// - Tap to open full-screen viewer
-/// - Post header with author info and follow button
-/// - Engagement bar (like, repic, save, quote)
 class _PostCard extends StatelessWidget {
   final PostModel post;
+  final List<PostModel> allPosts;
+  final int postIndex;
 
-  const _PostCard({required this.post});
+  const _PostCard({
+    required this.post,
+    required this.allPosts,
+    required this.postIndex,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return ChangeNotifierProvider(
       create: (_) {
-        // Create engagement controller and load engagement data
         final controller = EngagementController(
           postId: post.postId,
           initialPost: post,
@@ -435,6 +403,7 @@ class _PostCard extends StatelessWidget {
         margin: const EdgeInsets.symmetric(
           horizontal: _HomeScreenConstants.cardMarginHorizontal,
         ),
+        color: scheme.surfaceContainerLowest,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(
             _HomeScreenConstants.cardBorderRadius,
@@ -442,59 +411,339 @@ class _PostCard extends StatelessWidget {
         ),
         child: Column(
           children: [
-            // Post header (author, follow button)
+            // ✅ NEW: Repic Header (shows "User repicced" for repic posts)
+            if (post.isRepic && post.repicAuthorId != null)
+              RepicHeader(
+                repicAuthorId: post.repicAuthorId!,
+                repicAuthorName: post.repicAuthorName ?? 'User',
+                repicAuthorHandle: post.repicAuthorHandle,
+                repicAuthorAvatarUrl: post.repicAuthorAvatarUrl,
+                repicAuthorIsVerified: post.repicAuthorIsVerified,
+              ),
+
+            // Post header (shows ORIGINAL author for repic posts)
             _PostHeader(post: post),
 
-            // Main image (tappable to open viewer)
+            // Main image (uses ORIGINAL images for repic posts)
             Expanded(child: _buildTappableImage(context, post)),
 
             // Engagement controls
-            const _EngagementBar(),
+            _EngagementBar(post: post),
           ],
         ),
       ),
     );
   }
 
-  /// Builds tappable image that opens full-screen Day Album viewer
+  /// Builds tappable image - ✅ UPDATED: Uses original content for repic posts
   Widget _buildTappableImage(BuildContext context, PostModel post) {
+    // ✅ For repic posts, use original post's images
+    final imageUrls = post.isRepic && post.originalImageUrls.isNotEmpty
+        ? post.originalImageUrls
+        : post.imageUrls;
+
+    if (imageUrls.isEmpty) {
+      return _buildNoImagePlaceholder(context);
+    }
+
     return GestureDetector(
-      // Open full-screen viewer on tap
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => DayAlbumViewerScreen(
-              posts: [post],
+              posts: allPosts,
               sessionStartedAt: DateTime.now(),
+              initialIndex: postIndex,
             ),
           ),
         );
       },
-
-      // Image with rounded corners and optimized caching
       child: ClipRRect(
         borderRadius: BorderRadius.circular(
           _HomeScreenConstants.cardBorderRadius,
         ),
-        child: _buildOptimizedImage(post.imageUrls.first),
+        child: _buildOptimizedImage(context, imageUrls.first),
       ),
     );
   }
 
-  /// Builds network image with optimal caching
-  ///
-  /// Features:
-  /// - Dynamic cache sizing based on screen dimensions
-  /// - Retina display support (pixel ratio)
-  /// - Safety caps (min: 400px, max: 2048px)
-  /// - Maintains aspect ratio (no distortion)
-  /// - Loading progress indicator
-  /// - Error fallback UI
-  Widget _buildOptimizedImage(String imageUrl) {
+  Widget _buildNoImagePlaceholder(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    final isQuote =
+        post.isQuote || post.quotedPostId != null || post.quotedPreview != null;
+
+    if (isQuote) {
+      return _buildQuotePostContent(context, scheme);
+    }
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DayAlbumViewerScreen(
+              posts: allPosts,
+              sessionStartedAt: DateTime.now(),
+              initialIndex: postIndex,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(
+            _HomeScreenConstants.cardBorderRadius,
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.image_not_supported_outlined,
+                size: 48,
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.5),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'No image',
+                style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuotePostContent(BuildContext context, ColorScheme scheme) {
+    final quotedPreview = post.quotedPreview;
+    final commentary = post.commentary;
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DayAlbumViewerScreen(
+              posts: allPosts,
+              sessionStartedAt: DateTime.now(),
+              initialIndex: postIndex,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(
+            _HomeScreenConstants.cardBorderRadius,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (commentary != null && commentary.isNotEmpty) ...[
+              Text(
+                commentary,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: scheme.onSurface,
+                  height: 1.4,
+                ),
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 12),
+            ],
+            Expanded(
+              child: _buildQuotedPreviewCard(context, scheme, quotedPreview),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuotedPreviewCard(
+    BuildContext context,
+    ColorScheme scheme,
+    Map<String, dynamic>? preview,
+  ) {
+    if (preview == null) {
+      return Container(
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: scheme.outlineVariant.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Center(
+          child: Text(
+            'Original post unavailable',
+            style: TextStyle(
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final authorName = preview['authorName'] as String? ?? 'Unknown';
+    final authorHandle = preview['authorHandle'] as String?;
+    final authorAvatarUrl = preview['authorAvatarUrl'] as String?;
+    final isVerified = preview['isVerifiedOwner'] as bool? ?? false;
+    final thumbnailUrl = preview['thumbnailUrl'] as String?;
+    final previewText = preview['previewText'] as String?;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Row(
+          children: [
+            if (thumbnailUrl != null)
+              SizedBox(
+                width: 120,
+                child: Image.network(
+                  thumbnailUrl,
+                  fit: BoxFit.cover,
+                  height: double.infinity,
+                  cacheWidth: 240,
+                  loadingBuilder: (_, child, progress) {
+                    if (progress == null) return child;
+                    return Container(
+                      color: scheme.surfaceContainerHighest,
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    );
+                  },
+                  errorBuilder: (_, __, ___) => Container(
+                    color: scheme.surfaceContainerHighest,
+                    child: Icon(
+                      Icons.broken_image,
+                      color: scheme.onSurfaceVariant.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ),
+              ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(
+                      children: [
+                        if (authorAvatarUrl != null)
+                          CircleAvatar(
+                            radius: 12,
+                            backgroundImage: NetworkImage(authorAvatarUrl),
+                            backgroundColor: scheme.surfaceContainerHighest,
+                          )
+                        else
+                          CircleAvatar(
+                            radius: 12,
+                            backgroundColor: scheme.surfaceContainerHighest,
+                            child: Icon(
+                              Icons.person,
+                              size: 12,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            authorName,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: scheme.onSurface,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (isVerified) ...[
+                          const SizedBox(width: 4),
+                          Icon(Icons.verified, size: 14, color: scheme.primary),
+                        ],
+                      ],
+                    ),
+                    if (authorHandle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        '@$authorHandle',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                    if (previewText != null && previewText.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        previewText,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    if (thumbnailUrl == null &&
+                        (previewText == null || previewText.isEmpty)) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.image_outlined,
+                            size: 14,
+                            color: scheme.onSurfaceVariant.withValues(
+                              alpha: 0.6,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Photo',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: scheme.onSurfaceVariant.withValues(
+                                alpha: 0.6,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOptimizedImage(BuildContext context, String imageUrl) {
+    final scheme = Theme.of(context).colorScheme;
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate optimal cache size
         final pixelRatio = MediaQuery.of(context).devicePixelRatio;
         final width = constraints.maxWidth > 0
             ? constraints.maxWidth
@@ -502,7 +751,6 @@ class _PostCard extends StatelessWidget {
 
         var cacheWidth = (width * pixelRatio).toInt();
 
-        // Apply safety caps to prevent memory issues
         if (cacheWidth > _HomeScreenConstants.maxCacheSize) {
           cacheWidth = _HomeScreenConstants.maxCacheSize;
         }
@@ -514,8 +762,7 @@ class _PostCard extends StatelessWidget {
           imageUrl,
           fit: BoxFit.cover,
           width: double.infinity,
-          cacheWidth: cacheWidth, // Only width - maintains aspect ratio!
-          // Loading state: Show progress indicator
+          cacheWidth: cacheWidth,
           loadingBuilder: (context, child, loadingProgress) {
             if (loadingProgress == null) return child;
 
@@ -529,8 +776,6 @@ class _PostCard extends StatelessWidget {
               ),
             );
           },
-
-          // Error state: Show broken image icon
           errorBuilder: (context, error, stackTrace) {
             debugPrint('Image load error: $error');
 
@@ -538,11 +783,18 @@ class _PostCard extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.broken_image, size: 48, color: Colors.grey),
+                  Icon(
+                    Icons.broken_image,
+                    size: 48,
+                    color: scheme.onSurfaceVariant.withValues(alpha: 0.5),
+                  ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Failed to load image',
-                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -555,16 +807,9 @@ class _PostCard extends StatelessWidget {
 }
 
 // ============================================================================
-// POST HEADER - Author Info & Follow Button
+// POST HEADER - ✅ UPDATED: Shows original author for repic posts
 // ============================================================================
 
-/// Post header displaying author info and follow button
-///
-/// Features:
-/// - Author avatar (optimized caching)
-/// - Author name and handle (tappable to view profile)
-/// - Follow/Following button (hidden for own posts)
-/// - Real-time follow status updates
 class _PostHeader extends StatelessWidget {
   final PostModel post;
 
@@ -572,7 +817,10 @@ class _PostHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Check if current user is the post author
+    final scheme = Theme.of(context).colorScheme;
+
+    // ✅ For repic posts, the authorId is already the original author
+    // (RepicService stores original author in authorId field)
     final isOwner = FirebaseAuth.instance.currentUser?.uid == post.authorId;
 
     return ChangeNotifierProvider(
@@ -585,7 +833,6 @@ class _PostHeader extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Author info (avatar + name + handle) - tappable to view profile
             Expanded(
               child: GestureDetector(
                 onTap: () {
@@ -598,41 +845,48 @@ class _PostHeader extends StatelessWidget {
                 },
                 child: Row(
                   children: [
-                    // Author avatar with optimized caching
-                    _buildAuthorAvatar(),
-
+                    _buildAuthorAvatar(context),
                     const SizedBox(width: 8),
-
-                    // Author name and handle
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Display name
-                          Text(
-                            post.authorName.isNotEmpty
-                                ? post.authorName
-                                : 'Unknown',
-                            style: const TextStyle(
-                              fontWeight: _HomeScreenConstants.headerFontWeight,
-                              fontSize: 14,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  post.authorName.isNotEmpty
+                                      ? post.authorName
+                                      : 'Unknown',
+                                  style: TextStyle(
+                                    fontWeight:
+                                        _HomeScreenConstants.headerFontWeight,
+                                    fontSize: 14,
+                                    color: scheme.onSurface,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (post.authorIsVerified) ...[
+                                const SizedBox(width: 4),
+                                Icon(
+                                  Icons.verified,
+                                  size: 16,
+                                  color: scheme.primary,
+                                ),
+                              ],
+                            ],
                           ),
-
-                          // Handle (if available)
                           if (post.authorHandle != null &&
                               post.authorHandle!.isNotEmpty)
                             Text(
                               '@${post.authorHandle}',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey[600],
+                                color: scheme.onSurfaceVariant,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                         ],
                       ),
@@ -643,238 +897,319 @@ class _PostHeader extends StatelessWidget {
             ),
 
             // Follow button (hidden for own posts)
-            if (!isOwner)
-              Consumer<FollowController>(
-                builder: (_, follow, __) => OutlinedButton(
-                  onPressed: follow.isProcessing ? null : follow.toggle,
-                  child: Text(follow.isFollowing ? 'Following' : 'Follow'),
-                ),
-              ),
+            if (!isOwner) _buildFollowButton(context, scheme),
           ],
         ),
       ),
     );
   }
 
-  /// Builds author avatar with optimized caching
-  ///
-  /// Features:
-  /// - Small cache size for performance (200px)
-  /// - Fallback to person icon if no avatar
-  /// - Real-time updates via UserAvatarController
-  Widget _buildAuthorAvatar() {
+  Widget _buildAuthorAvatar(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return ChangeNotifierProvider(
       create: (_) => UserAvatarController(post.authorId),
       child: Consumer<UserAvatarController>(
-        builder: (_, avatar, __) {
-          // If no avatar URL, show icon
-          if (post.authorAvatarUrl == null) {
+        builder: (context, controller, _) {
+          final avatarUrl = controller.avatarUrl ?? post.authorAvatarUrl;
+
+          if (avatarUrl != null && avatarUrl.isNotEmpty) {
             return CircleAvatar(
               radius: _HomeScreenConstants.avatarRadius,
-              child: const Icon(
-                Icons.person,
-                size: _HomeScreenConstants.avatarIconSize,
-              ),
+              backgroundImage: NetworkImage(avatarUrl),
+              backgroundColor: scheme.surfaceContainerHighest,
             );
           }
 
-          // Show cached avatar image
           return CircleAvatar(
             radius: _HomeScreenConstants.avatarRadius,
-            backgroundColor: Colors.grey[200],
-            child: ClipOval(
-              child: Image.network(
-                post.authorAvatarUrl!,
-                width: _HomeScreenConstants.avatarRadius * 2,
-                height: _HomeScreenConstants.avatarRadius * 2,
-                fit: BoxFit.cover,
-                cacheWidth: _HomeScreenConstants.avatarCacheSize,
-
-                // Loading state
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-
-                  return const Center(
-                    child: CircularProgressIndicator(strokeWidth: 1.5),
-                  );
-                },
-
-                // Error state: Fallback to icon
-                errorBuilder: (_, __, ___) {
-                  return const Icon(
-                    Icons.person,
-                    size: _HomeScreenConstants.avatarIconSize,
-                  );
-                },
-              ),
+            backgroundColor: scheme.surfaceContainerHighest,
+            child: Icon(
+              Icons.person,
+              size: _HomeScreenConstants.avatarIconSize,
+              color: scheme.onSurfaceVariant,
             ),
           );
         },
       ),
     );
   }
+
+  Widget _buildFollowButton(BuildContext context, ColorScheme scheme) {
+    return Consumer<FollowController>(
+      builder: (context, controller, _) {
+        if (controller.isLoading) {
+          return const SizedBox(
+            width: 70,
+            child: Center(
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          );
+        }
+
+        final isFollowing = controller.isFollowing;
+
+        return TextButton(
+          onPressed: () {
+            if (isFollowing) {
+              controller.unfollow(post.authorId);
+            } else {
+              controller.follow(post.authorId);
+            }
+          },
+          style: TextButton.styleFrom(
+            backgroundColor: isFollowing
+                ? scheme.surfaceContainerHighest
+                : scheme.primary,
+            foregroundColor: isFollowing
+                ? scheme.onSurfaceVariant
+                : scheme.onPrimary,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          child: Text(
+            isFollowing ? 'Following' : 'Follow',
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+        );
+      },
+    );
+  }
 }
 
 // ============================================================================
-// ENGAGEMENT BAR - Like, Repic, Save, Quote
+// ENGAGEMENT BAR - ✅ UPDATED: Shows Repics/Quotes list on count tap
 // ============================================================================
 
-/// Engagement bar with interactive controls
-///
-/// Actions:
-/// - Like: Toggle like status (heart icon)
-/// - Repic: Repost to own feed (repeat icon)
-/// - Save: Bookmark for later (bookmark icon)
-/// - Quote: Open quote reply screen (chat icon)
-///
-/// Features:
-/// - Real-time count updates
-/// - Visual feedback (colors, icons)
-/// - Disabled state during processing
 class _EngagementBar extends StatelessWidget {
-  const _EngagementBar();
+  final PostModel post;
+
+  const _EngagementBar({required this.post});
 
   @override
   Widget build(BuildContext context) {
-    // Watch engagement controller for state changes
     final engagement = context.watch<EngagementController>();
-    final post = engagement.post;
+    final currentPost = engagement.post;
+    final scheme = Theme.of(context).colorScheme;
+    final iconColor = scheme.onSurfaceVariant;
 
     return Padding(
       padding: const EdgeInsets.symmetric(
         vertical: _HomeScreenConstants.engagementBarPaddingVertical,
+        horizontal: _HomeScreenConstants.engagementBarPaddingHorizontal,
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          // LIKE BUTTON
-          _IconWithCount(
-            icon: post.hasLiked ? Icons.favorite : Icons.favorite_border,
-            color: post.hasLiked ? Colors.red : Colors.black,
-            count: post.likeCount,
-            onTap: engagement.isProcessing ? null : engagement.toggleLike,
+          // LIKE
+          _EngagementAction(
+            icon: currentPost.hasLiked ? Icons.favorite : Icons.favorite_border,
+            color: currentPost.hasLiked ? Colors.red : iconColor,
+            count: currentPost.likeCount,
+            onPressed: engagement.isProcessing ? null : engagement.toggleLike,
+            onCountTap: null,
           ),
 
-          // REPIC BUTTON (Repost)
-          _IconWithCount(
-            icon: Icons.repeat,
-            color: Colors.black,
-            count: post.repicCount,
-            onTap: engagement.isProcessing ? null : engagement.toggleRepic,
-          ),
-
-          // SAVE BUTTON (Bookmark)
-          _IconWithCount(
-            icon: post.hasSaved ? Icons.bookmark : Icons.bookmark_border,
-            color: Colors.black,
-            count: post.saveCount,
-            onTap: engagement.isProcessing ? null : engagement.toggleSave,
-          ),
-
-          // QUOTE BUTTON (Opens quote reply screen)
-          _IconWithCount(
+          // REPLY
+          _EngagementAction(
             icon: Icons.chat_bubble_outline,
-            color: Colors.black,
-            count: post.quoteReplyCount,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ChangeNotifierProvider.value(
-                    value: context.read<EngagementController>(),
-                    child: QuoteReplyScreen(postId: post.postId),
-                  ),
-                ),
-              );
-            },
+            color: iconColor,
+            count: currentPost.replyCount,
+            onPressed: () => _navigateToReply(context, currentPost),
+            onCountTap: currentPost.replyCount > 0
+                ? () => _navigateToRepliesList(context, currentPost)
+                : null,
+          ),
+
+          // QUOTE
+          _EngagementAction(
+            icon: Icons.format_quote_rounded,
+            color: iconColor,
+            count: currentPost.quoteReplyCount,
+            onPressed: () => _navigateToQuote(context, currentPost),
+            onCountTap: currentPost.quoteReplyCount > 0
+                ? () => _showEngagementLists(context, currentPost)
+                : null,
+          ),
+
+          // REPIC - ✅ UPDATED: Count tap shows engagement lists
+          _EngagementAction(
+            icon: Icons.repeat,
+            color: currentPost.hasRepicced ? Colors.green : iconColor,
+            count: currentPost.repicCount,
+            onPressed: engagement.isProcessing ? null : engagement.toggleRepic,
+            onCountTap: currentPost.repicCount > 0
+                ? () => _showEngagementLists(context, currentPost)
+                : null,
+          ),
+
+          // SAVE
+          _EngagementAction(
+            icon: currentPost.hasSaved ? Icons.bookmark : Icons.bookmark_border,
+            color: currentPost.hasSaved ? Colors.amber : iconColor,
+            count: currentPost.saveCount,
+            onPressed: engagement.isProcessing ? null : engagement.toggleSave,
+            onCountTap: null,
           ),
         ],
       ),
     );
   }
-}
 
-// ============================================================================
-// ICON WITH COUNT - Reusable Engagement Button
-// ============================================================================
+  // -------------------------------------------------------------------------
+  // NAVIGATION HELPERS
+  // -------------------------------------------------------------------------
 
-/// Reusable button for engagement actions
-///
-/// Features:
-/// - Icon with count below
-/// - Tap ripple effect
-/// - Disabled state support
-/// - Color customization
-class _IconWithCount extends StatelessWidget {
-  final IconData icon;
-  final int count;
-  final Color color;
-  final VoidCallback? onTap;
+  void _navigateToReply(BuildContext context, PostModel post) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ReplyScreen(postId: post.postId)),
+    ).then((_) {
+      if (context.mounted) {
+        context.read<EngagementController>().incrementReply();
+      }
+    });
+  }
 
-  const _IconWithCount({
-    required this.icon,
-    required this.count,
-    required this.color,
-    this.onTap,
-  });
+  void _navigateToRepliesList(BuildContext context, PostModel post) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => RepliesListScreen(post: post)),
+    );
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(
-        _HomeScreenConstants.iconButtonBorderRadius,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: _HomeScreenConstants.iconButtonPaddingHorizontal,
-          vertical: _HomeScreenConstants.iconButtonPaddingVertical,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Icon
-            Icon(
-              icon,
-              color: color,
-              size: _HomeScreenConstants.engagementIconSize,
-            ),
+  void _navigateToQuote(BuildContext context, PostModel post) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => QuotePostScreen(postId: post.postId)),
+    ).then((result) {
+      if (result != null && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Quote posted!'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    });
+  }
 
-            const SizedBox(height: 2),
-
-            // Count
-            Text(
-              count.toString(),
-              style: const TextStyle(
-                fontSize: _HomeScreenConstants.engagementCountSize,
-                fontWeight: _HomeScreenConstants.engagementCountFontWeight,
-              ),
-            ),
-          ],
+  void _navigateToQuotesList(BuildContext context, PostModel post) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => QuotesListScreen(
+          postId: post.postId,
+          postAuthorName: post.authorName,
         ),
       ),
+    );
+  }
+
+  // ✅ NEW: Show Engagement Lists Sheet (Repics + Quotes)
+  void _showEngagementLists(BuildContext context, PostModel post) {
+    EngagementListsSheet.show(
+      context,
+      postId: post.postId,
+      repicCount: post.repicCount,
+      quoteCount: post.quoteReplyCount,
+      likeCount: post.likeCount,
     );
   }
 }
 
 // ============================================================================
-// SUGGESTED USERS - Placeholder Section
+// ENGAGEMENT ACTION
 // ============================================================================
 
-/// Placeholder section for suggested users feature
-///
-/// TODO: Implement suggested users algorithm and UI
+class _EngagementAction extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final int count;
+  final VoidCallback? onPressed;
+  final VoidCallback? onCountTap;
+
+  const _EngagementAction({
+    required this.icon,
+    required this.color,
+    required this.count,
+    this.onPressed,
+    this.onCountTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(
+            _HomeScreenConstants.iconButtonBorderRadius,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: Icon(
+              icon,
+              color: color,
+              size: _HomeScreenConstants.engagementIconSize,
+            ),
+          ),
+        ),
+        if (count > 0)
+          GestureDetector(
+            onTap: onCountTap,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 2),
+              child: Text(
+                _formatCount(count),
+                style: TextStyle(
+                  fontSize: _HomeScreenConstants.engagementCountSize,
+                  fontWeight: _HomeScreenConstants.engagementCountFontWeight,
+                  color: color,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _formatCount(int count) {
+    if (count >= 1000000) {
+      return '${(count / 1000000).toStringAsFixed(1)}M';
+    } else if (count >= 1000) {
+      return '${(count / 1000).toStringAsFixed(1)}K';
+    }
+    return count.toString();
+  }
+}
+
+// ============================================================================
+// SUGGESTED USERS
+// ============================================================================
+
 class _SuggestedUsersSection extends StatelessWidget {
   const _SuggestedUsersSection();
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(
+    final scheme = Theme.of(context).colorScheme;
+
+    return SizedBox(
       height: _HomeScreenConstants.suggestedUsersHeight,
       child: Center(
         child: Text(
           'Suggested users coming soon',
-          style: TextStyle(color: Colors.grey),
+          style: TextStyle(color: scheme.onSurfaceVariant),
         ),
       ),
     );
@@ -882,55 +1217,54 @@ class _SuggestedUsersSection extends StatelessWidget {
 }
 
 // ============================================================================
-// PROFILE BOTTOM SHEET - Settings & Logout
+// PROFILE BOTTOM SHEET
 // ============================================================================
 
-/// Bottom sheet displaying profile options and settings
-///
-/// Features:
-/// - Theme toggle (day/night mode)
-/// - Logout with confirmation
-/// - Future: Profile settings, account management
 class _ProfileBottomSheet extends StatelessWidget {
   const _ProfileBottomSheet();
 
   @override
   Widget build(BuildContext context) {
-    final theme = context.watch<ThemeController>();
+    final themeController = context.watch<ThemeController>();
+    final scheme = Theme.of(context).colorScheme;
 
     return Container(
       height:
           MediaQuery.of(context).size.height *
           _HomeScreenConstants.sheetHeightFraction,
-      decoration: const BoxDecoration(
-        color: _HomeScreenConstants.backgroundColor,
-        borderRadius: BorderRadius.vertical(
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: const BorderRadius.vertical(
           top: Radius.circular(_HomeScreenConstants.sheetBorderRadius),
         ),
       ),
       child: Column(
         children: [
-          const SizedBox(height: 24),
-
-          // Theme toggle
-          SwitchListTile(
-            value: theme.isDarkMode,
-            onChanged: (_) => theme.toggleTheme(),
-            title: const Text('Day / Night Mode'),
+          const SizedBox(height: 12),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
-
-          // Logout button
+          const SizedBox(height: 20),
+          SwitchListTile(
+            value: themeController.isDarkMode,
+            onChanged: (_) => themeController.toggleTheme(),
+            title: Text('Dark Mode', style: TextStyle(color: scheme.onSurface)),
+            secondary: Icon(
+              themeController.isDarkMode ? Icons.dark_mode : Icons.light_mode,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+          const Divider(),
           ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('Logout'),
+            leading: Icon(Icons.logout, color: scheme.error),
+            title: Text('Logout', style: TextStyle(color: scheme.error)),
             onTap: () => _handleLogout(context),
           ),
-
-          // TODO: Add more settings options
-          // - Edit Profile
-          // - Privacy Settings
-          // - Notifications
-          // - Help & Support
         ],
       ),
     );
@@ -938,18 +1272,12 @@ class _ProfileBottomSheet extends StatelessWidget {
 }
 
 // ============================================================================
-// LOGOUT HANDLER - Confirmation & Navigation
+// LOGOUT HANDLER
 // ============================================================================
 
-/// Handles logout process with confirmation dialog
-///
-/// Steps:
-/// 1. Show confirmation dialog
-/// 2. If confirmed, call AuthService.logout()
-/// 3. Navigate to AuthGate (login screen)
-/// 4. Clear navigation stack
 Future<void> _handleLogout(BuildContext context) async {
-  // Show confirmation dialog
+  final scheme = Theme.of(context).colorScheme;
+
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (_) => AlertDialog(
@@ -962,19 +1290,17 @@ Future<void> _handleLogout(BuildContext context) async {
         ),
         TextButton(
           onPressed: () => Navigator.pop(context, true),
+          style: TextButton.styleFrom(foregroundColor: scheme.error),
           child: const Text('Logout'),
         ),
       ],
     ),
   );
 
-  // User cancelled
   if (confirmed != true) return;
 
-  // Perform logout
   await AuthService().logout();
 
-  // Navigate to auth gate and clear stack
   if (context.mounted) {
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const AuthGate()),

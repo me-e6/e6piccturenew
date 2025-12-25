@@ -129,7 +129,7 @@ class HomeScreenV3Refined extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => MultiProvider(
+        builder: (_) => withValues(alpha:der(
           providers: [
             ChangeNotifierProvider(create: (_) => SearchControllers()),
             ChangeNotifierProvider(create: (_) => ProfileController()),
@@ -174,7 +174,7 @@ class _FloatingProfileButton extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF8B7355).withOpacity(0.3),
+              color: const Color(0xFF8B7355)(0.3),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -530,7 +530,7 @@ class _PostCard extends StatelessWidget {
     return Card(
       color: const Color(0xFFFFFDF9),
       elevation: 1.5,
-      shadowColor: Colors.black.withOpacity(0.08),
+      shadowColor: Colors.black(0.08),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Column(
         children: [
@@ -632,7 +632,7 @@ class _PostHeader extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => MultiProvider(
+        builder: (_) => withValues(alpha:der(
           providers: [
             ChangeNotifierProvider(
               create: (_) => ProfileController()..loadProfile(post.authorId),

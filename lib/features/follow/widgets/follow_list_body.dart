@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:e6piccturenew/features/follow/follow_list_controller.dart';
-import 'package:e6piccturenew/features/profile/profile_screen.dart';
+import '/features/profile/profile_entry.dart';
 import 'package:provider/provider.dart';
 import '../../follow/mutual_controller.dart';
 import '../../profile/profile_controller.dart';
@@ -49,11 +49,12 @@ class FollowListBody extends StatelessWidget {
                       ],
                     ],
                   ),
-                  onTap: () {
+
+                  /*  onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => MultiProvider(
+                        builder: (_) => withValues(alpha:der(
                           providers: [
                             ChangeNotifierProvider(
                               create: (_) =>
@@ -69,14 +70,6 @@ class FollowListBody extends StatelessWidget {
                           ],
                           child: ProfileScreen(userId: user.uid),
                         ),
-                      ),
-                    );
-                  },
-                  /*  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ProfileScreen(userId: user.uid),
                       ),
                     );
                   }, */

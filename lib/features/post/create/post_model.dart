@@ -1,63 +1,65 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// ------------------------------------------------------------
-/// POST VISIBILITY (CANONICAL ENUM)
-/// ------------------------------------------------------------
-enum PostVisibility { public, followers, mutuals, private }
-
-/// ------------------------------------------------------------
-/// POST MODEL (DENORMALIZED, COUNTER-FIRST, SAFE)
-/// ------------------------------------------------------------
+/// ============================================================================
+/// POST MODEL - CANONICAL
+/// ============================================================================
+/// Supports:
+/// - Regular posts (photos with captions)
+/// - Quote posts (isQuote=true, references original)
+/// - Repic posts (isRepic=true, references original)
+/// ============================================================================
 class PostModel {
-  // -------------------------
-  // CORE IDENTITY
-  // -------------------------
+  // --------------------------------------------------------------------------
+  // CORE FIELDS
+  // --------------------------------------------------------------------------
   final String postId;
-
-  // -------------------------
-  // AUTHOR SNAPSHOT
-  // -------------------------
   final String authorId;
   final String authorName;
+  final String? authorHandle;
   final String? authorAvatarUrl;
-  final bool isVerifiedOwner;
-  final String? authorHandle; // ✅ ADD THIS
+  final bool authorIsVerified;
 
-  // -------------------------
-  // VISIBILITY
-  // -------------------------
-  final PostVisibility visibility;
-
-  // -------------------------
-  // MEDIA
-  // -------------------------
   final List<String> imageUrls;
-
-  // -------------------------
-  // POST TYPE
-  // -------------------------
-  final bool isRepost;
-
-  // -------------------------
-  // TIMESTAMP
-  // -------------------------
+  final String caption;
   final DateTime createdAt;
 
-  // -------------------------
-  // ENGAGEMENT COUNTERS (SERVER OWNED)
-  // -------------------------
-  int likeCount;
-  int saveCount;
-  int repicCount;
-  int replyCount;
-  int quoteReplyCount;
+  // --------------------------------------------------------------------------
+  // ENGAGEMENT COUNTERS
+  // --------------------------------------------------------------------------
+  final int likeCount;
+  final int saveCount;
+  final int repicCount;
+  final int replyCount;
+  final int quoteReplyCount;
 
-  // -------------------------
-  // PER-USER FLAGS (CLIENT SNAPSHOT)
-  // -------------------------
-  bool hasLiked;
-  bool hasSaved;
-  bool hasRepicced;
+  // --------------------------------------------------------------------------
+  // USER ENGAGEMENT STATE (hydrated per-user)
+  // --------------------------------------------------------------------------
+  final bool hasLiked;
+  final bool hasSaved;
+  final bool hasRepicced;
+
+  // --------------------------------------------------------------------------
+  // QUOTE POST FIELDS
+  // --------------------------------------------------------------------------
+  final bool isQuote;
+  final String? quotedPostId;
+  final Map<String, dynamic>? quotedPreview;
+  final String? commentary;
+
+  // --------------------------------------------------------------------------
+  // REPIC POST FIELDS (NEW)
+  // --------------------------------------------------------------------------
+  final bool isRepic;
+  final String? originalPostId;
+  final Map<String, dynamic>? originalPost;
+  
+  // Who created the repic (for "User repicced" header)
+  final String? repicAuthorId;
+  final String? repicAuthorName;
+  final String? repicAuthorHandle;
+  final String? repicAuthorAvatarUrl;
+  final bool repicAuthorIsVerified;
 
   PostModel({
     required this.postId,
@@ -65,10 +67,9 @@ class PostModel {
     required this.authorName,
     this.authorHandle,
     this.authorAvatarUrl,
-    required this.isVerifiedOwner,
-    required this.visibility,
+    this.authorIsVerified = false,
     required this.imageUrls,
-    required this.isRepost,
+    required this.caption,
     required this.createdAt,
     this.likeCount = 0,
     this.saveCount = 0,
@@ -78,58 +79,131 @@ class PostModel {
     this.hasLiked = false,
     this.hasSaved = false,
     this.hasRepicced = false,
+    // Quote fields
+    this.isQuote = false,
+    this.quotedPostId,
+    this.quotedPreview,
+    this.commentary,
+    // Repic fields
+    this.isRepic = false,
+    this.originalPostId,
+    this.originalPost,
+    this.repicAuthorId,
+    this.repicAuthorName,
+    this.repicAuthorHandle,
+    this.repicAuthorAvatarUrl,
+    this.repicAuthorIsVerified = false,
   });
 
+  // --------------------------------------------------------------------------
+  // FIRESTORE → MODEL
+  // --------------------------------------------------------------------------
   factory PostModel.fromFirestore(DocumentSnapshot doc) {
-    final raw = doc.data();
+    final data = doc.data() as Map<String, dynamic>? ?? {};
 
-    if (raw == null || raw is! Map<String, dynamic>) {
-      throw StateError('Post document ${doc.id} has invalid data');
+    DateTime parseTimestamp(dynamic value) {
+      if (value is Timestamp) return value.toDate();
+      if (value is DateTime) return value;
+      return DateTime.now();
     }
 
-    final data = raw;
-
-    final rawCreatedAt = data['createdAt'];
-    final createdAt = rawCreatedAt is Timestamp
-        ? rawCreatedAt.toDate()
-        : DateTime.now();
-
-    final visibilityRaw =
-        (data['visibility'] as String?)?.toLowerCase() ?? 'public';
-
-    final visibility = PostVisibility.values.any((v) => v.name == visibilityRaw)
-        ? PostVisibility.values.byName(visibilityRaw)
-        : PostVisibility.public;
-
-    final authorName =
-        (data['authorName'] as String?)?.trim().isNotEmpty == true
-        ? data['authorName']
-        : (data['displayName'] as String?) ?? 'Unknown';
+    List<String> parseImageUrls(dynamic value) {
+      if (value is List) {
+        return value.map((e) => e.toString()).toList();
+      }
+      return [];
+    }
 
     return PostModel(
-      postId: data['postId'] as String? ?? doc.id,
-      authorId: data['authorId'] as String? ?? '',
-      authorName: authorName,
-      authorAvatarUrl: data['authorAvatarUrl'] as String?,
-      isVerifiedOwner: data['isVerifiedOwner'] as bool? ?? false,
-      visibility: visibility,
-      imageUrls:
-          (data['imageUrls'] as List?)?.whereType<String>().toList() ??
-          const [],
-      isRepost: data['isRepost'] as bool? ?? false,
-      createdAt: createdAt,
-      likeCount: data['likeCount'] as int? ?? 0,
-      saveCount: data['saveCount'] as int? ?? 0,
-      repicCount: data['repicCount'] as int? ?? 0,
-      replyCount: data['replyCount'] as int? ?? 0,
-      quoteReplyCount: data['quoteReplyCount'] as int? ?? 0,
+      postId: doc.id,
+      authorId: data['authorId'] ?? '',
+      authorName: data['authorName'] ?? data['displayName'] ?? 'Unknown',
+      authorHandle: data['authorHandle'] ?? data['handle'] ?? data['username'],
+      authorAvatarUrl: data['authorAvatarUrl'] ?? data['authorPhotoUrl'] ?? data['photoUrl'],
+      authorIsVerified: data['authorIsVerified'] ?? data['isVerified'] ?? false,
+      imageUrls: parseImageUrls(data['imageUrls'] ?? data['images']),
+      caption: data['caption'] ?? data['text'] ?? '',
+      createdAt: parseTimestamp(data['createdAt']),
+      
+      // Counters
+      likeCount: data['likeCount'] ?? 0,
+      saveCount: data['saveCount'] ?? 0,
+      repicCount: data['repicCount'] ?? 0,
+      replyCount: data['replyCount'] ?? data['commentCount'] ?? 0,
+      quoteReplyCount: data['quoteReplyCount'] ?? data['quoteCount'] ?? 0,
+      
+      // User state (hydrated separately)
+      hasLiked: data['hasLiked'] ?? false,
+      hasSaved: data['hasSaved'] ?? false,
+      hasRepicced: data['hasRepicced'] ?? false,
+      
+      // Quote fields (backward compatible)
+      isQuote: data['isQuote'] ?? false,
+      quotedPostId: data['quotedPostId'] ?? data['originalPostId'],
+      quotedPreview: data['quotedPreview'] ?? data['originalPost'] ?? data['quotedPost'],
+      commentary: data['commentary'] ?? data['quoteText'] ?? data['caption'],
+      
+      // Repic fields
+      isRepic: data['isRepic'] ?? false,
+      originalPostId: data['originalPostId'],
+      originalPost: data['originalPost'],
+      repicAuthorId: data['repicAuthorId'],
+      repicAuthorName: data['repicAuthorName'],
+      repicAuthorHandle: data['repicAuthorHandle'],
+      repicAuthorAvatarUrl: data['repicAuthorAvatarUrl'],
+      repicAuthorIsVerified: data['repicAuthorIsVerified'] ?? false,
     );
   }
 
-  // ------------------------------------------------------------
-  // COPY WITH — OPTIMISTIC UI SAFE
-  // ------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // MODEL → FIRESTORE
+  // --------------------------------------------------------------------------
+  Map<String, dynamic> toFirestore() {
+    return {
+      'postId': postId,
+      'authorId': authorId,
+      'authorName': authorName,
+      'authorHandle': authorHandle,
+      'authorAvatarUrl': authorAvatarUrl,
+      'authorIsVerified': authorIsVerified,
+      'imageUrls': imageUrls,
+      'caption': caption,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'likeCount': likeCount,
+      'saveCount': saveCount,
+      'repicCount': repicCount,
+      'replyCount': replyCount,
+      'quoteReplyCount': quoteReplyCount,
+      // Quote fields
+      'isQuote': isQuote,
+      if (quotedPostId != null) 'quotedPostId': quotedPostId,
+      if (quotedPreview != null) 'quotedPreview': quotedPreview,
+      if (commentary != null) 'commentary': commentary,
+      // Repic fields
+      'isRepic': isRepic,
+      if (originalPostId != null) 'originalPostId': originalPostId,
+      if (originalPost != null) 'originalPost': originalPost,
+      if (repicAuthorId != null) 'repicAuthorId': repicAuthorId,
+      if (repicAuthorName != null) 'repicAuthorName': repicAuthorName,
+      if (repicAuthorHandle != null) 'repicAuthorHandle': repicAuthorHandle,
+      if (repicAuthorAvatarUrl != null) 'repicAuthorAvatarUrl': repicAuthorAvatarUrl,
+      'repicAuthorIsVerified': repicAuthorIsVerified,
+    };
+  }
+
+  // --------------------------------------------------------------------------
+  // COPY WITH
+  // --------------------------------------------------------------------------
   PostModel copyWith({
+    String? postId,
+    String? authorId,
+    String? authorName,
+    String? authorHandle,
+    String? authorAvatarUrl,
+    bool? authorIsVerified,
+    List<String>? imageUrls,
+    String? caption,
+    DateTime? createdAt,
     int? likeCount,
     int? saveCount,
     int? repicCount,
@@ -138,17 +212,31 @@ class PostModel {
     bool? hasLiked,
     bool? hasSaved,
     bool? hasRepicced,
+    // Quote
+    bool? isQuote,
+    String? quotedPostId,
+    Map<String, dynamic>? quotedPreview,
+    String? commentary,
+    // Repic
+    bool? isRepic,
+    String? originalPostId,
+    Map<String, dynamic>? originalPost,
+    String? repicAuthorId,
+    String? repicAuthorName,
+    String? repicAuthorHandle,
+    String? repicAuthorAvatarUrl,
+    bool? repicAuthorIsVerified,
   }) {
     return PostModel(
-      postId: postId,
-      authorId: authorId,
-      authorName: authorName,
-      authorAvatarUrl: authorAvatarUrl,
-      isVerifiedOwner: isVerifiedOwner,
-      visibility: visibility,
-      imageUrls: imageUrls,
-      isRepost: isRepost,
-      createdAt: createdAt,
+      postId: postId ?? this.postId,
+      authorId: authorId ?? this.authorId,
+      authorName: authorName ?? this.authorName,
+      authorHandle: authorHandle ?? this.authorHandle,
+      authorAvatarUrl: authorAvatarUrl ?? this.authorAvatarUrl,
+      authorIsVerified: authorIsVerified ?? this.authorIsVerified,
+      imageUrls: imageUrls ?? this.imageUrls,
+      caption: caption ?? this.caption,
+      createdAt: createdAt ?? this.createdAt,
       likeCount: likeCount ?? this.likeCount,
       saveCount: saveCount ?? this.saveCount,
       repicCount: repicCount ?? this.repicCount,
@@ -157,16 +245,79 @@ class PostModel {
       hasLiked: hasLiked ?? this.hasLiked,
       hasSaved: hasSaved ?? this.hasSaved,
       hasRepicced: hasRepicced ?? this.hasRepicced,
+      // Quote
+      isQuote: isQuote ?? this.isQuote,
+      quotedPostId: quotedPostId ?? this.quotedPostId,
+      quotedPreview: quotedPreview ?? this.quotedPreview,
+      commentary: commentary ?? this.commentary,
+      // Repic
+      isRepic: isRepic ?? this.isRepic,
+      originalPostId: originalPostId ?? this.originalPostId,
+      originalPost: originalPost ?? this.originalPost,
+      repicAuthorId: repicAuthorId ?? this.repicAuthorId,
+      repicAuthorName: repicAuthorName ?? this.repicAuthorName,
+      repicAuthorHandle: repicAuthorHandle ?? this.repicAuthorHandle,
+      repicAuthorAvatarUrl: repicAuthorAvatarUrl ?? this.repicAuthorAvatarUrl,
+      repicAuthorIsVerified: repicAuthorIsVerified ?? this.repicAuthorIsVerified,
     );
   }
 
-  List<String> get resolvedImages => imageUrls;
-  String? get thumbnailUrl {
-    if (imageUrls.isEmpty) return null;
-    return imageUrls.first;
+  // --------------------------------------------------------------------------
+  // HELPERS
+  // --------------------------------------------------------------------------
+  
+  /// True if this is a quote post with content
+  bool get hasQuotedContent =>
+      isQuote && (quotedPostId != null || quotedPreview != null);
+
+  /// True if this is a repic post with original
+  bool get hasOriginalPost =>
+      isRepic && (originalPostId != null || originalPost != null);
+
+  /// Get thumbnail URL from quoted preview
+  String? get quotedThumbnailUrl {
+    if (quotedPreview == null) return null;
+    return quotedPreview!['thumbnailUrl'] as String? ??
+        quotedPreview!['imageUrl'] as String?;
+  }
+
+  /// Get author name from quoted preview
+  String? get quotedAuthorName {
+    if (quotedPreview == null) return null;
+    return quotedPreview!['authorName'] as String? ??
+        quotedPreview!['displayName'] as String?;
+  }
+
+  /// Get thumbnail URL from original post (repic)
+  String? get originalThumbnailUrl {
+    if (originalPost == null) return null;
+    final images = originalPost!['imageUrls'] as List?;
+    if (images != null && images.isNotEmpty) {
+      return images.first as String?;
+    }
+    return originalPost!['thumbnailUrl'] as String?;
+  }
+
+  /// Get author name from original post (repic)
+  String? get originalAuthorName {
+    if (originalPost == null) return null;
+    return originalPost!['authorName'] as String? ??
+        originalPost!['displayName'] as String?;
+  }
+
+  /// Get image URLs from original post (repic)
+  List<String> get originalImageUrls {
+    if (originalPost == null) return [];
+    final images = originalPost!['imageUrls'];
+    if (images is List) {
+      return images.map((e) => e.toString()).toList();
+    }
+    return [];
+  }
+
+  /// Get caption from original post (repic)
+  String get originalCaption {
+    if (originalPost == null) return '';
+    return originalPost!['caption'] as String? ?? '';
   }
 }
-
-/// ------------------------------------------------------------
-/// DERIVED MEDIA HELPERS (UI SAFE)
-/// ------------------------------------------------------------

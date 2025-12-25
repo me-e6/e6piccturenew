@@ -11,7 +11,7 @@ import 'quoted_post_card.dart';
 /// ------------------------------------------------------------
 /// Displays all quotes of a specific post.
 /// Accessible from the quote count button on any post.
-/// 
+///
 /// Features:
 /// - Real-time updates
 /// - Pull to refresh
@@ -53,7 +53,9 @@ class _QuotesListContent extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          postAuthorName != null ? 'Quotes of $postAuthorName\'s post' : 'Quotes',
+          postAuthorName != null
+              ? 'Quotes of $postAuthorName\'s post'
+              : 'Quotes',
         ),
         elevation: 0,
       ),
@@ -144,10 +146,8 @@ class _QuotesListContent extends StatelessWidget {
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(vertical: 8),
         itemCount: controller.quotes.length,
-        separatorBuilder: (_, __) => Divider(
-          height: 1,
-          color: scheme.outlineVariant.withOpacity(0.3),
-        ),
+        separatorBuilder: (_, __) =>
+            Divider(height: 1, color: scheme.outlineVariant.withOpacity(0.3)),
         itemBuilder: (context, index) {
           final doc = controller.quotes[index];
           return _QuoteListItem(doc: doc);
@@ -228,7 +228,11 @@ class _QuoteListItem extends StatelessWidget {
                           ),
                           if (isVerified) ...[
                             const SizedBox(width: 4),
-                            Icon(Icons.verified, size: 16, color: scheme.primary),
+                            Icon(
+                              Icons.verified,
+                              size: 16,
+                              color: scheme.primary,
+                            ),
                           ],
                         ],
                       ),
@@ -270,7 +274,8 @@ class _QuoteListItem extends StatelessWidget {
               QuotedPostCard(
                 preview: quotedPreview,
                 compact: commentary != null && commentary.isNotEmpty,
-                onTap: () => _navigateToOriginalPost(context, quotedPreview.postId),
+                onTap: () =>
+                    _navigateToOriginalPost(context, quotedPreview.postId),
               ),
             ],
 
@@ -401,10 +406,8 @@ class QuoteCountButton extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => QuotesListScreen(
-          postId: postId,
-          postAuthorName: postAuthorName,
-        ),
+        builder: (_) =>
+            QuotesListScreen(postId: postId, postAuthorName: postAuthorName),
       ),
     );
   }
