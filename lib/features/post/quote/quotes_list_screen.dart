@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import 'quote_controller.dart';
 import 'quote_model.dart';
 import 'quoted_post_card.dart';
 
 /// ------------------------------------------------------------
-/// QUOTES LIST SCREEN
+/// QUOTES LIST SCREEN - v2 (Visual Design)
 /// ------------------------------------------------------------
 /// Displays all quotes of a specific post.
 /// Accessible from the quote count button on any post.
+///
+/// ✅ NEW: Uses visual card design for quote items
 ///
 /// Features:
 /// - Real-time updates
@@ -143,25 +146,28 @@ class _QuotesListContent extends StatelessWidget {
     // Quotes list
     return RefreshIndicator(
       onRefresh: controller.refresh,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
         itemCount: controller.quotes.length,
-        separatorBuilder: (_, __) =>
-            Divider(height: 1, color: scheme.outlineVariant.withOpacity(0.3)),
         itemBuilder: (context, index) {
           final doc = controller.quotes[index];
-          return _QuoteListItem(doc: doc);
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: _VisualQuoteListItem(doc: doc),
+          );
         },
       ),
     );
   }
 }
 
-/// Single quote item in the list
-class _QuoteListItem extends StatelessWidget {
+/// ============================================================================
+/// ✅ NEW: VISUAL QUOTE LIST ITEM (Card-based design)
+/// ============================================================================
+class _VisualQuoteListItem extends StatelessWidget {
   final DocumentSnapshot doc;
 
-  const _QuoteListItem({required this.doc});
+  const _VisualQuoteListItem({required this.doc});
 
   @override
   Widget build(BuildContext context) {
@@ -186,28 +192,40 @@ class _QuoteListItem extends StatelessWidget {
         ? QuotedPostPreview.fromMap(quotedPreviewData)
         : null;
 
-    return InkWell(
-      onTap: () => _navigateToQuotePost(context, doc.id),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // AUTHOR ROW
-            Row(
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ═══════════════════════════════════════════════════════════════
+          // QUOTE AUTHOR HEADER (Small, compact)
+          // ═══════════════════════════════════════════════════════════════
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+            child: Row(
               children: [
                 // Avatar
                 CircleAvatar(
-                  radius: 20,
+                  radius: 16,
                   backgroundColor: scheme.surfaceContainerHighest,
                   backgroundImage: quoteAuthorAvatarUrl != null
-                      ? NetworkImage(quoteAuthorAvatarUrl)
+                      ? CachedNetworkImageProvider(quoteAuthorAvatarUrl)
                       : null,
                   child: quoteAuthorAvatarUrl == null
-                      ? Icon(Icons.person, color: scheme.onSurfaceVariant)
+                      ? Icon(Icons.person, size: 16, color: scheme.onSurfaceVariant)
                       : null,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
 
                 // Name & Handle
                 Expanded(
@@ -228,11 +246,7 @@ class _QuoteListItem extends StatelessWidget {
                           ),
                           if (isVerified) ...[
                             const SizedBox(width: 4),
-                            Icon(
-                              Icons.verified,
-                              size: 16,
-                              color: scheme.primary,
-                            ),
+                            Icon(Icons.verified, size: 14, color: scheme.primary),
                           ],
                         ],
                       ),
@@ -241,6 +255,7 @@ class _QuoteListItem extends StatelessWidget {
                           '@$quoteAuthorHandle',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: scheme.onSurfaceVariant,
+                            fontSize: 12,
                           ),
                         ),
                     ],
@@ -252,52 +267,59 @@ class _QuoteListItem extends StatelessWidget {
                   _formatTimestamp(createdAt),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: scheme.onSurfaceVariant.withOpacity(0.7),
+                    fontSize: 12,
                   ),
                 ),
               ],
             ),
+          ),
 
-            // COMMENTARY
-            if (commentary != null && commentary.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(
-                commentary,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: scheme.onSurface,
-                ),
-              ),
-            ],
-
-            // QUOTED POST PREVIEW (if no commentary, show bigger preview)
-            if (quotedPreview != null) ...[
-              const SizedBox(height: 12),
-              QuotedPostCard(
+          // ═══════════════════════════════════════════════════════════════
+          // ✅ VISUAL QUOTE CARD (Main content)
+          // ═══════════════════════════════════════════════════════════════
+          if (quotedPreview != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: QuotedPostCard(
                 preview: quotedPreview,
-                compact: commentary != null && commentary.isNotEmpty,
-                onTap: () =>
-                    _navigateToOriginalPost(context, quotedPreview.postId),
+                commentary: commentary,
+                compact: true,
+                onTap: () => _navigateToOriginalPost(context, quotedPreview.postId),
               ),
-            ],
+            ),
 
-            // ENGAGEMENT STATS (optional - can add later)
-            const SizedBox(height: 8),
-            Row(
+          // ═══════════════════════════════════════════════════════════════
+          // ENGAGEMENT STATS (Bottom bar)
+          // ═══════════════════════════════════════════════════════════════
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: Row(
               children: [
-                _buildStat(
-                  context,
-                  Icons.favorite_border,
-                  data['likeCount'] as int? ?? 0,
-                ),
+                _buildStat(context, Icons.favorite_border, data['likeCount'] as int? ?? 0),
                 const SizedBox(width: 20),
-                _buildStat(
-                  context,
-                  Icons.chat_bubble_outline,
-                  data['replyCount'] as int? ?? 0,
+                _buildStat(context, Icons.chat_bubble_outline, data['replyCount'] as int? ?? 0),
+                const Spacer(),
+                // View quote button
+                TextButton(
+                  onPressed: () => _navigateToQuotePost(context, doc.id),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    'View',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: scheme.primary,
+                    ),
+                  ),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -333,17 +355,11 @@ class _QuoteListItem extends StatelessWidget {
 
   void _navigateToQuotePost(BuildContext context, String quotePostId) {
     // TODO: Navigate to post details screen
-    // Navigator.push(context, MaterialPageRoute(
-    //   builder: (_) => PostDetailsScreen(postId: quotePostId),
-    // ));
     debugPrint('Navigate to quote post: $quotePostId');
   }
 
   void _navigateToOriginalPost(BuildContext context, String postId) {
     // TODO: Navigate to post details screen
-    // Navigator.push(context, MaterialPageRoute(
-    //   builder: (_) => PostDetailsScreen(postId: postId),
-    // ));
     debugPrint('Navigate to original post: $postId');
   }
 }

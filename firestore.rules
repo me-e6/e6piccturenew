@@ -17,13 +17,8 @@ service cloud.firestore {
     // USERS COLLECTION
     // ============================================================
     match /users/{userId} {
-      // Anyone authenticated can read user profiles
       allow read: if isAuthenticated();
-      
-      // Only owner can update their profile
       allow update: if isOwner(userId);
-      
-      // Only allow create during signup
       allow create: if isOwner(userId);
 
       // --------------------------------------------------------
@@ -38,7 +33,6 @@ service cloud.firestore {
       // SAVED POSTS SUBCOLLECTION (PRIVATE)
       // --------------------------------------------------------
       match /saved_posts/{postId} {
-        // Only owner can read their saved posts
         allow read: if isOwner(userId);
         allow write: if isOwner(userId);
       }
@@ -47,7 +41,6 @@ service cloud.firestore {
       // REPICS SUBCOLLECTION
       // --------------------------------------------------------
       match /repics/{postId} {
-        // Anyone can see who repicced (public engagement)
         allow read: if isAuthenticated();
         allow write: if isOwner(userId);
       }
@@ -56,6 +49,14 @@ service cloud.firestore {
       // LEGACY: repic_posts (backward compatibility)
       // --------------------------------------------------------
       match /repic_posts/{postId} {
+        allow read: if isAuthenticated();
+        allow write: if isOwner(userId);
+      }
+
+      // --------------------------------------------------------
+      // ✅ QUOTED POSTS SUBCOLLECTION (THIS WAS MISSING - THE FIX!)
+      // --------------------------------------------------------
+      match /quoted_posts/{quoteId} {
         allow read: if isAuthenticated();
         allow write: if isOwner(userId);
       }
@@ -78,18 +79,12 @@ service cloud.firestore {
     // POSTS COLLECTION
     // ============================================================
     match /posts/{postId} {
-      // Anyone authenticated can read posts
       allow read: if isAuthenticated();
-      
-      // Anyone authenticated can create posts
       allow create: if isAuthenticated();
-      
-      // Only author can update/delete their posts
       allow update: if isAuthenticated() && 
         (resource.data.authorId == request.auth.uid || 
          request.resource.data.diff(resource.data).affectedKeys()
            .hasOnly(['likeCount', 'saveCount', 'repicCount', 'replyCount', 'quoteReplyCount']));
-      
       allow delete: if isAuthenticated() && 
         resource.data.authorId == request.auth.uid;
 
@@ -128,6 +123,16 @@ service cloud.firestore {
         allow create: if isAuthenticated();
         allow update, delete: if isAuthenticated() && 
           resource.data.uid == request.auth.uid;
+      }
+
+      // --------------------------------------------------------
+      // QUOTES SUBCOLLECTION (under posts)
+      // --------------------------------------------------------
+      match /quotes/{quoteId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update, delete: if isAuthenticated() && 
+          resource.data.authorId == request.auth.uid;
       }
     }
   }

@@ -31,7 +31,7 @@ dependencies:
   flutter:
     sdk: flutter
   cached_network_image: ^3.3.0
-  image_cropper: ^5.0.1      # Native cropping UI
+  image_cropper: ^8.0.2       # Native cropping UI
   qr_flutter: ^4.1.0         # Generate QR codes
   image: ^4.1.3              # Image manipulation
   shared_preferences: ^2.2.2

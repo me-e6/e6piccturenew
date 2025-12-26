@@ -9,7 +9,7 @@ import '../feed/day_album_tracker.dart';
 import '../post/create/post_model.dart';
 
 import '../engagement/engagement_controller.dart';
-import '../engagement/widgets/repic_header_widget.dart'; // ✅ FIXED: widgets/ not widget/
+import '../engagement/widgets/repic_header_widget.dart';
 
 import '../follow/follow_controller.dart';
 
@@ -372,7 +372,7 @@ class _PostCarousel extends StatelessWidget {
 }
 
 // ============================================================================
-// POST CARD - ✅ UPDATED: Supports Repic Posts
+// POST CARD - ✅ UPDATED: Supports Multi-Image with Vertical Dots
 // ============================================================================
 
 class _PostCard extends StatelessWidget {
@@ -411,7 +411,7 @@ class _PostCard extends StatelessWidget {
         ),
         child: Column(
           children: [
-            // ✅ NEW: Repic Header (shows "User repicced" for repic posts)
+            // ✅ Repic Header (shows "User repicced" for repic posts)
             if (post.isRepic && post.repicAuthorId != null)
               RepicHeader(
                 repicAuthorId: post.repicAuthorId!,
@@ -424,8 +424,14 @@ class _PostCard extends StatelessWidget {
             // Post header (shows ORIGINAL author for repic posts)
             _PostHeader(post: post),
 
-            // Main image (uses ORIGINAL images for repic posts)
-            Expanded(child: _buildTappableImage(context, post)),
+            // ✅ UPDATED: Main image with multi-image support
+            Expanded(
+              child: _MultiImageViewer(
+                post: post,
+                allPosts: allPosts,
+                postIndex: postIndex,
+              ),
+            ),
 
             // Engagement controls
             _EngagementBar(post: post),
@@ -434,9 +440,47 @@ class _PostCard extends StatelessWidget {
       ),
     );
   }
+}
 
-  /// Builds tappable image - ✅ UPDATED: Uses original content for repic posts
-  Widget _buildTappableImage(BuildContext context, PostModel post) {
+// ============================================================================
+// ✅ NEW: MULTI-IMAGE VIEWER WITH VERTICAL DOTS
+// ============================================================================
+
+class _MultiImageViewer extends StatefulWidget {
+  final PostModel post;
+  final List<PostModel> allPosts;
+  final int postIndex;
+
+  const _MultiImageViewer({
+    required this.post,
+    required this.allPosts,
+    required this.postIndex,
+  });
+
+  @override
+  State<_MultiImageViewer> createState() => _MultiImageViewerState();
+}
+
+class _MultiImageViewerState extends State<_MultiImageViewer> {
+  late PageController _pageController;
+  int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final post = widget.post;
+
     // ✅ For repic posts, use original post's images
     final imageUrls = post.isRepic && post.originalImageUrls.isNotEmpty
         ? post.originalImageUrls
@@ -446,30 +490,99 @@ class _PostCard extends StatelessWidget {
       return _buildNoImagePlaceholder(context);
     }
 
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => DayAlbumViewerScreen(
-              posts: allPosts,
-              sessionStartedAt: DateTime.now(),
-              initialIndex: postIndex,
+    // Single image - no dots needed
+    if (imageUrls.length == 1) {
+      return _buildTappableImage(context, imageUrls.first);
+    }
+
+    // ✅ Multiple images - show PageView with VERTICAL scrolling + vertical dots + numbering
+    return Stack(
+      children: [
+        // Image PageView - VERTICAL SCROLLING
+        GestureDetector(
+          onTap: () => _navigateToViewer(context),
+          child: PageView.builder(
+            controller: _pageController,
+            scrollDirection:
+                Axis.vertical, // ✅ VERTICAL scrolling (swipe up/down)
+            itemCount: imageUrls.length,
+            onPageChanged: (index) {
+              setState(() => _currentIndex = index);
+            },
+            itemBuilder: (_, i) => ClipRRect(
+              borderRadius: BorderRadius.circular(
+                _HomeScreenConstants.cardBorderRadius,
+              ),
+              child: _buildOptimizedImage(context, imageUrls[i]),
             ),
           ),
-        );
-      },
+        ),
+
+        // ✅ Image numbering (1/10) - Top Left
+        Positioned(
+          left: 12,
+          top: 12,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Text(
+              '${_currentIndex + 1}/${imageUrls.length}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+
+        // ✅ Vertical dots on the right side
+        Positioned(
+          right: 12,
+          top: 0,
+          bottom: 0,
+          child: Center(
+            child: _VerticalImageDots(
+              count: imageUrls.length,
+              currentIndex: _currentIndex,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTappableImage(BuildContext context, String imageUrl) {
+    return GestureDetector(
+      onTap: () => _navigateToViewer(context),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(
           _HomeScreenConstants.cardBorderRadius,
         ),
-        child: _buildOptimizedImage(context, imageUrls.first),
+        child: _buildOptimizedImage(context, imageUrl),
+      ),
+    );
+  }
+
+  void _navigateToViewer(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DayAlbumViewerScreen(
+          posts: widget.allPosts,
+          sessionStartedAt: DateTime.now(),
+          initialIndex: widget.postIndex,
+        ),
       ),
     );
   }
 
   Widget _buildNoImagePlaceholder(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final post = widget.post;
 
     final isQuote =
         post.isQuote || post.quotedPostId != null || post.quotedPreview != null;
@@ -479,18 +592,7 @@ class _PostCard extends StatelessWidget {
     }
 
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => DayAlbumViewerScreen(
-              posts: allPosts,
-              sessionStartedAt: DateTime.now(),
-              initialIndex: postIndex,
-            ),
-          ),
-        );
-      },
+      onTap: () => _navigateToViewer(context),
       child: Container(
         decoration: BoxDecoration(
           color: scheme.surfaceContainerHighest,
@@ -519,49 +621,199 @@ class _PostCard extends StatelessWidget {
     );
   }
 
+  /// ✅ NEW: Visual Quote Design - Image-first with overlay
   Widget _buildQuotePostContent(BuildContext context, ColorScheme scheme) {
+    final post = widget.post;
     final quotedPreview = post.quotedPreview;
     final commentary = post.commentary;
 
+    // Get the thumbnail from quoted post
+    final thumbnailUrl = quotedPreview?['thumbnailUrl'] as String?;
+    final authorName = quotedPreview?['authorName'] as String? ?? 'Unknown';
+    final authorHandle = quotedPreview?['authorHandle'] as String?;
+
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => DayAlbumViewerScreen(
-              posts: allPosts,
-              sessionStartedAt: DateTime.now(),
-              initialIndex: postIndex,
-            ),
-          ),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: scheme.surface,
-          borderRadius: BorderRadius.circular(
-            _HomeScreenConstants.cardBorderRadius,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      onTap: () => _navigateToViewer(context),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(_HomeScreenConstants.cardBorderRadius),
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            if (commentary != null && commentary.isNotEmpty) ...[
-              Text(
-                commentary,
-                style: TextStyle(
-                  fontSize: 15,
-                  color: scheme.onSurface,
-                  height: 1.4,
+            // ═══════════════════════════════════════════════════════════════
+            // BACKGROUND: Original post's image (full bleed)
+            // ═══════════════════════════════════════════════════════════════
+            if (thumbnailUrl != null && thumbnailUrl.isNotEmpty)
+              Image.network(
+                thumbnailUrl,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+                cacheWidth: 800,
+                loadingBuilder: (_, child, progress) {
+                  if (progress == null) return child;
+                  return Container(
+                    color: scheme.surfaceContainerHighest,
+                    child: const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  );
+                },
+                errorBuilder: (_, __, ___) => Container(
+                  color: scheme.surfaceContainerHighest,
+                  child: Icon(
+                    Icons.format_quote_rounded,
+                    size: 64,
+                    color: scheme.onSurfaceVariant.withValues(alpha: 0.3),
+                  ),
                 ),
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
+              )
+            else
+              // No image - gradient background
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      scheme.primaryContainer,
+                      scheme.secondaryContainer,
+                    ],
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.format_quote_rounded,
+                    size: 80,
+                    color: scheme.onPrimaryContainer.withValues(alpha: 0.2),
+                  ),
+                ),
               ),
-              const SizedBox(height: 12),
-            ],
-            Expanded(
-              child: _buildQuotedPreviewCard(context, scheme, quotedPreview),
+
+            // ═══════════════════════════════════════════════════════════════
+            // QUOTE OVERLAY (Top) - Commentary text (max 30 chars)
+            // ═══════════════════════════════════════════════════════════════
+            if (commentary != null && commentary.isNotEmpty)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.8),
+                        Colors.black.withValues(alpha: 0.6),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 0.7, 1.0],
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Quote icon
+                      Icon(
+                        Icons.format_quote_rounded,
+                        color: Colors.white.withValues(alpha: 0.9),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      // Quote text
+                      Expanded(
+                        child: Text(
+                          commentary.length > 30 
+                              ? '${commentary.substring(0, 30)}...' 
+                              : commentary,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            height: 1.3,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black54,
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // ═══════════════════════════════════════════════════════════════
+            // ORIGINAL POSTER BADGE (Bottom-right) - Compact credit
+            // ═══════════════════════════════════════════════════════════════
+            Positioned(
+              bottom: 12,
+              right: 12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.photo_outlined,
+                      color: Colors.white.withValues(alpha: 0.9),
+                      size: 14,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      authorHandle != null ? '@$authorHandle' : authorName,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.95),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // ═══════════════════════════════════════════════════════════════
+            // "QUOTE" INDICATOR (Top-right corner)
+            // ═══════════════════════════════════════════════════════════════
+            Positioned(
+              top: 12,
+              right: 12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: scheme.primary.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.repeat,
+                      color: Colors.white,
+                      size: 12,
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      'Quote',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -807,7 +1059,51 @@ class _PostCard extends StatelessWidget {
 }
 
 // ============================================================================
-// POST HEADER - ✅ UPDATED: Shows original author for repic posts
+// ✅ NEW: VERTICAL IMAGE DOTS
+// ============================================================================
+
+class _VerticalImageDots extends StatelessWidget {
+  final int count;
+  final int currentIndex;
+
+  const _VerticalImageDots({required this.count, required this.currentIndex});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(
+          count,
+          (i) => Container(
+            width: 8,
+            height: 8,
+            margin: const EdgeInsets.symmetric(vertical: 3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: i == currentIndex
+                  ? scheme.primary
+                  : Colors.white.withValues(alpha: 0.5),
+              border: i == currentIndex
+                  ? Border.all(color: Colors.white, width: 1)
+                  : null,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// POST HEADER
 // ============================================================================
 
 class _PostHeader extends StatelessWidget {
@@ -818,9 +1114,6 @@ class _PostHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-
-    // ✅ For repic posts, the authorId is already the original author
-    // (RepicService stores original author in authorId field)
     final isOwner = FirebaseAuth.instance.currentUser?.uid == post.authorId;
 
     return ChangeNotifierProvider(
@@ -984,7 +1277,7 @@ class _PostHeader extends StatelessWidget {
 }
 
 // ============================================================================
-// ENGAGEMENT BAR - ✅ UPDATED: Shows Repics/Quotes list on count tap
+// ENGAGEMENT BAR
 // ============================================================================
 
 class _EngagementBar extends StatelessWidget {
@@ -1038,7 +1331,7 @@ class _EngagementBar extends StatelessWidget {
                 : null,
           ),
 
-          // REPIC - ✅ UPDATED: Count tap shows engagement lists
+          // REPIC
           _EngagementAction(
             icon: Icons.repeat,
             color: currentPost.hasRepicced ? Colors.green : iconColor,
@@ -1102,19 +1395,7 @@ class _EngagementBar extends StatelessWidget {
     });
   }
 
-  void _navigateToQuotesList(BuildContext context, PostModel post) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => QuotesListScreen(
-          postId: post.postId,
-          postAuthorName: post.authorName,
-        ),
-      ),
-    );
-  }
-
-  // ✅ NEW: Show Engagement Lists Sheet (Repics + Quotes)
+  // ✅ Show Engagement Lists Sheet (Repics + Quotes)
   void _showEngagementLists(BuildContext context, PostModel post) {
     EngagementListsSheet.show(
       context,

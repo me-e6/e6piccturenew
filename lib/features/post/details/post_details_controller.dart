@@ -1,50 +1,65 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../create/post_model.dart';
+import '../create/post_delete_service.dart';
 import 'post_details_service.dart';
 
 /// ============================================================================
 /// POST DETAILS CONTROLLER
 /// ============================================================================
-/// Manages engagement state for the Post Details screen.
+/// Manages engagement state and post deletion for the Post Details screen.
 /// 
-/// KEY IMPROVEMENTS:
-/// - ✅ Immutable state (uses copyWith, never direct mutation)
-/// - ✅ Optimistic UI updates with automatic rollback on errors
-/// - ✅ Disposal safety to prevent "used after disposal" errors
-/// - ✅ Race condition prevention with _isProcessing flag
-/// - ✅ Automatic state hydration from Firestore
-/// - ✅ User feedback via SnackBars
+/// FEATURES:
+/// - ✅ Immutable state (uses copyWith)
+/// - ✅ Optimistic UI updates with rollback
+/// - ✅ Post deletion (author only)
+/// - ✅ Disposal safety
+/// - ✅ Automatic state hydration
 /// ============================================================================
 class PostDetailsController extends ChangeNotifier {
   final PostDetailsService _service;
+  final PostDeleteService _deleteService;
+  final FirebaseAuth _auth;
   
   PostModel _post;
   bool _isProcessing = false;
+  bool _isDeleting = false;
   bool _isDisposed = false;
 
-  PostDetailsController(PostModel post, {PostDetailsService? service})
-      : _post = post,
-        _service = service ?? PostDetailsService();
+  PostDetailsController(
+    PostModel post, {
+    PostDetailsService? service,
+    PostDeleteService? deleteService,
+    FirebaseAuth? auth,
+  })  : _post = post,
+        _service = service ?? PostDetailsService(),
+        _deleteService = deleteService ?? PostDeleteService(),
+        _auth = auth ?? FirebaseAuth.instance;
 
   // --------------------------------------------------------------------------
   // STATE GETTERS
   // --------------------------------------------------------------------------
   
-  /// Current post state (immutable - never mutate directly!)
   PostModel get post => _post;
-  
-  /// Whether an engagement action is in progress
   bool get isProcessing => _isProcessing;
-  
-  /// Check if controller is still mounted/active
+  bool get isDeleting => _isDeleting;
+  bool get isBusy => _isProcessing || _isDeleting;
   bool get mounted => !_isDisposed;
+
+  /// Whether the current user is the author of this post
+  bool get isAuthor {
+    final uid = _auth.currentUser?.uid;
+    return uid != null && uid == _post.authorId;
+  }
+
+  /// Whether the current user can delete this post
+  bool get canDelete => isAuthor && !_isDeleting;
 
   // --------------------------------------------------------------------------
   // SAFE NOTIFY
   // --------------------------------------------------------------------------
   
-  /// Safely notifies listeners only if not disposed
   void _safeNotify() {
     if (!_isDisposed) {
       notifyListeners();
@@ -52,11 +67,8 @@ class PostDetailsController extends ChangeNotifier {
   }
 
   // --------------------------------------------------------------------------
-  // HYDRATE - Load engagement state from Firestore
+  // HYDRATE
   // --------------------------------------------------------------------------
-  /// Loads the current user's engagement state (liked, saved, repicced).
-  /// 
-  /// Call this after creating the controller to sync with Firestore.
   Future<void> hydrate() async {
     if (!mounted) return;
 
@@ -74,7 +86,7 @@ class PostDetailsController extends ChangeNotifier {
       );
 
       _safeNotify();
-      debugPrint('✅ [PostDetailsController] Hydrated: liked=${state['hasLiked']}, saved=${state['hasSaved']}, repicced=${state['hasRepicced']}');
+      debugPrint('✅ [PostDetailsController] Hydrated');
     } catch (e) {
       if (!mounted) return;
       debugPrint('❌ [PostDetailsController] Hydration error: $e');
@@ -84,19 +96,15 @@ class PostDetailsController extends ChangeNotifier {
   // --------------------------------------------------------------------------
   // TOGGLE LIKE
   // --------------------------------------------------------------------------
-  /// Toggles like state with optimistic update and rollback on failure.
   Future<void> toggleLike() async {
     if (_isProcessing || !mounted) return;
 
     _isProcessing = true;
 
-    // Store previous state for rollback
     final previousPost = _post;
     final wasLiked = _post.hasLiked;
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // OPTIMISTIC UPDATE
-    // ─────────────────────────────────────────────────────────────────────────
+    // Optimistic update
     _post = _post.copyWith(
       hasLiked: !wasLiked,
       likeCount: wasLiked ? _post.likeCount - 1 : _post.likeCount + 1,
@@ -105,28 +113,20 @@ class PostDetailsController extends ChangeNotifier {
     if (!mounted) return;
     _safeNotify();
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // BACKEND CALL
-    // ─────────────────────────────────────────────────────────────────────────
     try {
       final success = await _service.toggleLike(_post.postId, wasLiked);
 
       if (!success && mounted) {
-        // Rollback on failure
         _post = previousPost;
         _safeNotify();
-        debugPrint('⚠️ [PostDetailsController] Like toggle failed, rolled back');
       }
     } catch (e) {
-      // Rollback on error
       if (!mounted) return;
-      
       _post = previousPost;
       _safeNotify();
       debugPrint('❌ [PostDetailsController] Like error: $e');
     } finally {
       if (!mounted) return;
-      
       _isProcessing = false;
       _safeNotify();
     }
@@ -135,19 +135,15 @@ class PostDetailsController extends ChangeNotifier {
   // --------------------------------------------------------------------------
   // TOGGLE SAVE
   // --------------------------------------------------------------------------
-  /// Toggles save state with optimistic update and rollback on failure.
   Future<void> toggleSave() async {
     if (_isProcessing || !mounted) return;
 
     _isProcessing = true;
 
-    // Store previous state for rollback
     final previousPost = _post;
     final wasSaved = _post.hasSaved;
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // OPTIMISTIC UPDATE
-    // ─────────────────────────────────────────────────────────────────────────
+    // Optimistic update
     _post = _post.copyWith(
       hasSaved: !wasSaved,
       saveCount: wasSaved ? _post.saveCount - 1 : _post.saveCount + 1,
@@ -156,51 +152,37 @@ class PostDetailsController extends ChangeNotifier {
     if (!mounted) return;
     _safeNotify();
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // BACKEND CALL
-    // ─────────────────────────────────────────────────────────────────────────
     try {
       final success = await _service.toggleSave(_post.postId, wasSaved);
 
       if (!success && mounted) {
-        // Rollback on failure
         _post = previousPost;
         _safeNotify();
-        debugPrint('⚠️ [PostDetailsController] Save toggle failed, rolled back');
       }
     } catch (e) {
-      // Rollback on error
       if (!mounted) return;
-      
       _post = previousPost;
       _safeNotify();
       debugPrint('❌ [PostDetailsController] Save error: $e');
     } finally {
       if (!mounted) return;
-      
       _isProcessing = false;
       _safeNotify();
     }
   }
 
   // --------------------------------------------------------------------------
-  // TOGGLE REPIC (Twitter-Style)
+  // TOGGLE REPIC
   // --------------------------------------------------------------------------
-  /// Toggles repic state with optimistic update, rollback, and user feedback.
-  /// 
-  /// Requires BuildContext for SnackBar feedback.
   Future<void> toggleRepic(BuildContext context) async {
     if (_isProcessing || !mounted) return;
 
     _isProcessing = true;
 
-    // Store previous state for rollback
     final previousPost = _post;
     final wasRepicced = _post.hasRepicced;
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // OPTIMISTIC UPDATE
-    // ─────────────────────────────────────────────────────────────────────────
+    // Optimistic update
     _post = _post.copyWith(
       hasRepicced: !wasRepicced,
       repicCount: wasRepicced ? _post.repicCount - 1 : _post.repicCount + 1,
@@ -209,29 +191,16 @@ class PostDetailsController extends ChangeNotifier {
     if (!mounted) return;
     _safeNotify();
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // BACKEND CALL
-    // ─────────────────────────────────────────────────────────────────────────
     try {
       bool success;
       
       if (wasRepicced) {
-        // ───────────────────────────────────────────────────────────────────
-        // UNDO REPIC
-        // ───────────────────────────────────────────────────────────────────
         success = await _service.undoRepic(_post.postId);
         
         if (success && context.mounted) {
-          _showSnackBar(
-            context,
-            message: 'Repic removed',
-            isError: false,
-          );
+          _showSnackBar(context, message: 'Repic removed', isError: false);
         }
       } else {
-        // ───────────────────────────────────────────────────────────────────
-        // CREATE REPIC
-        // ───────────────────────────────────────────────────────────────────
         final repicPostId = await _service.repic(_post.postId);
         success = repicPostId != null;
         
@@ -245,23 +214,15 @@ class PostDetailsController extends ChangeNotifier {
         }
       }
 
-      // ─────────────────────────────────────────────────────────────────────
-      // HANDLE FAILURE
-      // ─────────────────────────────────────────────────────────────────────
       if (!success && mounted) {
         _post = previousPost;
         _safeNotify();
         
         if (context.mounted) {
-          _showSnackBar(
-            context,
-            message: 'Failed to ${wasRepicced ? "undo" : ""} repic. Try again.',
-            isError: true,
-          );
+          _showSnackBar(context, message: 'Failed to repic', isError: true);
         }
       }
     } catch (e) {
-      // Rollback on error
       if (!mounted) return;
       
       _post = previousPost;
@@ -269,16 +230,94 @@ class PostDetailsController extends ChangeNotifier {
       debugPrint('❌ [PostDetailsController] Repic error: $e');
       
       if (context.mounted) {
-        _showSnackBar(
-          context,
-          message: 'Something went wrong',
-          isError: true,
-        );
+        _showSnackBar(context, message: 'Something went wrong', isError: true);
       }
     } finally {
       if (!mounted) return;
-      
       _isProcessing = false;
+      _safeNotify();
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // DELETE POST
+  // --------------------------------------------------------------------------
+  /// Deletes the post if the current user is the author.
+  /// 
+  /// Shows confirmation dialog before deletion.
+  /// Returns true if deleted, false otherwise.
+  Future<bool> deletePost(BuildContext context) async {
+    if (!canDelete || !mounted) return false;
+
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Post?'),
+        content: const Text(
+          'This will permanently delete this post and all its images. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              'Delete',
+              style: TextStyle(color: Theme.of(ctx).colorScheme.error),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return false;
+
+    _isDeleting = true;
+    _safeNotify();
+
+    try {
+      debugPrint('🗑️ [PostDetailsController] Deleting post: ${_post.postId}');
+
+      final success = await _deleteService.deletePost(_post.postId);
+
+      if (success) {
+        debugPrint('✅ [PostDetailsController] Post deleted');
+        
+        if (context.mounted) {
+          _showSnackBar(
+            context,
+            message: 'Post deleted',
+            isError: false,
+          );
+        }
+        return true;
+      } else {
+        if (context.mounted) {
+          _showSnackBar(
+            context,
+            message: 'Failed to delete post',
+            isError: true,
+          );
+        }
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ [PostDetailsController] Delete error: $e');
+      
+      if (context.mounted) {
+        _showSnackBar(
+          context,
+          message: 'Error deleting post',
+          isError: true,
+        );
+      }
+      return false;
+    } finally {
+      if (!mounted) return false;
+      _isDeleting = false;
       _safeNotify();
     }
   }
@@ -309,21 +348,15 @@ class PostDetailsController extends ChangeNotifier {
   }
 
   // --------------------------------------------------------------------------
-  // REFRESH
+  // REFRESH & UPDATE
   // --------------------------------------------------------------------------
-  /// Reloads engagement state from Firestore.
   Future<void> refresh() async {
     if (!mounted) return;
     await hydrate();
   }
 
-  // --------------------------------------------------------------------------
-  // UPDATE POST
-  // --------------------------------------------------------------------------
-  /// Updates post data externally (e.g., from streams or parent widgets).
   void updatePost(PostModel newPost) {
     if (!mounted) return;
-    
     _post = newPost;
     _safeNotify();
   }

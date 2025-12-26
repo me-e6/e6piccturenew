@@ -119,8 +119,10 @@ class QuotePostData {
   final String? commentary;         // User's added text (optional)
   final bool isNestedQuote;         // True if quoting another quote
 
-  /// Maximum commentary length
-  static const int maxCommentaryLength = 500;
+  /// ✅ UPDATED: Maximum commentary length is 30 characters
+  /// Short, punchy captions that overlay on the image
+  /// Rule: Everything is pictures - quote text becomes visual overlay
+  static const int maxCommentaryLength = 30;
 
   QuotePostData({
     required this.isQuote,
@@ -158,7 +160,7 @@ class QuotePostData {
   static String? validateCommentary(String? text) {
     if (text == null || text.trim().isEmpty) return null;
     if (text.length > maxCommentaryLength) {
-      return 'Commentary must be $maxCommentaryLength characters or less';
+      return 'Caption must be $maxCommentaryLength characters or less';
     }
     return null;
   }

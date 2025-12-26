@@ -9,12 +9,12 @@ import '../../engagement/repic_service.dart';
 /// ============================================================================
 /// Handles engagement actions for the Post Details screen.
 /// 
-/// KEY IMPROVEMENTS:
-/// - ✅ Dual-write pattern for likes (post + user subcollections)
-/// - ✅ Dual-write pattern for saves (post + user subcollections)
-/// - ✅ Twitter-style Repic via RepicService (creates new post)
+/// FEATURES:
+/// - ✅ Dual-write pattern for likes
+/// - ✅ Dual-write pattern for saves
+/// - ✅ Twitter-style Repic via RepicService
 /// - ✅ Null-safe user ID handling
-/// - ✅ Transaction-based operations for consistency
+/// - ✅ Transaction-based operations
 /// - ✅ Engagement state loading
 /// ============================================================================
 class PostDetailsService {
@@ -34,10 +34,8 @@ class PostDetailsService {
   // HELPERS
   // --------------------------------------------------------------------------
   
-  /// Current user ID (nullable for safety)
   String? get _uid => _auth.currentUser?.uid;
 
-  /// Throws if user not logged in
   String get _requireUid {
     final uid = _uid;
     if (uid == null) throw Exception('User not logged in');
@@ -45,23 +43,15 @@ class PostDetailsService {
   }
 
   // --------------------------------------------------------------------------
-  // LIKE / UNLIKE (Dual-Write with Transaction)
+  // TOGGLE LIKE (Dual-Write)
   // --------------------------------------------------------------------------
-  /// Toggles like state for a post.
-  /// 
-  /// Writes to:
-  /// - `posts/{postId}/likes/{uid}` → For counting who liked this post
-  /// - `users/{uid}/liked_posts/{postId}` → For user's liked posts list
-  /// 
-  /// Returns true if successful, false otherwise.
   Future<bool> toggleLike(String postId, bool currentlyLiked) async {
     final uid = _uid;
     if (uid == null) {
-      debugPrint('❌ [PostDetailsService] Cannot toggle like: No user logged in');
+      debugPrint('❌ [PostDetailsService] Cannot toggle like: No user');
       return false;
     }
 
-    // References
     final postRef = _firestore.collection('posts').doc(postId);
     final postLikeRef = postRef.collection('likes').doc(uid);
     final userLikeRef = _firestore
@@ -75,57 +65,35 @@ class PostDetailsService {
         final now = FieldValue.serverTimestamp();
 
         if (currentlyLiked) {
-          // ─────────────────────────────────────────────────────────────────
-          // UNLIKE
-          // ─────────────────────────────────────────────────────────────────
           tx.delete(postLikeRef);
           tx.delete(userLikeRef);
           tx.update(postRef, {'likeCount': FieldValue.increment(-1)});
-          
-          debugPrint('👎 [PostDetailsService] Unliked post: $postId');
+          debugPrint('👎 [PostDetailsService] Unliked: $postId');
         } else {
-          // ─────────────────────────────────────────────────────────────────
-          // LIKE
-          // ─────────────────────────────────────────────────────────────────
-          tx.set(postLikeRef, {
-            'uid': uid,
-            'likedAt': now,
-          });
-          tx.set(userLikeRef, {
-            'postId': postId,
-            'likedAt': now,
-          });
+          tx.set(postLikeRef, {'uid': uid, 'likedAt': now});
+          tx.set(userLikeRef, {'postId': postId, 'likedAt': now});
           tx.update(postRef, {'likeCount': FieldValue.increment(1)});
-          
-          debugPrint('👍 [PostDetailsService] Liked post: $postId');
+          debugPrint('👍 [PostDetailsService] Liked: $postId');
         }
         
         return true;
       });
     } catch (e) {
-      debugPrint('❌ [PostDetailsService] Error toggling like: $e');
+      debugPrint('❌ [PostDetailsService] Like error: $e');
       return false;
     }
   }
 
   // --------------------------------------------------------------------------
-  // SAVE / UNSAVE (Dual-Write with Transaction)
+  // TOGGLE SAVE (Dual-Write)
   // --------------------------------------------------------------------------
-  /// Toggles save state for a post.
-  /// 
-  /// Writes to:
-  /// - `posts/{postId}/saves/{uid}` → For counting who saved this post
-  /// - `users/{uid}/saved_posts/{postId}` → For user's saved posts list
-  /// 
-  /// Returns true if successful, false otherwise.
   Future<bool> toggleSave(String postId, bool currentlySaved) async {
     final uid = _uid;
     if (uid == null) {
-      debugPrint('❌ [PostDetailsService] Cannot toggle save: No user logged in');
+      debugPrint('❌ [PostDetailsService] Cannot toggle save: No user');
       return false;
     }
 
-    // References
     final postRef = _firestore.collection('posts').doc(postId);
     final postSaveRef = postRef.collection('saves').doc(uid);
     final userSaveRef = _firestore
@@ -139,74 +107,47 @@ class PostDetailsService {
         final now = FieldValue.serverTimestamp();
 
         if (currentlySaved) {
-          // ─────────────────────────────────────────────────────────────────
-          // UNSAVE
-          // ─────────────────────────────────────────────────────────────────
           tx.delete(postSaveRef);
           tx.delete(userSaveRef);
           tx.update(postRef, {'saveCount': FieldValue.increment(-1)});
-          
-          debugPrint('🔖 [PostDetailsService] Unsaved post: $postId');
+          debugPrint('🔖 [PostDetailsService] Unsaved: $postId');
         } else {
-          // ─────────────────────────────────────────────────────────────────
-          // SAVE
-          // ─────────────────────────────────────────────────────────────────
-          tx.set(postSaveRef, {
-            'uid': uid,
-            'savedAt': now,
-          });
-          tx.set(userSaveRef, {
-            'postId': postId,
-            'savedAt': now,
-          });
+          tx.set(postSaveRef, {'uid': uid, 'savedAt': now});
+          tx.set(userSaveRef, {'postId': postId, 'savedAt': now});
           tx.update(postRef, {'saveCount': FieldValue.increment(1)});
-          
-          debugPrint('📌 [PostDetailsService] Saved post: $postId');
+          debugPrint('📌 [PostDetailsService] Saved: $postId');
         }
         
         return true;
       });
     } catch (e) {
-      debugPrint('❌ [PostDetailsService] Error toggling save: $e');
+      debugPrint('❌ [PostDetailsService] Save error: $e');
       return false;
     }
   }
 
   // --------------------------------------------------------------------------
-  // REPIC (Twitter-Style Repost)
+  // REPIC (Twitter-Style)
   // --------------------------------------------------------------------------
-  /// Creates a Twitter-style repic post.
-  /// 
-  /// This delegates to RepicService which:
-  /// - Creates a new post document with `isRepic: true`
-  /// - Stores denormalized original post content
-  /// - Increments repicCount on original post
-  /// - Writes to user's repics subcollection
-  /// - Writes to post's repics subcollection
-  /// 
-  /// Returns the new repic post ID, or null if failed.
   Future<String?> repic(String originalPostId) async {
     final uid = _uid;
     if (uid == null) {
-      debugPrint('❌ [PostDetailsService] Cannot repic: No user logged in');
+      debugPrint('❌ [PostDetailsService] Cannot repic: No user');
       return null;
     }
 
-    debugPrint('🔄 [PostDetailsService] Creating repic for post: $originalPostId');
+    debugPrint('🔄 [PostDetailsService] Creating repic: $originalPostId');
     return await _repicService.createRepicPost(originalPostId);
   }
 
-  /// Undoes a repic (removes the repic post).
-  /// 
-  /// Returns true if successful, false otherwise.
   Future<bool> undoRepic(String originalPostId) async {
     final uid = _uid;
     if (uid == null) {
-      debugPrint('❌ [PostDetailsService] Cannot undo repic: No user logged in');
+      debugPrint('❌ [PostDetailsService] Cannot undo repic: No user');
       return false;
     }
 
-    debugPrint('↩️ [PostDetailsService] Undoing repic for post: $originalPostId');
+    debugPrint('↩️ [PostDetailsService] Undoing repic: $originalPostId');
     return await _repicService.undoRepic(originalPostId);
   }
 
@@ -214,7 +155,6 @@ class PostDetailsService {
   // CHECK ENGAGEMENT STATE
   // --------------------------------------------------------------------------
   
-  /// Checks if current user has liked the post.
   Future<bool> hasLiked(String postId) async {
     final uid = _uid;
     if (uid == null) return false;
@@ -226,15 +166,13 @@ class PostDetailsService {
           .collection('likes')
           .doc(uid)
           .get();
-
       return doc.exists;
     } catch (e) {
-      debugPrint('❌ [PostDetailsService] Error checking like state: $e');
+      debugPrint('❌ [PostDetailsService] hasLiked error: $e');
       return false;
     }
   }
 
-  /// Checks if current user has saved the post.
   Future<bool> hasSaved(String postId) async {
     final uid = _uid;
     if (uid == null) return false;
@@ -246,27 +184,21 @@ class PostDetailsService {
           .collection('saves')
           .doc(uid)
           .get();
-
       return doc.exists;
     } catch (e) {
-      debugPrint('❌ [PostDetailsService] Error checking save state: $e');
+      debugPrint('❌ [PostDetailsService] hasSaved error: $e');
       return false;
     }
   }
 
-  /// Checks if current user has repicced the post.
   Future<bool> hasRepicced(String postId) async {
     return await _repicService.hasRepicced(postId);
   }
 
-  /// Loads all engagement states at once (optimized with parallel calls).
-  /// 
-  /// Returns a map with keys: hasLiked, hasSaved, hasRepicced
   Future<Map<String, bool>> loadEngagementState(String postId) async {
-    debugPrint('📊 [PostDetailsService] Loading engagement state for: $postId');
+    debugPrint('📊 [PostDetailsService] Loading engagement state: $postId');
 
     try {
-      // Parallel fetch for better performance
       final results = await Future.wait([
         hasLiked(postId),
         hasSaved(postId),
@@ -279,7 +211,7 @@ class PostDetailsService {
         'hasRepicced': results[2],
       };
     } catch (e) {
-      debugPrint('❌ [PostDetailsService] Error loading engagement state: $e');
+      debugPrint('❌ [PostDetailsService] Load state error: $e');
       return {
         'hasLiked': false,
         'hasSaved': false,
@@ -289,18 +221,16 @@ class PostDetailsService {
   }
 
   // --------------------------------------------------------------------------
-  // LEGACY SUPPORT (Deprecated - use repic instead)
+  // LEGACY
   // --------------------------------------------------------------------------
   
-  /// @deprecated Use [repic] instead. This is kept for backward compatibility.
-  @Deprecated('Use repic() instead for Twitter-style reposts')
+  @Deprecated('Use repic() instead')
   Future<void> repost(
     String originalPostId,
     String imgUrl,
     String originalUid,
     String originalName,
   ) async {
-    // Redirect to new repic system
     await repic(originalPostId);
   }
 }

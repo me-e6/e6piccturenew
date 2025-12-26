@@ -55,6 +55,12 @@
             </intent-filter>
         </activity>
 
+        <!-- ✅ ADD: UCrop Activity for image_cropper -->
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
+
         <!-- ✅ CRITICAL FIX: File Provider -->
         <provider
             android:name="androidx.core.content.FileProvider"

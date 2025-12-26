@@ -4,24 +4,25 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'quote_model.dart';
 
 /// ------------------------------------------------------------
-/// QUOTED POST CARD
+/// QUOTED POST CARD - v2 (Visual Card Design)
 /// ------------------------------------------------------------
-/// Displays a preview of the quoted/original post.
+/// Displays a quote post as a VISUAL CARD with image-first design.
+/// 
+/// ✅ NEW DESIGN:
+/// - Full-bleed background image
+/// - Quote commentary as overlay on top
+/// - Compact original author badge (bottom-right)
+/// - "Quote" indicator badge (top-right)
+/// - NO text outside the image - everything is visual
+/// 
 /// Used in:
-/// - Quote creation screen (preview what's being quoted)
 /// - Feed (embedded in quote posts)
 /// - Post details (show quoted content)
-///
-/// Features:
-/// - Thumbnail image preview
-/// - Author info with verification badge
-/// - Preview text (50 char limit)
-/// - Tap to navigate to original
-/// - Dark mode support
-/// - Deleted post handling
+/// - Quotes list screen
 /// ------------------------------------------------------------
 class QuotedPostCard extends StatelessWidget {
   final QuotedPostPreview preview;
+  final String? commentary;  // ✅ NEW: Commentary to display as overlay
   final VoidCallback? onTap;
   final bool showBorder;
   final bool compact;
@@ -29,6 +30,7 @@ class QuotedPostCard extends StatelessWidget {
   const QuotedPostCard({
     super.key,
     required this.preview,
+    this.commentary,
     this.onTap,
     this.showBorder = true,
     this.compact = false,
@@ -38,21 +40,235 @@ class QuotedPostCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
 
     // Handle deleted original post
     if (preview.isOriginalDeleted) {
       return _buildDeletedCard(scheme);
     }
 
+    // ✅ Use visual card design when there's a thumbnail
+    if (preview.thumbnailUrl != null && preview.thumbnailUrl!.isNotEmpty) {
+      return _buildVisualCard(context, theme, scheme);
+    }
+
+    // Fallback to text-based layout for posts without images
+    return _buildTextOnlyCard(context, theme, scheme);
+  }
+
+  // ============================================================================
+  // ✅ NEW: VISUAL CARD (Image-first design with overlay)
+  // ============================================================================
+  Widget _buildVisualCard(
+    BuildContext context,
+    ThemeData theme,
+    ColorScheme scheme,
+  ) {
+    final thumbnailUrl = preview.thumbnailUrl!;
+    final authorName = preview.authorName;
+    final authorHandle = preview.authorHandle;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AspectRatio(
+        aspectRatio: compact ? 1.2 : 0.9,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(compact ? 12 : 16),
+            boxShadow: compact ? null : [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(compact ? 12 : 16),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // ═══════════════════════════════════════════════════════════
+                // BACKGROUND IMAGE (Full bleed)
+                // ═══════════════════════════════════════════════════════════
+                CachedNetworkImage(
+                  imageUrl: thumbnailUrl,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => Container(
+                    color: scheme.surfaceContainerHighest,
+                    child: const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                  errorWidget: (_, __, ___) => Container(
+                    color: scheme.surfaceContainerHighest,
+                    child: Icon(
+                      Icons.broken_image,
+                      color: scheme.onSurfaceVariant.withValues(alpha: 0.5),
+                      size: 40,
+                    ),
+                  ),
+                ),
+
+                // ═══════════════════════════════════════════════════════════
+                // QUOTE OVERLAY (Top) - Commentary text
+                // ═══════════════════════════════════════════════════════════
+                if (commentary != null && commentary!.isNotEmpty)
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: compact ? 10 : 14,
+                        vertical: compact ? 8 : 12,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.8),
+                            Colors.black.withValues(alpha: 0.5),
+                            Colors.transparent,
+                          ],
+                          stops: const [0.0, 0.7, 1.0],
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.format_quote_rounded,
+                            color: Colors.white.withValues(alpha: 0.9),
+                            size: compact ? 14 : 18,
+                          ),
+                          SizedBox(width: compact ? 4 : 6),
+                          Expanded(
+                            child: Text(
+                              commentary!,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: compact ? 12 : 14,
+                                fontWeight: FontWeight.w600,
+                                shadows: const [
+                                  Shadow(
+                                    color: Colors.black54,
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                // ═══════════════════════════════════════════════════════════
+                // ORIGINAL POSTER BADGE (Bottom-right)
+                // ═══════════════════════════════════════════════════════════
+                Positioned(
+                  bottom: compact ? 6 : 10,
+                  right: compact ? 6 : 10,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: compact ? 6 : 8,
+                      vertical: compact ? 3 : 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.7),
+                      borderRadius: BorderRadius.circular(compact ? 8 : 12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.photo_outlined,
+                          color: Colors.white.withValues(alpha: 0.9),
+                          size: compact ? 10 : 12,
+                        ),
+                        SizedBox(width: compact ? 3 : 4),
+                        Text(
+                          authorHandle != null
+                              ? '@$authorHandle'
+                              : authorName,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontSize: compact ? 9 : 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // ═══════════════════════════════════════════════════════════
+                // QUOTE BADGE (Top-right) - Show only if no commentary
+                // ═══════════════════════════════════════════════════════════
+                if (commentary == null || commentary!.isEmpty)
+                  Positioned(
+                    top: compact ? 6 : 10,
+                    right: compact ? 6 : 10,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: compact ? 5 : 6,
+                        vertical: compact ? 2 : 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: scheme.primary.withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(compact ? 6 : 8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.repeat,
+                            color: Colors.white,
+                            size: compact ? 8 : 10,
+                          ),
+                          SizedBox(width: compact ? 2 : 3),
+                          Text(
+                            'Quote',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: compact ? 7 : 9,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================================
+  // TEXT-ONLY CARD (For posts without images - fallback)
+  // ============================================================================
+  Widget _buildTextOnlyCard(
+    BuildContext context,
+    ThemeData theme,
+    ColorScheme scheme,
+  ) {
+    final isDark = theme.brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        padding: EdgeInsets.all(compact ? 10 : 14),
         decoration: BoxDecoration(
           color: isDark
               ? scheme.surfaceContainerHighest.withOpacity(0.4)
               : scheme.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(compact ? 10 : 12),
           border: showBorder
               ? Border.all(
                   color: scheme.outlineVariant.withOpacity(isDark ? 0.3 : 0.5),
@@ -60,195 +276,121 @@ class QuotedPostCard extends StatelessWidget {
                 )
               : null,
         ),
-        child: compact
-            ? _buildCompactLayout(theme, scheme)
-            : _buildFullLayout(theme, scheme),
-      ),
-    );
-  }
-
-  // ------------------------------------------------------------
-  // FULL LAYOUT (Default)
-  // ------------------------------------------------------------
-  Widget _buildFullLayout(ThemeData theme, ColorScheme scheme) {
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // THUMBNAIL (if available)
-          if (preview.thumbnailUrl != null) ...[
-            _buildThumbnail(scheme),
-            const SizedBox(width: 12),
-          ],
-
-          // CONTENT
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // AUTHOR ROW
-                _buildAuthorRow(theme, scheme),
-
-                const SizedBox(height: 6),
-
-                // PREVIEW TEXT OR IMAGE INDICATOR
-                if (preview.previewText != null &&
-                    preview.previewText!.isNotEmpty)
-                  Text(
-                    preview.previewText!,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  )
-                else if (preview.thumbnailUrl != null)
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.image_outlined,
-                        size: 14,
-                        color: scheme.onSurfaceVariant.withOpacity(0.7),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Photo',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant.withOpacity(0.7),
-                        ),
-                      ),
-                    ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Commentary (if provided)
+            if (commentary != null && commentary!.isNotEmpty) ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.format_quote_rounded,
+                    size: compact ? 14 : 16,
+                    color: scheme.primary,
                   ),
-              ],
-            ),
-          ),
-
-          // NAVIGATION ARROW (if tappable)
-          if (onTap != null) ...[
-            const SizedBox(width: 8),
-            Icon(
-              Icons.chevron_right,
-              size: 20,
-              color: scheme.onSurfaceVariant.withOpacity(0.5),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  // ------------------------------------------------------------
-  // COMPACT LAYOUT (For feed items)
-  // ------------------------------------------------------------
-  Widget _buildCompactLayout(ThemeData theme, ColorScheme scheme) {
-    return Padding(
-      padding: const EdgeInsets.all(10),
-      child: Row(
-        children: [
-          // SMALL THUMBNAIL
-          if (preview.thumbnailUrl != null) ...[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: CachedNetworkImage(
-                imageUrl: preview.thumbnailUrl!,
-                width: 40,
-                height: 40,
-                fit: BoxFit.cover,
-                placeholder: (_, __) =>
-                    Container(color: scheme.surfaceContainerHighest),
-                errorWidget: (_, __, ___) => Container(
-                  color: scheme.surfaceContainerHighest,
-                  child: Icon(
-                    Icons.broken_image,
-                    size: 16,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-          ],
-
-          // CONTENT
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // AUTHOR
-                _buildCompactAuthorRow(theme, scheme),
-
-                if (preview.previewText != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    preview.previewText!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
+                  SizedBox(width: compact ? 6 : 8),
+                  Expanded(
+                    child: Text(
+                      commentary!,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: scheme.onSurface,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
-              ],
-            ),
-          ),
-        ],
+              ),
+              SizedBox(height: compact ? 8 : 12),
+              Divider(
+                height: 1,
+                color: scheme.outlineVariant.withOpacity(0.3),
+              ),
+              SizedBox(height: compact ? 8 : 12),
+            ],
+
+            // Author row
+            _buildAuthorRow(theme, scheme),
+
+            // Preview text (if available)
+            if (preview.previewText != null && preview.previewText!.isNotEmpty) ...[
+              SizedBox(height: compact ? 6 : 8),
+              Text(
+                preview.previewText!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
 
-  // ------------------------------------------------------------
+  // ============================================================================
   // AUTHOR ROW
-  // ------------------------------------------------------------
+  // ============================================================================
   Widget _buildAuthorRow(ThemeData theme, ColorScheme scheme) {
     return Row(
       children: [
-        // AVATAR
+        // Avatar
         if (preview.authorAvatarUrl != null)
           CircleAvatar(
-            radius: 12,
-            backgroundImage: CachedNetworkImageProvider(
-              preview.authorAvatarUrl!,
-            ),
+            radius: compact ? 10 : 12,
+            backgroundImage: CachedNetworkImageProvider(preview.authorAvatarUrl!),
             backgroundColor: scheme.surfaceContainerHighest,
           )
         else
           CircleAvatar(
-            radius: 12,
+            radius: compact ? 10 : 12,
             backgroundColor: scheme.surfaceContainerHighest,
-            child: Icon(Icons.person, size: 14, color: scheme.onSurfaceVariant),
+            child: Icon(
+              Icons.person,
+              size: compact ? 10 : 12,
+              color: scheme.onSurfaceVariant,
+            ),
           ),
 
-        const SizedBox(width: 8),
+        SizedBox(width: compact ? 6 : 8),
 
-        // NAME
+        // Name
         Flexible(
           child: Text(
             preview.authorName,
-            style: theme.textTheme.bodyMedium?.copyWith(
+            style: theme.textTheme.bodySmall?.copyWith(
               fontWeight: FontWeight.w600,
               color: scheme.onSurface,
+              fontSize: compact ? 11 : 13,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
         ),
 
-        // VERIFICATION BADGE
+        // Verification badge
         if (preview.isVerifiedOwner) ...[
           const SizedBox(width: 4),
-          Icon(Icons.verified, size: 14, color: scheme.primary),
+          Icon(
+            Icons.verified,
+            size: compact ? 12 : 14,
+            color: scheme.primary,
+          ),
         ],
 
-        // HANDLE
+        // Handle
         if (preview.authorHandle != null) ...[
           const SizedBox(width: 4),
           Text(
             '@${preview.authorHandle}',
             style: theme.textTheme.bodySmall?.copyWith(
               color: scheme.onSurfaceVariant.withOpacity(0.7),
+              fontSize: compact ? 10 : 12,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -258,76 +400,15 @@ class QuotedPostCard extends StatelessWidget {
     );
   }
 
-  Widget _buildCompactAuthorRow(ThemeData theme, ColorScheme scheme) {
-    return Row(
-      children: [
-        Flexible(
-          child: Text(
-            preview.authorName,
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: scheme.onSurface,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        if (preview.isVerifiedOwner) ...[
-          const SizedBox(width: 3),
-          Icon(Icons.verified, size: 12, color: scheme.primary),
-        ],
-        if (preview.authorHandle != null) ...[
-          const SizedBox(width: 4),
-          Text(
-            '@${preview.authorHandle}',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: scheme.onSurfaceVariant.withOpacity(0.6),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  // ------------------------------------------------------------
-  // THUMBNAIL
-  // ------------------------------------------------------------
-  Widget _buildThumbnail(ColorScheme scheme) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: CachedNetworkImage(
-        imageUrl: preview.thumbnailUrl!,
-        width: 64,
-        height: 64,
-        fit: BoxFit.cover,
-        placeholder: (_, __) => Container(
-          width: 64,
-          height: 64,
-          color: scheme.surfaceContainerHighest,
-          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-        ),
-        errorWidget: (_, __, ___) => Container(
-          width: 64,
-          height: 64,
-          color: scheme.surfaceContainerHighest,
-          child: Icon(
-            Icons.broken_image_outlined,
-            color: scheme.onSurfaceVariant.withOpacity(0.5),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ------------------------------------------------------------
-  // DELETED POST CARD
-  // ------------------------------------------------------------
+  // ============================================================================
+  // DELETED CARD
+  // ============================================================================
   Widget _buildDeletedCard(ColorScheme scheme) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(compact ? 12 : 16),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(compact ? 10 : 12),
         border: Border.all(
           color: scheme.outlineVariant.withOpacity(0.3),
           width: 1,
@@ -338,15 +419,16 @@ class QuotedPostCard extends StatelessWidget {
         children: [
           Icon(
             Icons.link_off,
-            size: 18,
+            size: compact ? 14 : 18,
             color: scheme.onSurfaceVariant.withOpacity(0.5),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: compact ? 6 : 8),
           Text(
             'Original post unavailable',
             style: TextStyle(
               color: scheme.onSurfaceVariant.withOpacity(0.5),
               fontStyle: FontStyle.italic,
+              fontSize: compact ? 12 : 14,
             ),
           ),
         ],
@@ -356,10 +438,10 @@ class QuotedPostCard extends StatelessWidget {
 }
 
 /// ------------------------------------------------------------
-/// QUOTE POST FEED ITEM
+/// QUOTE POST FEED ITEM - v2 (Visual Design)
 /// ------------------------------------------------------------
 /// Complete widget for displaying a quote post in the feed.
-/// Combines the quote author's commentary with the quoted preview.
+/// ✅ NOW: Uses visual card design instead of text + thumbnail
 /// ------------------------------------------------------------
 class QuotePostFeedItem extends StatelessWidget {
   final String quoteAuthorName;
@@ -389,13 +471,11 @@ class QuotePostFeedItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final scheme = Theme.of(context).colorScheme;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: scheme.surface,
           border: Border(
@@ -408,137 +488,23 @@ class QuotePostFeedItem extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // QUOTE AUTHOR HEADER
-            _buildQuoteAuthorHeader(theme, scheme),
-
-            // COMMENTARY (if exists)
-            if (commentary != null && commentary!.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Text(
-                commentary!,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: scheme.onSurface,
-                ),
-              ),
-            ],
-
-            const SizedBox(height: 12),
-
-            // QUOTED POST PREVIEW
+            // ✅ Visual quote card (image-first with commentary overlay)
             QuotedPostCard(
               preview: quotedPreview,
+              commentary: commentary,
               onTap: onQuotedPostTap,
-              compact: true,
             ),
 
-            // ENGAGEMENT BAR (likes, comments, etc.)
+            // Engagement bar (likes, comments, etc.)
             if (engagementBar != null) ...[
-              const SizedBox(height: 12),
-              engagementBar!,
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: engagementBar!,
+              ),
             ],
           ],
         ),
       ),
     );
-  }
-
-  Widget _buildQuoteAuthorHeader(ThemeData theme, ColorScheme scheme) {
-    return Row(
-      children: [
-        // AVATAR
-        if (quoteAuthorAvatarUrl != null)
-          CircleAvatar(
-            radius: 18,
-            backgroundImage: CachedNetworkImageProvider(quoteAuthorAvatarUrl!),
-            backgroundColor: scheme.surfaceContainerHighest,
-          )
-        else
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: scheme.surfaceContainerHighest,
-            child: Icon(Icons.person, size: 18, color: scheme.onSurfaceVariant),
-          ),
-
-        const SizedBox(width: 10),
-
-        // NAME & HANDLE
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      quoteAuthorName,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (isQuoteAuthorVerified) ...[
-                    const SizedBox(width: 4),
-                    Icon(Icons.verified, size: 16, color: scheme.primary),
-                  ],
-                ],
-              ),
-              if (quoteAuthorHandle != null)
-                Text(
-                  '@$quoteAuthorHandle',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-            ],
-          ),
-        ),
-
-        // TIMESTAMP
-        Text(
-          _formatTimestamp(createdAt),
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: scheme.onSurfaceVariant.withOpacity(0.7),
-          ),
-        ),
-
-        // QUOTE INDICATOR
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: scheme.primaryContainer.withOpacity(0.5),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.format_quote, size: 12, color: scheme.primary),
-              const SizedBox(width: 2),
-              Text(
-                'Quote',
-                style: TextStyle(
-                  color: scheme.primary,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  String _formatTimestamp(DateTime dateTime) {
-    final now = DateTime.now();
-    final diff = now.difference(dateTime);
-
-    if (diff.inMinutes < 1) return 'now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
-    if (diff.inHours < 24) return '${diff.inHours}h';
-    if (diff.inDays < 7) return '${diff.inDays}d';
-    return '${dateTime.day}/${dateTime.month}';
   }
 }

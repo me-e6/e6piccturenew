@@ -22,6 +22,8 @@ enum QuoteState {
 /// ------------------------------------------------------------
 /// Manages state for creating and managing quote posts.
 /// 
+/// ✅ UPDATED: Now uses 30 character limit for visual quote design
+/// 
 /// Usage:
 /// ```dart
 /// ChangeNotifierProvider(
@@ -60,7 +62,10 @@ class QuoteController extends ChangeNotifier {
   final TextEditingController commentaryController = TextEditingController();
   
   int get commentaryLength => commentaryController.text.trim().length;
+  
+  /// ✅ Now returns 30 (from QuotePostData.maxCommentaryLength)
   int get maxCommentaryLength => QuotePostData.maxCommentaryLength;
+  
   bool get isCommentaryValid => commentaryLength <= maxCommentaryLength;
   int get remainingCharacters => maxCommentaryLength - commentaryLength;
 
@@ -140,7 +145,7 @@ class QuoteController extends ChangeNotifier {
     }
 
     if (!isCommentaryValid) {
-      _showSnackBar(context, 'Commentary is too long', isError: true);
+      _showSnackBar(context, 'Caption is too long (max $maxCommentaryLength chars)', isError: true);
       return false;
     }
 
@@ -159,7 +164,7 @@ class QuoteController extends ChangeNotifier {
       _state = QuoteState.success;
       notifyListeners();
 
-      _showSnackBar(context, 'Quote posted successfully!');
+      _showSnackBar(context, 'Quote posted! 🎉');
       
       // Pop after short delay to show success
       await Future.delayed(const Duration(milliseconds: 300));

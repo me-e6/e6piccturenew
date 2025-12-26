@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import 'quote_controller.dart';
 import 'quote_model.dart';
-import 'quoted_post_card.dart';
 
 /// ------------------------------------------------------------
-/// QUOTE POST SCREEN
+/// QUOTE POST SCREEN - v2 (Visual Quote Design)
 /// ------------------------------------------------------------
 /// Full-screen UI for creating a quote post.
 ///
-/// Features:
-/// - Preview of original post being quoted
-/// - Commentary input with character counter
-/// - Validation feedback
-/// - Loading states
-/// - Dark mode support
+/// ✅ NEW FEATURES:
+/// - Live preview showing how quote will look in feed
+/// - 30 character limit for short, punchy captions
+/// - Visual card design (image-first)
+/// - Caption appears as overlay on image
 ///
 /// Usage:
 /// ```dart
@@ -120,35 +120,51 @@ class _QuotePostScreenContent extends StatelessWidget {
           if (!controller.isValidPost && controller.errorMessage != null)
             _buildErrorBanner(controller, scheme),
 
-          // COMMENTARY INPUT
+          // ═══════════════════════════════════════════════════════════════
+          // ✅ NEW: LIVE PREVIEW CARD (Shows how it will look in feed)
+          // ═══════════════════════════════════════════════════════════════
+          if (controller.quotedPreview != null)
+            _VisualQuotePreview(
+              preview: controller.quotedPreview!,
+              commentary: controller.commentaryController.text.trim(),
+            )
+          else
+            _buildLoadingPreview(scheme),
+          
+          const SizedBox(height: 24),
+
+          // ═══════════════════════════════════════════════════════════════
+          // ✅ NEW: SHORT CAPTION INPUT (30 chars max)
+          // ═══════════════════════════════════════════════════════════════
+          Text(
+            'Add a caption',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: scheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Short & punchy works best! (appears on image)',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          
           _buildCommentaryInput(context, controller, theme, scheme),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
 
           // CHARACTER COUNTER
           _buildCharacterCounter(controller, scheme),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
-          // QUOTED POST PREVIEW LABEL
-          Text(
-            'Quoting',
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: scheme.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // QUOTED POST PREVIEW
-          if (controller.quotedPreview != null)
-            QuotedPostCard(
-              preview: controller.quotedPreview!,
-              onTap: null, // Disable tap in creation screen
-            )
-          else
-            _buildLoadingPreview(scheme),
+          // ═══════════════════════════════════════════════════════════════
+          // TIPS SECTION
+          // ═══════════════════════════════════════════════════════════════
+          _buildTipsSection(scheme),
 
           const SizedBox(height: 24),
 
@@ -192,14 +208,19 @@ class _QuotePostScreenContent extends StatelessWidget {
   ) {
     return TextField(
       controller: controller.commentaryController,
-      maxLines: 5,
-      minLines: 3,
+      maxLines: 1, // ✅ Single line for short caption
+      maxLength: QuotePostData.maxCommentaryLength,
       enabled: controller.isValidPost,
-      style: theme.textTheme.bodyLarge,
+      style: theme.textTheme.bodyLarge?.copyWith(
+        fontWeight: FontWeight.w500,
+      ),
+      inputFormatters: [
+        LengthLimitingTextInputFormatter(QuotePostData.maxCommentaryLength),
+      ],
       decoration: InputDecoration(
-        hintText: 'Add your thoughts... (optional)',
+        hintText: 'e.g. "Must read! 📚"',
         hintStyle: TextStyle(
-          color: scheme.onSurfaceVariant.withValues(alpha: .6),
+          color: scheme.onSurfaceVariant.withValues(alpha: 0.5),
         ),
         filled: true,
         fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
@@ -211,10 +232,11 @@ class _QuotePostScreenContent extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: scheme.primary, width: 1.5),
         ),
-        contentPadding: const EdgeInsets.all(16),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        counterText: '', // Hide default counter, we show custom one
       ),
       onChanged: (_) {
-        // Trigger rebuild to update character counter
+        // Trigger rebuild to update preview and counter
         controller.notifyListeners();
       },
     );
@@ -226,7 +248,7 @@ class _QuotePostScreenContent extends StatelessWidget {
   ) {
     final remaining = controller.remainingCharacters;
     final isOverLimit = remaining < 0;
-    final isNearLimit = remaining <= 50 && remaining >= 0;
+    final isNearLimit = remaining <= 10 && remaining >= 0;
 
     Color counterColor;
     if (isOverLimit) {
@@ -253,15 +275,15 @@ class _QuotePostScreenContent extends StatelessWidget {
           '$remaining',
           style: TextStyle(
             color: counterColor,
-            fontSize: 13,
-            fontWeight: isOverLimit ? FontWeight.w600 : FontWeight.normal,
+            fontSize: 14,
+            fontWeight: isOverLimit ? FontWeight.w600 : FontWeight.w500,
           ),
         ),
         Text(
           ' / ${controller.maxCommentaryLength}',
           style: TextStyle(
             color: scheme.onSurfaceVariant.withOpacity(0.4),
-            fontSize: 13,
+            fontSize: 14,
           ),
         ),
       ],
@@ -269,13 +291,68 @@ class _QuotePostScreenContent extends StatelessWidget {
   }
 
   Widget _buildLoadingPreview(ColorScheme scheme) {
+    return AspectRatio(
+      aspectRatio: 0.85,
+      child: Container(
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      ),
+    );
+  }
+
+  Widget _buildTipsSection(ColorScheme scheme) {
     return Container(
-      height: 100,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest,
+        color: scheme.primaryContainer.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.tips_and_updates, color: scheme.primary, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                'Quote Tips',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: scheme.onPrimaryContainer,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _buildTip(scheme, '💬', 'Keep it short & memorable'),
+          _buildTip(scheme, '✨', 'Use emojis for personality'),
+          _buildTip(scheme, '📸', 'Your caption appears on the image'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTip(ColorScheme scheme, String emoji, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 14)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 13,
+                color: scheme.onPrimaryContainer.withValues(alpha: 0.8),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -298,6 +375,235 @@ class _QuotePostScreenContent extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// ============================================================================
+/// ✅ NEW: VISUAL QUOTE PREVIEW (Shows live preview as user types)
+/// ============================================================================
+class _VisualQuotePreview extends StatelessWidget {
+  final QuotedPostPreview preview;
+  final String commentary;
+
+  const _VisualQuotePreview({
+    required this.preview,
+    required this.commentary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final thumbnailUrl = preview.thumbnailUrl;
+    final authorName = preview.authorName;
+    final authorHandle = preview.authorHandle;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Preview',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            color: scheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 8),
+        
+        // Preview Card (aspect ratio like feed)
+        AspectRatio(
+          aspectRatio: 0.85,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // ═══════════════════════════════════════════════════════════
+                  // BACKGROUND IMAGE (Full bleed)
+                  // ═══════════════════════════════════════════════════════════
+                  if (thumbnailUrl != null && thumbnailUrl.isNotEmpty)
+                    CachedNetworkImage(
+                      imageUrl: thumbnailUrl,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => Container(
+                        color: scheme.surfaceContainerHighest,
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                      errorWidget: (_, __, ___) => _buildPlaceholderBg(scheme),
+                    )
+                  else
+                    _buildPlaceholderBg(scheme),
+
+                  // ═══════════════════════════════════════════════════════════
+                  // QUOTE OVERLAY (Top) - Commentary text
+                  // ═══════════════════════════════════════════════════════════
+                  if (commentary.isNotEmpty)
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.8),
+                              Colors.black.withValues(alpha: 0.5),
+                              Colors.transparent,
+                            ],
+                            stops: const [0.0, 0.7, 1.0],
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.format_quote_rounded,
+                              color: Colors.white.withValues(alpha: 0.9),
+                              size: 18,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                commentary,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black54,
+                                      blurRadius: 4,
+                                    ),
+                                  ],
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                  // ═══════════════════════════════════════════════════════════
+                  // ORIGINAL POSTER BADGE (Bottom-right)
+                  // ═══════════════════════════════════════════════════════════
+                  Positioned(
+                    bottom: 10,
+                    right: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.photo_outlined,
+                            color: Colors.white.withValues(alpha: 0.9),
+                            size: 12,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            authorHandle != null
+                                ? '@$authorHandle'
+                                : authorName,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // ═══════════════════════════════════════════════════════════
+                  // QUOTE BADGE (Top-right)
+                  // ═══════════════════════════════════════════════════════════
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: scheme.primary.withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.repeat, color: Colors.white, size: 10),
+                          SizedBox(width: 3),
+                          Text(
+                            'Quote',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPlaceholderBg(ColorScheme scheme) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            scheme.primaryContainer,
+            scheme.secondaryContainer,
+          ],
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          Icons.format_quote_rounded,
+          size: 60,
+          color: scheme.onPrimaryContainer.withValues(alpha: 0.2),
+        ),
       ),
     );
   }
