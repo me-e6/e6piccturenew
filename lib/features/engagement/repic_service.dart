@@ -3,13 +3,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 /// ============================================================================
-/// REPIC SERVICE - Twitter/X Style Reposts
+/// REPIC SERVICE - v2 (FIXED IMAGE URLS)
 /// ============================================================================
 /// Creates repic posts that:
 /// - Appear in the repiccer's feed
 /// - Appear in followers' feeds
 /// - Reference the original post (denormalized)
 /// - Show "User repicced" header
+/// 
+/// FIX: Now reads both 'imageUrls' and 'images' keys for compatibility
 /// ============================================================================
 class RepicService {
   final FirebaseFirestore _firestore;
@@ -20,11 +22,19 @@ class RepicService {
         _auth = auth ?? FirebaseAuth.instance;
 
   // --------------------------------------------------------------------------
+  // HELPER: Parse image URLs from data (handles both keys)
+  // --------------------------------------------------------------------------
+  List<String> _parseImageUrls(Map<String, dynamic> data) {
+    final urls = data['imageUrls'] ?? data['images'];
+    if (urls is List) {
+      return urls.map((e) => e.toString()).toList();
+    }
+    return [];
+  }
+
+  // --------------------------------------------------------------------------
   // CREATE REPIC POST
   // --------------------------------------------------------------------------
-  /// Creates a new repic post that references the original.
-  /// 
-  /// Returns the new repic post ID, or null if failed.
   Future<String?> createRepicPost(String originalPostId) async {
     final user = _auth.currentUser;
     if (user == null) {
@@ -70,6 +80,9 @@ class RepicService {
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
       final userData = userDoc.data() ?? {};
 
+      // ✅ FIX: Parse image URLs properly (handles both 'imageUrls' and 'images')
+      final originalImageUrls = _parseImageUrls(originalData);
+
       // 5. Create repic post document
       final repicRef = _firestore.collection('posts').doc();
       final now = FieldValue.serverTimestamp();
@@ -102,18 +115,18 @@ class RepicService {
           'authorHandle': originalData['authorHandle'],
           'authorAvatarUrl': originalData['authorAvatarUrl'],
           'authorIsVerified': originalData['authorIsVerified'] ?? false,
-          'imageUrls': originalData['imageUrls'] ?? [],
+          'imageUrls': originalImageUrls, // ✅ FIXED
           'caption': originalData['caption'] ?? '',
           'likeCount': originalData['likeCount'] ?? 0,
           'replyCount': originalData['replyCount'] ?? 0,
           'repicCount': originalData['repicCount'] ?? 0,
         },
 
-        // Copy image URLs for grid display
-        'imageUrls': originalData['imageUrls'] ?? [],
+        // ✅ FIXED: Copy image URLs for grid display (using parsed list)
+        'imageUrls': originalImageUrls,
         'caption': originalData['caption'] ?? '',
 
-        // Initialize counters (repic posts can also be engaged with)
+        // Initialize counters
         'likeCount': 0,
         'saveCount': 0,
         'repicCount': 0,
@@ -161,7 +174,7 @@ class RepicService {
         );
       });
 
-      debugPrint('✅ Created repic post: ${repicRef.id}');
+      debugPrint('✅ Created repic post: ${repicRef.id} with ${originalImageUrls.length} images');
       return repicRef.id;
     } catch (e) {
       debugPrint('❌ Error creating repic: $e');
@@ -172,7 +185,6 @@ class RepicService {
   // --------------------------------------------------------------------------
   // UNDO REPIC
   // --------------------------------------------------------------------------
-  /// Removes the repic post and decrements counter.
   Future<bool> undoRepic(String originalPostId) async {
     final user = _auth.currentUser;
     if (user == null) return false;
@@ -252,7 +264,6 @@ class RepicService {
   // --------------------------------------------------------------------------
   // GET REPIC USERS (for list)
   // --------------------------------------------------------------------------
-  /// Returns list of users who repicced this post
   Future<List<Map<String, dynamic>>> getRepicUsers(String postId) async {
     final snap = await _firestore
         .collection('posts')
@@ -287,7 +298,6 @@ class RepicService {
   // --------------------------------------------------------------------------
   // GET QUOTE POSTS (for list)
   // --------------------------------------------------------------------------
-  /// Returns list of quote posts for this post
   Future<List<Map<String, dynamic>>> getQuotePosts(String postId) async {
     final snap = await _firestore
         .collection('posts')

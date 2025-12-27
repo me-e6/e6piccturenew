@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../feed/day_feed_controller.dart';
 import '../feed/day_album_viewer_screen.dart';
 import '../feed/day_album_tracker.dart';
@@ -635,7 +635,9 @@ class _MultiImageViewerState extends State<_MultiImageViewer> {
     return GestureDetector(
       onTap: () => _navigateToViewer(context),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(_HomeScreenConstants.cardBorderRadius),
+        borderRadius: BorderRadius.circular(
+          _HomeScreenConstants.cardBorderRadius,
+        ),
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -698,7 +700,10 @@ class _MultiImageViewerState extends State<_MultiImageViewer> {
                 left: 0,
                 right: 0,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
@@ -724,8 +729,8 @@ class _MultiImageViewerState extends State<_MultiImageViewer> {
                       // Quote text
                       Expanded(
                         child: Text(
-                          commentary.length > 30 
-                              ? '${commentary.substring(0, 30)}...' 
+                          commentary.length > 30
+                              ? '${commentary.substring(0, 30)}...'
                               : commentary,
                           style: const TextStyle(
                             color: Colors.white,
@@ -733,10 +738,7 @@ class _MultiImageViewerState extends State<_MultiImageViewer> {
                             fontWeight: FontWeight.w600,
                             height: 1.3,
                             shadows: [
-                              Shadow(
-                                color: Colors.black54,
-                                blurRadius: 4,
-                              ),
+                              Shadow(color: Colors.black54, blurRadius: 4),
                             ],
                           ),
                           maxLines: 2,
@@ -755,7 +757,10 @@ class _MultiImageViewerState extends State<_MultiImageViewer> {
               bottom: 12,
               right: 12,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.7),
                   borderRadius: BorderRadius.circular(16),
@@ -797,11 +802,7 @@ class _MultiImageViewerState extends State<_MultiImageViewer> {
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.repeat,
-                      color: Colors.white,
-                      size: 12,
-                    ),
+                    Icon(Icons.repeat, color: Colors.white, size: 12),
                     SizedBox(width: 4),
                     Text(
                       'Quote',
@@ -1498,7 +1499,20 @@ class _SuggestedUsersSection extends StatelessWidget {
 }
 
 // ============================================================================
-// PROFILE BOTTOM SHEET
+// PROFILE BOTTOM SHEET - COMPLETE
+// ============================================================================
+//
+// USAGE: Replace the existing _ProfileBottomSheet class in home_screen_v3.dart
+//        (approximately lines 1504-1592)
+//
+// ADD THESE IMPORTS at the top of home_screen_v3.dart:
+//
+//   import 'package:cloud_firestore/cloud_firestore.dart';
+//   import '../profile/profile_entry.dart';  // (already exists)
+//   import '../admin/admin_dashboard_screen.dart';
+//   import '../block/blocked_users_screen.dart';
+//   import '../mute/muted_users_screen.dart';
+//
 // ============================================================================
 
 class _ProfileBottomSheet extends StatelessWidget {
@@ -1506,79 +1520,507 @@ class _ProfileBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
     final themeController = context.watch<ThemeController>();
     final scheme = Theme.of(context).colorScheme;
 
     return Container(
-      height:
-          MediaQuery.of(context).size.height *
-          _HomeScreenConstants.sheetHeightFraction,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
       decoration: BoxDecoration(
         color: scheme.surface,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(_HomeScreenConstants.sheetBorderRadius),
-        ),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      child: Column(
-        children: [
-          const SizedBox(height: 12),
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: scheme.onSurfaceVariant.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(2),
+      child: StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .snapshots(),
+        builder: (context, snapshot) {
+          final userData = snapshot.data?.data() as Map<String, dynamic>? ?? {};
+          final isAdmin = userData['isAdmin'] ?? false;
+          final isVerified = userData['isVerified'] ?? false;
+          final displayName = userData['displayName'] ?? 'User';
+          final handle = userData['handle'] ?? userData['username'] ?? '';
+          final avatarUrl = userData['profileImageUrl'] ?? userData['photoUrl'];
+
+          return SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ══════════════════════════════════════════════════════════════
+                // DRAG HANDLE
+                // ══════════════════════════════════════════════════════════════
+                const SizedBox(height: 12),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: scheme.onSurfaceVariant.withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // ══════════════════════════════════════════════════════════════
+                // PROFILE HEADER
+                // ══════════════════════════════════════════════════════════════
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      // Avatar
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ProfileEntry(userId: uid),
+                            ),
+                          );
+                        },
+                        child: CircleAvatar(
+                          radius: 28,
+                          backgroundColor: scheme.surfaceContainerHighest,
+                          backgroundImage:
+                              avatarUrl != null && avatarUrl.isNotEmpty
+                              ? NetworkImage(avatarUrl)
+                              : null,
+                          child: avatarUrl == null || avatarUrl.isEmpty
+                              ? Icon(
+                                  Icons.person,
+                                  size: 28,
+                                  color: scheme.onSurfaceVariant,
+                                )
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+
+                      // Name & Handle
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    displayName,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 17,
+                                      color: scheme.onSurface,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (isVerified) ...[
+                                  const SizedBox(width: 4),
+                                  const Icon(
+                                    Icons.verified,
+                                    size: 16,
+                                    color: Colors.blue,
+                                  ),
+                                ],
+                                if (isAdmin) ...[
+                                  const SizedBox(width: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.purple.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Text(
+                                      'ADMIN',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.purple,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '@$handle',
+                              style: TextStyle(
+                                color: scheme.onSurfaceVariant,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // View Profile Button
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ProfileEntry(userId: uid),
+                            ),
+                          );
+                        },
+                        child: const Text('View Profile'),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+                Divider(color: scheme.outlineVariant.withOpacity(0.5)),
+
+                // ══════════════════════════════════════════════════════════════
+                // ADMIN SECTION (Admins only)
+                // ══════════════════════════════════════════════════════════════
+                if (isAdmin) ...[
+                  _SheetMenuItem(
+                    icon: Icons.admin_panel_settings,
+                    label: 'Admin Dashboard',
+                    iconColor: Colors.purple,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/admin');
+                    },
+                  ),
+                  Divider(color: scheme.outlineVariant.withOpacity(0.5)),
+                ],
+
+                // ══════════════════════════════════════════════════════════════
+                // VERIFICATION REQUEST (Non-verified users only)
+                // ══════════════════════════════════════════════════════════════
+                if (!isVerified) ...[
+                  _SheetMenuItem(
+                    icon: Icons.verified_outlined,
+                    label: 'Request Verification',
+                    iconColor: Colors.blue,
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'NEW',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.blue,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showVerificationDialog(context, uid, displayName);
+                    },
+                  ),
+                  Divider(color: scheme.outlineVariant.withOpacity(0.5)),
+                ],
+
+                // ══════════════════════════════════════════════════════════════
+                // PRIVACY SECTION
+                // ══════════════════════════════════════════════════════════════
+                _SheetMenuItem(
+                  icon: Icons.block,
+                  label: 'Blocked Accounts',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/blocked');
+                  },
+                ),
+                _SheetMenuItem(
+                  icon: Icons.volume_off,
+                  label: 'Muted Accounts',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/muted');
+                  },
+                ),
+
+                Divider(color: scheme.outlineVariant.withOpacity(0.5)),
+
+                // ══════════════════════════════════════════════════════════════
+                // THEME TOGGLE
+                // ══════════════════════════════════════════════════════════════
+                SwitchListTile(
+                  value: themeController.isDarkMode,
+                  onChanged: (_) => themeController.toggleTheme(),
+                  title: Text(
+                    themeController.isDarkMode ? 'Dark Mode' : 'Light Mode',
+                    style: TextStyle(
+                      color: scheme.onSurface,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  secondary: Icon(
+                    themeController.isDarkMode
+                        ? Icons.dark_mode
+                        : Icons.light_mode,
+                    color: themeController.isDarkMode
+                        ? Colors.indigo
+                        : Colors.orange,
+                  ),
+                ),
+
+                Divider(color: scheme.outlineVariant.withOpacity(0.5)),
+
+                // ══════════════════════════════════════════════════════════════
+                // HELP & SUPPORT
+                // ══════════════════════════════════════════════════════════════
+                _SheetMenuItem(
+                  icon: Icons.help_outline,
+                  label: 'Help & Support',
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Navigate to help screen or URL
+                  },
+                ),
+                _SheetMenuItem(
+                  icon: Icons.info_outline,
+                  label: 'About Piccture',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showAboutDialog(context);
+                  },
+                ),
+
+                Divider(color: scheme.outlineVariant.withOpacity(0.5)),
+
+                // ══════════════════════════════════════════════════════════════
+                // LOGOUT
+                // ══════════════════════════════════════════════════════════════
+                _SheetMenuItem(
+                  icon: Icons.logout,
+                  label: 'Log Out',
+                  iconColor: scheme.error,
+                  textColor: scheme.error,
+                  onTap: () => _handleLogout(context),
+                ),
+
+                // Bottom padding for safe area
+                SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+              ],
             ),
-          ),
-          const SizedBox(height: 20),
-          SwitchListTile(
-            value: themeController.isDarkMode,
-            onChanged: (_) => themeController.toggleTheme(),
-            title: Text('Dark Mode', style: TextStyle(color: scheme.onSurface)),
-            secondary: Icon(
-              themeController.isDarkMode ? Icons.dark_mode : Icons.light_mode,
-              color: scheme.onSurfaceVariant,
+          );
+        },
+      ),
+    );
+  }
+
+  void _showAboutDialog(BuildContext context) {
+    showAboutDialog(
+      context: context,
+      applicationName: 'Piccture',
+      applicationVersion: '1.0.0',
+      applicationIcon: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: const Color(0xFF8B7355),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Icon(Icons.camera_alt, color: Colors.white),
+      ),
+      children: [
+        const Text('Share your world through pictures.'),
+        const SizedBox(height: 8),
+        const Text('© 2024 Piccture'),
+      ],
+    );
+  }
+
+  void _showVerificationDialog(
+    BuildContext context,
+    String uid,
+    String displayName,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.verified, color: Colors.blue.shade400),
+            const SizedBox(width: 8),
+            const Text('Request Verification'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Gazetteer badges are for:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: scheme.onSurface,
+              ),
             ),
+            const SizedBox(height: 8),
+            const Text('• Photographers & content creators'),
+            const Text('• Journalists & reporters'),
+            const Text('• Notable public figures'),
+            const SizedBox(height: 16),
+            Text(
+              'Requirements:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: scheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text('• 30+ days account age'),
+            const Text('• 10+ original posts'),
+            const Text('• 100+ followers'),
+            const Text('• Clean record (no violations)'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
           ),
-          const Divider(),
-          ListTile(
-            leading: Icon(Icons.logout, color: scheme.error),
-            title: Text('Logout', style: TextStyle(color: scheme.error)),
-            onTap: () => _handleLogout(context),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.send, size: 18),
+            label: const Text('Submit Request'),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _submitVerificationRequest(context, uid, displayName);
+            },
           ),
         ],
       ),
     );
   }
+
+  Future<void> _submitVerificationRequest(
+    BuildContext context,
+    String uid,
+    String displayName,
+  ) async {
+    try {
+      await FirebaseFirestore.instance.collection('verification_requests').add({
+        'userId': uid,
+        'userName': displayName,
+        'type': 'gazetteer',
+        'status': 'pending',
+        'requestedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: const [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 8),
+                Text('Verification request submitted!'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
 }
 
-// ============================================================================
-// LOGOUT HANDLER
-// ============================================================================
+// =============================================================================
+// SHEET MENU ITEM WIDGET
+// =============================================================================
+class _SheetMenuItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color? iconColor;
+  final Color? textColor;
+  final Widget? trailing;
+  final VoidCallback onTap;
 
+  const _SheetMenuItem({
+    required this.icon,
+    required this.label,
+    this.iconColor,
+    this.textColor,
+    this.trailing,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return ListTile(
+      leading: Icon(icon, color: iconColor ?? scheme.primary),
+      title: Text(
+        label,
+        style: TextStyle(
+          color: textColor ?? scheme.onSurface,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      trailing:
+          trailing ??
+          Icon(Icons.chevron_right, size: 20, color: scheme.onSurfaceVariant),
+      onTap: onTap,
+    );
+  }
+}
+
+// =============================================================================
+// LOGOUT HANDLER (Updated)
+// =============================================================================
 Future<void> _handleLogout(BuildContext context) async {
   final scheme = Theme.of(context).colorScheme;
 
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (_) => AlertDialog(
-      title: const Text('Logout'),
-      content: const Text('Are you sure you want to logout?'),
+      title: const Text('Log Out'),
+      content: const Text('Are you sure you want to log out?'),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
           child: const Text('Cancel'),
         ),
-        TextButton(
+        ElevatedButton(
           onPressed: () => Navigator.pop(context, true),
-          style: TextButton.styleFrom(foregroundColor: scheme.error),
-          child: const Text('Logout'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: scheme.error,
+            foregroundColor: scheme.onError,
+          ),
+          child: const Text('Log Out'),
         ),
       ],
     ),
   );
 
   if (confirmed != true) return;
+
+  // Close bottom sheet first
+  if (context.mounted) {
+    Navigator.pop(context);
+  }
 
   await AuthService().logout();
 

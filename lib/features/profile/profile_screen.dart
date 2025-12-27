@@ -11,6 +11,9 @@ import 'widgets/profile_tabs_bar.dart';
 import 'widgets/profile_tab_content.dart';
 import 'edit_profile_screen.dart';
 
+/// ============================================================================
+/// PROFILE SCREEN - v2 (With Gazetteer Badge)
+/// ============================================================================
 class ProfileScreen extends StatelessWidget {
   final String userId;
 
@@ -41,6 +44,9 @@ class _ProfileScreenBody extends StatelessWidget {
     final bool hasVideoDp =
         user.videoDpUrl != null && user.videoDpUrl!.isNotEmpty;
 
+    // ✅ Check if user is a Gazetteer
+    final bool isGazetteer = user.type == 'gazetteer' || user.role == 'gazetteer';
+
     return Scaffold(
       appBar: AppBar(title: const Text('Profile'), centerTitle: true),
       body: CustomScrollView(
@@ -57,6 +63,7 @@ class _ProfileScreenBody extends StatelessWidget {
                   bannerUrl: user.profileBannerUrl,
                   bio: user.bio,
                   isVerified: user.isVerified,
+                  isGazetteer: isGazetteer, // ✅ NEW
                   hasVideoDp: hasVideoDp,
                   isUpdatingVideoDp: profile.isUpdatingVideoDp,
                   isOwner: isOwner,
@@ -158,17 +165,29 @@ class _ProfileStatsRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
-      child: Column(
-        children: [
-          Text(
-            value.toString(),
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-          ),
-          const SizedBox(height: 4),
-          Text(label, style: const TextStyle(fontSize: 12)),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Column(
+          children: [
+            Text(
+              _formatCount(value),
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+            ),
+            const SizedBox(height: 4),
+            Text(label, style: const TextStyle(fontSize: 12)),
+          ],
+        ),
       ),
     );
+  }
+
+  String _formatCount(int count) {
+    if (count >= 1000000) {
+      return '${(count / 1000000).toStringAsFixed(1)}M';
+    } else if (count >= 1000) {
+      return '${(count / 1000).toStringAsFixed(1)}K';
+    }
+    return count.toString();
   }
 
   @override

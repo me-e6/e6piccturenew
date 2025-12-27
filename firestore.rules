@@ -1,139 +1,166 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // ============================================================
+    
+    // =========================================================================
     // HELPER FUNCTIONS
-    // ============================================================
-    function isAuthenticated() {
+    // =========================================================================
+    
+    function isAuth() {
       return request.auth != null;
     }
-
-    function isOwner(userId) {
-      return request.auth.uid == userId;
+    
+    function isOwner(uid) {
+      return isAuth() && request.auth.uid == uid;
+    }
+    
+    function isAdmin() {
+      return isAuth() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
 
-    // ============================================================
+    // =========================================================================
     // USERS COLLECTION
-    // ============================================================
+    // =========================================================================
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow update: if isOwner(userId);
+      allow read: if true;
       allow create: if isOwner(userId);
-
-      // --------------------------------------------------------
-      // LIKED POSTS SUBCOLLECTION
-      // --------------------------------------------------------
-      match /liked_posts/{postId} {
-        allow read: if isAuthenticated();
-        allow write: if isOwner(userId);
-      }
-
-      // --------------------------------------------------------
-      // SAVED POSTS SUBCOLLECTION (PRIVATE)
-      // --------------------------------------------------------
-      match /saved_posts/{postId} {
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId);
-      }
-
-      // --------------------------------------------------------
-      // REPICS SUBCOLLECTION
-      // --------------------------------------------------------
-      match /repics/{postId} {
-        allow read: if isAuthenticated();
-        allow write: if isOwner(userId);
-      }
-
-      // --------------------------------------------------------
-      // LEGACY: repic_posts (backward compatibility)
-      // --------------------------------------------------------
-      match /repic_posts/{postId} {
-        allow read: if isAuthenticated();
-        allow write: if isOwner(userId);
-      }
-
-      // --------------------------------------------------------
-      // ✅ QUOTED POSTS SUBCOLLECTION (THIS WAS MISSING - THE FIX!)
-      // --------------------------------------------------------
-      match /quoted_posts/{quoteId} {
-        allow read: if isAuthenticated();
-        allow write: if isOwner(userId);
-      }
-
-      // --------------------------------------------------------
-      // FOLLOWERS / FOLLOWING
-      // --------------------------------------------------------
+      
+      // ✅ FIX: Allow update for owner OR for follow count increments
+      allow update: if isOwner(userId) || 
+        (isAuth() && 
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['followersCount', 'followingCount']));
+      
+      allow delete: if isOwner(userId) || isAdmin();
+      
+      // FOLLOWERS
       match /followers/{followerId} {
-        allow read: if isAuthenticated();
-        allow write: if isAuthenticated();
+        allow read: if isAuth();
+        allow create: if isAuth() && request.auth.uid == followerId;
+        allow delete: if isAuth() && request.auth.uid == followerId;
       }
-
+      
+      // FOLLOWING
       match /following/{followingId} {
-        allow read: if isAuthenticated();
-        allow write: if isOwner(userId);
+        allow read: if isAuth();
+        allow create, delete: if isOwner(userId);
+      }
+      
+      // REPICS
+      match /repics/{postId} {
+        allow read: if isAuth();
+        allow create, delete: if isOwner(userId);
+      }
+      
+      // SAVED
+      match /saved/{postId} {
+        allow read: if isOwner(userId);
+        allow create, delete: if isOwner(userId);
+      }
+      
+      // LIKES
+      match /likes/{postId} {
+        allow read: if isAuth();
+        allow create, delete: if isOwner(userId);
+      }
+      
+      // QUOTED POSTS
+      match /quoted_posts/{quoteId} {
+        allow read: if isAuth();
+        allow create, delete: if isOwner(userId);
       }
     }
 
-    // ============================================================
+    // =========================================================================
     // POSTS COLLECTION
-    // ============================================================
+    // =========================================================================
     match /posts/{postId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && 
-        (resource.data.authorId == request.auth.uid || 
-         request.resource.data.diff(resource.data).affectedKeys()
-           .hasOnly(['likeCount', 'saveCount', 'repicCount', 'replyCount', 'quoteReplyCount']));
-      allow delete: if isAuthenticated() && 
-        resource.data.authorId == request.auth.uid;
-
-      // --------------------------------------------------------
-      // LIKES SUBCOLLECTION
-      // --------------------------------------------------------
+      allow read: if isAuth();
+      allow create: if isAuth() && request.resource.data.authorId == request.auth.uid;
+      
+      // Author can update OR counters can be updated
+      allow update: if isAuth() && (
+        resource.data.authorId == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['likeCount', 'replyCount', 'repicCount', 'saveCount', 'quoteReplyCount'])
+      );
+      
+      allow delete: if isAuth() && (resource.data.authorId == request.auth.uid || isAdmin());
+      
+      // LIKES
       match /likes/{likeId} {
-        allow read: if isAuthenticated();
-        allow create: if isAuthenticated() && likeId == request.auth.uid;
-        allow delete: if isAuthenticated() && likeId == request.auth.uid;
+        allow read: if isAuth();
+        allow create, delete: if isAuth() && request.auth.uid == likeId;
       }
-
-      // --------------------------------------------------------
-      // SAVES SUBCOLLECTION
-      // --------------------------------------------------------
+      
+      // SAVES
       match /saves/{saveId} {
-        allow read: if isAuthenticated();
-        allow create: if isAuthenticated() && saveId == request.auth.uid;
-        allow delete: if isAuthenticated() && saveId == request.auth.uid;
+        allow read: if isAuth();
+        allow create, delete: if isAuth() && request.auth.uid == saveId;
       }
-
-      // --------------------------------------------------------
-      // REPICS SUBCOLLECTION
-      // --------------------------------------------------------
+      
+      // REPICS
       match /repics/{repicId} {
-        allow read: if isAuthenticated();
-        allow create: if isAuthenticated() && repicId == request.auth.uid;
-        allow delete: if isAuthenticated() && repicId == request.auth.uid;
+        allow read: if isAuth();
+        allow create, delete: if isAuth() && request.auth.uid == repicId;
       }
-
-      // --------------------------------------------------------
-      // REPLIES SUBCOLLECTION
-      // --------------------------------------------------------
+      
+      // REPLIES
       match /replies/{replyId} {
-        allow read: if isAuthenticated();
-        allow create: if isAuthenticated();
-        allow update, delete: if isAuthenticated() && 
-          resource.data.uid == request.auth.uid;
+        allow read: if isAuth();
+        allow create: if isAuth() && request.resource.data.authorId == request.auth.uid;
+        allow update, delete: if isAuth() && resource.data.authorId == request.auth.uid;
       }
-
-      // --------------------------------------------------------
-      // QUOTES SUBCOLLECTION (under posts)
-      // --------------------------------------------------------
+      
+      // QUOTES
       match /quotes/{quoteId} {
-        allow read: if isAuthenticated();
-        allow create: if isAuthenticated();
-        allow update, delete: if isAuthenticated() && 
-          resource.data.authorId == request.auth.uid;
+        allow read: if isAuth();
+        allow create, delete: if isAuth();
       }
+    }
+
+    // =========================================================================
+    // NOTIFICATIONS
+    // =========================================================================
+    match /notifications/{notificationId} {
+      allow read: if isAuth() && resource.data.recipientId == request.auth.uid;
+      allow create: if isAuth() && request.resource.data.actorId == request.auth.uid;
+      allow update: if isAuth() && resource.data.recipientId == request.auth.uid;
+      allow delete: if isAuth() && resource.data.recipientId == request.auth.uid;
+    }
+
+    // =========================================================================
+    // SHARES
+    // =========================================================================
+    match /shares/{shareId} {
+      allow read: if isAuth() && (
+        resource.data.senderId == request.auth.uid ||
+        resource.data.recipientId == request.auth.uid
+      );
+      allow create: if isAuth() && request.resource.data.senderId == request.auth.uid;
+      allow update: if isAuth() && resource.data.recipientId == request.auth.uid;
+      allow delete: if isAuth() && (
+        resource.data.senderId == request.auth.uid ||
+        resource.data.recipientId == request.auth.uid
+      );
+    }
+
+    // =========================================================================
+    // REPORTS
+    // =========================================================================
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isAuth() && request.resource.data.reporterId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // =========================================================================
+    // ADMIN
+    // =========================================================================
+    match /admin/{docId} {
+      allow read, write: if isAdmin();
     }
   }
 }

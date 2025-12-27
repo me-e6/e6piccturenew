@@ -64,12 +64,12 @@ class AppScaffold extends StatelessWidget {
       // --------------------------------------------------
       // LEFT DRAWER — MAIN MENU
       // --------------------------------------------------
-      drawer: const _LeftDrawer(),
+      //drawer: const _LeftDrawer(),
 
       // --------------------------------------------------
       // RIGHT DRAWER — SETTINGS
       // --------------------------------------------------
-      endDrawer: const SettingsSnapOutScreen(),
+      //  endDrawer: const SettingsSnapOutScreen(),
 
       // --------------------------------------------------
       // BODY (PURE CONTENT ONLY)
