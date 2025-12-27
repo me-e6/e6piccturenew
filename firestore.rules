@@ -1,166 +1,303 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // =========================================================================
+
+    // ========================================================================
     // HELPER FUNCTIONS
-    // =========================================================================
-    
-    function isAuth() {
+    // ========================================================================
+
+    function isAuthenticated() {
       return request.auth != null;
     }
-    
-    function isOwner(uid) {
-      return isAuth() && request.auth.uid == uid;
+
+    function currentUserId() {
+      return request.auth.uid;
     }
-    
+
+    function isOwner(userId) {
+      return isAuthenticated() && currentUserId() == userId;
+    }
+
     function isAdmin() {
-      return isAuth() && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(currentUserId()))
+          .data.isAdmin == true;
     }
 
-    // =========================================================================
+    function documentExists(path) {
+      return exists(/databases/$(database)/documents/$(path));
+    }
+
+    function getUserData(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
+    }
+
+    function isBlockedBy(targetUserId) {
+      return documentExists(
+        'users/' + targetUserId + '/blocked/' + currentUserId()
+      );
+    }
+
+    function isFollowing(targetUserId) {
+      return documentExists(
+        'users/' + currentUserId() + '/following/' + targetUserId
+      );
+    }
+
+    function isServerTimestamp(field) {
+      return request.resource.data[field] == request.time;
+    }
+
+    // ========================================================================
     // USERS COLLECTION
-    // =========================================================================
+    // ========================================================================
     match /users/{userId} {
-      allow read: if true;
+
+      allow read: if isAuthenticated();
+
       allow create: if isOwner(userId);
-      
-      // ✅ FIX: Allow update for owner OR for follow count increments
-      allow update: if isOwner(userId) || 
-        (isAuth() && 
-         request.resource.data.diff(resource.data).affectedKeys()
-           .hasOnly(['followersCount', 'followingCount']));
-      
-      allow delete: if isOwner(userId) || isAdmin();
-      
+
+      allow update: if isOwner(userId) &&
+        !request.resource.data
+          .diff(resource.data)
+          .affectedKeys()
+          .hasAny(['isAdmin', 'role', 'isVerified']);
+
+      allow update: if isAdmin();
+
+      allow delete: if false;
+
+      // --------------------------------------------------------------------
       // FOLLOWERS
+      // --------------------------------------------------------------------
       match /followers/{followerId} {
-        allow read: if isAuth();
-        allow create: if isAuth() && request.auth.uid == followerId;
-        allow delete: if isAuth() && request.auth.uid == followerId;
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated()
+          && currentUserId() == followerId
+          && !isBlockedBy(userId);
+        allow delete: if isAuthenticated()
+          && currentUserId() == followerId;
+        allow update: if false;
       }
-      
+
+      // --------------------------------------------------------------------
       // FOLLOWING
+      // --------------------------------------------------------------------
       match /following/{followingId} {
-        allow read: if isAuth();
+        allow read: if isAuthenticated();
         allow create, delete: if isOwner(userId);
+        allow update: if false;
       }
-      
-      // REPICS
-      match /repics/{postId} {
-        allow read: if isAuth();
-        allow create, delete: if isOwner(userId);
-      }
-      
-      // SAVED
-      match /saved/{postId} {
+
+      // --------------------------------------------------------------------
+      // NOTIFICATIONS
+      // --------------------------------------------------------------------
+      match /notifications/{notificationId} {
         allow read: if isOwner(userId);
-        allow create, delete: if isOwner(userId);
+        allow create: if isAuthenticated()
+          && !isBlockedBy(userId);
+        allow update, delete: if isOwner(userId);
       }
-      
-      // LIKES
-      match /likes/{postId} {
-        allow read: if isAuth();
-        allow create, delete: if isOwner(userId);
+
+      // --------------------------------------------------------------------
+      // USER POST INDEXES
+      // --------------------------------------------------------------------
+      match /liked_posts/{postId} {
+        allow read, write: if isOwner(userId);
       }
-      
-      // QUOTED POSTS
+
+      match /saved_posts/{postId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /repicced_posts/{postId} {
+        allow read: if isAuthenticated();
+        allow write: if isOwner(userId);
+      }
+
+      match /repics/{postId} {
+        allow read: if isAuthenticated();
+        allow write: if isOwner(userId);
+      }
+
       match /quoted_posts/{quoteId} {
-        allow read: if isAuth();
-        allow create, delete: if isOwner(userId);
+        allow read: if isAuthenticated();
+        allow write: if isOwner(userId);
+      }
+
+      // --------------------------------------------------------------------
+      // BLOCKED USERS
+      // --------------------------------------------------------------------
+      match /blocked/{blockedUserId} {
+        allow read: if isOwner(userId);
+        allow create, delete: if isOwner(userId)
+          && blockedUserId != userId;
+        allow update: if false;
+      }
+
+      // --------------------------------------------------------------------
+      // MUTED USERS
+      // --------------------------------------------------------------------
+      match /muted/{mutedUserId} {
+        allow read: if isOwner(userId);
+        allow create, delete: if isOwner(userId)
+          && mutedUserId != userId;
+        allow update: if false;
       }
     }
 
-    // =========================================================================
+    // ========================================================================
     // POSTS COLLECTION
-    // =========================================================================
+    // ========================================================================
     match /posts/{postId} {
-      allow read: if isAuth();
-      allow create: if isAuth() && request.resource.data.authorId == request.auth.uid;
-      
-      // Author can update OR counters can be updated
-      allow update: if isAuth() && (
-        resource.data.authorId == request.auth.uid ||
-        request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['likeCount', 'replyCount', 'repicCount', 'saveCount', 'quoteReplyCount'])
+
+      allow read: if isAuthenticated();
+
+      allow create: if isAuthenticated() && (
+        request.resource.data.authorId == currentUserId() ||
+        request.resource.data.repicAuthorId == currentUserId()
       );
-      
-      allow delete: if isAuth() && (resource.data.authorId == request.auth.uid || isAdmin());
-      
+
+      allow update: if isAuthenticated() && (
+        resource.data.authorId == currentUserId() ||
+        resource.data.repicAuthorId == currentUserId() ||
+        request.resource.data
+          .diff(resource.data)
+          .affectedKeys()
+          .hasOnly([
+            'likeCount',
+            'saveCount',
+            'repicCount',
+            'replyCount',
+            'quoteReplyCount'
+          ])
+      );
+
+      allow delete: if isAuthenticated() && (
+        resource.data.authorId == currentUserId() ||
+        resource.data.repicAuthorId == currentUserId()
+      );
+
+      // --------------------------------------------------------------------
       // LIKES
-      match /likes/{likeId} {
-        allow read: if isAuth();
-        allow create, delete: if isAuth() && request.auth.uid == likeId;
+      // --------------------------------------------------------------------
+      match /likes/{likeUserId} {
+        allow read: if isAuthenticated();
+        allow create, delete: if isAuthenticated()
+          && currentUserId() == likeUserId;
+        allow update: if false;
       }
-      
+
+      // --------------------------------------------------------------------
       // SAVES
-      match /saves/{saveId} {
-        allow read: if isAuth();
-        allow create, delete: if isAuth() && request.auth.uid == saveId;
+      // --------------------------------------------------------------------
+      match /saves/{saveUserId} {
+        allow read: if isAuthenticated();
+        allow create, delete: if isAuthenticated()
+          && currentUserId() == saveUserId;
+        allow update: if false;
       }
-      
+
+      // --------------------------------------------------------------------
       // REPICS
-      match /repics/{repicId} {
-        allow read: if isAuth();
-        allow create, delete: if isAuth() && request.auth.uid == repicId;
+      // --------------------------------------------------------------------
+      match /repics/{repicUserId} {
+        allow read: if isAuthenticated();
+        allow create, delete: if isAuthenticated()
+          && currentUserId() == repicUserId;
+        allow update: if false;
       }
-      
-      // REPLIES
-      match /replies/{replyId} {
-        allow read: if isAuth();
-        allow create: if isAuth() && request.resource.data.authorId == request.auth.uid;
-        allow update, delete: if isAuth() && resource.data.authorId == request.auth.uid;
-      }
-      
+
+      // --------------------------------------------------------------------
       // QUOTES
+      // --------------------------------------------------------------------
       match /quotes/{quoteId} {
-        allow read: if isAuth();
-        allow create, delete: if isAuth();
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated()
+          && request.resource.data.authorId == currentUserId();
+        allow update, delete: if isAuthenticated()
+          && resource.data.authorId == currentUserId();
+      }
+
+      // --------------------------------------------------------------------
+      // REPLIES
+      // --------------------------------------------------------------------
+      match /replies/{replyId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated()
+          && request.resource.data.authorId == currentUserId();
+        allow update, delete: if isAuthenticated()
+          && resource.data.authorId == currentUserId();
       }
     }
 
-    // =========================================================================
-    // NOTIFICATIONS
-    // =========================================================================
-    match /notifications/{notificationId} {
-      allow read: if isAuth() && resource.data.recipientId == request.auth.uid;
-      allow create: if isAuth() && request.resource.data.actorId == request.auth.uid;
-      allow update: if isAuth() && resource.data.recipientId == request.auth.uid;
-      allow delete: if isAuth() && resource.data.recipientId == request.auth.uid;
-    }
+    // ========================================================================
+    // VERIFICATION REQUESTS
+    // ========================================================================
+    match /verification_requests/{requestId} {
 
-    // =========================================================================
-    // SHARES
-    // =========================================================================
-    match /shares/{shareId} {
-      allow read: if isAuth() && (
-        resource.data.senderId == request.auth.uid ||
-        resource.data.recipientId == request.auth.uid
-      );
-      allow create: if isAuth() && request.resource.data.senderId == request.auth.uid;
-      allow update: if isAuth() && resource.data.recipientId == request.auth.uid;
-      allow delete: if isAuth() && (
-        resource.data.senderId == request.auth.uid ||
-        resource.data.recipientId == request.auth.uid
-      );
-    }
-
-    // =========================================================================
-    // REPORTS
-    // =========================================================================
-    match /reports/{reportId} {
       allow read: if isAdmin();
-      allow create: if isAuth() && request.resource.data.reporterId == request.auth.uid;
+
+      allow read: if isAuthenticated()
+        && (
+          resource.data.userId == currentUserId() ||
+          requestId == currentUserId()
+        );
+
+      allow create: if isAuthenticated()
+        && (
+          request.resource.data.userId == currentUserId() ||
+          requestId == currentUserId()
+        )
+        && request.resource.data.status == 'pending';
+
+      allow update: if isAdmin();
+
+      allow update: if isAuthenticated()
+        && requestId == currentUserId()
+        && resource.data.status == 'pending';
+
+      allow delete: if isAdmin();
+    }
+
+    // ========================================================================
+    // REPORTS
+    // ========================================================================
+    match /reports/{reportId} {
+
+      allow read: if isAdmin();
+
+      allow read: if isAuthenticated()
+        && resource.data.reporterId == currentUserId();
+
+      allow create: if isAuthenticated()
+        && request.resource.data.reporterId == currentUserId();
+
       allow update, delete: if isAdmin();
     }
 
-    // =========================================================================
-    // ADMIN
-    // =========================================================================
-    match /admin/{docId} {
-      allow read, write: if isAdmin();
+    // ========================================================================
+    // AUDIT LOGS
+    // ========================================================================
+    match /audit_logs/{logId} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // ========================================================================
+    // ALBUM SESSIONS
+    // ========================================================================
+    match /album_sessions/{sessionId} {
+      allow read, write: if isAuthenticated()
+        && sessionId == currentUserId();
+    }
+
+    // ========================================================================
+    // APP CONFIG
+    // ========================================================================
+    match /config/{configId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
   }
 }

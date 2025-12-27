@@ -9,6 +9,15 @@ import '../post/create/post_model.dart';
 import '../post/create/post_delete_service.dart';
 import '../feed/day_album_viewer_screen.dart';
 
+/// ============================================================================
+/// PICS GALLERY SCREEN
+/// ============================================================================
+/// Shows all user's posts in a grid view with:
+/// - Filter by: All, Photos Only, Quotes Only
+/// - Sort by: Newest, Oldest
+/// - Multi-select mode for bulk delete
+/// - Tap to view full post
+/// ============================================================================
 class PicsGalleryScreen extends StatefulWidget {
   const PicsGalleryScreen({super.key});
 
@@ -269,6 +278,7 @@ class _PicsGalleryScreenState extends State<PicsGalleryScreen> {
       title: const Text('My Pics'),
       centerTitle: true,
       actions: [
+        // Filter button
         PopupMenuButton<_GalleryFilter>(
           icon: const Icon(Icons.filter_list),
           onSelected: (filter) {
@@ -278,13 +288,10 @@ class _PicsGalleryScreenState extends State<PicsGalleryScreen> {
           itemBuilder: (context) => [
             _buildFilterItem(_GalleryFilter.all, 'All', Icons.photo_library),
             _buildFilterItem(_GalleryFilter.photos, 'Photos Only', Icons.photo),
-            _buildFilterItem(
-              _GalleryFilter.quotes,
-              'Quotes Only',
-              Icons.format_quote,
-            ),
+            _buildFilterItem(_GalleryFilter.quotes, 'Quotes Only', Icons.format_quote),
           ],
         ),
+        // Sort button
         PopupMenuButton<_GallerySortOrder>(
           icon: const Icon(Icons.sort),
           onSelected: (order) {
@@ -292,15 +299,51 @@ class _PicsGalleryScreenState extends State<PicsGalleryScreen> {
             _loadPosts();
           },
           itemBuilder: (context) => [
-            CheckedPopupMenuItem(
+            PopupMenuItem(
               value: _GallerySortOrder.newest,
-              checked: _sortOrder == _GallerySortOrder.newest,
-              child: const Text('Newest First'),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.arrow_downward,
+                    size: 20,
+                    color: _sortOrder == _GallerySortOrder.newest
+                        ? scheme.primary
+                        : null,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Newest First',
+                    style: TextStyle(
+                      color: _sortOrder == _GallerySortOrder.newest
+                          ? scheme.primary
+                          : null,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            CheckedPopupMenuItem(
+            PopupMenuItem(
               value: _GallerySortOrder.oldest,
-              checked: _sortOrder == _GallerySortOrder.oldest,
-              child: const Text('Oldest First'),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.arrow_upward,
+                    size: 20,
+                    color: _sortOrder == _GallerySortOrder.oldest
+                        ? scheme.primary
+                        : null,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Oldest First',
+                    style: TextStyle(
+                      color: _sortOrder == _GallerySortOrder.oldest
+                          ? scheme.primary
+                          : null,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -313,28 +356,19 @@ class _PicsGalleryScreenState extends State<PicsGalleryScreen> {
     String label,
     IconData icon,
   ) {
-    final isSelected = _currentFilter == filter;
     final scheme = Theme.of(context).colorScheme;
+    final isSelected = _currentFilter == filter;
 
     return PopupMenuItem(
       value: filter,
       child: Row(
         children: [
-          Icon(
-            icon,
-            size: 20,
-            color: isSelected ? scheme.primary : scheme.onSurfaceVariant,
-          ),
+          Icon(icon, size: 20, color: isSelected ? scheme.primary : null),
           const SizedBox(width: 12),
           Text(
             label,
-            style: TextStyle(
-              color: isSelected ? scheme.primary : scheme.onSurface,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            ),
+            style: TextStyle(color: isSelected ? scheme.primary : null),
           ),
-          const Spacer(),
-          if (isSelected) Icon(Icons.check, size: 18, color: scheme.primary),
         ],
       ),
     );
@@ -344,27 +378,30 @@ class _PicsGalleryScreenState extends State<PicsGalleryScreen> {
     final allSelected = _selectedPostIds.length == _posts.length;
 
     return AppBar(
-      backgroundColor: scheme.primaryContainer,
       leading: IconButton(
         icon: const Icon(Icons.close),
         onPressed: _exitSelectionMode,
       ),
       title: Text('${_selectedPostIds.length} selected'),
+      centerTitle: true,
       actions: [
+        // Select/Deselect all
         TextButton(
           onPressed: allSelected ? _deselectAll : _selectAll,
           child: Text(allSelected ? 'Deselect All' : 'Select All'),
         ),
+        // More options
         PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert),
           enabled: _selectedPostIds.isNotEmpty,
           onSelected: (value) {
-            if (value == 'delete')
+            if (value == 'delete') {
               _bulkDelete();
-            else
+            } else {
               _showUnderConstruction(
                 value == 'archive' ? 'Archive' : 'Make Private',
               );
+            }
           },
           itemBuilder: (context) => [
             PopupMenuItem(
@@ -405,7 +442,9 @@ class _PicsGalleryScreenState extends State<PicsGalleryScreen> {
   }
 
   Widget _buildBody(ColorScheme scheme) {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     if (_error != null) {
       return Center(
@@ -504,9 +543,17 @@ class _PicsGalleryScreenState extends State<PicsGalleryScreen> {
   }
 }
 
+// ============================================================================
+// ENUMS
+// ============================================================================
+
 enum _GalleryFilter { all, photos, quotes }
 
 enum _GallerySortOrder { newest, oldest }
+
+// ============================================================================
+// GALLERY ITEM WIDGET
+// ============================================================================
 
 class _GalleryItem extends StatelessWidget {
   final PostModel post;
@@ -540,6 +587,7 @@ class _GalleryItem extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
+          // Image
           if (displayUrl != null)
             Image.network(
               displayUrl,
@@ -562,6 +610,7 @@ class _GalleryItem extends StatelessWidget {
               ),
             ),
 
+          // Multiple images indicator
           if (hasMultiple)
             Positioned(
               top: 6,
@@ -580,6 +629,7 @@ class _GalleryItem extends StatelessWidget {
               ),
             ),
 
+          // Quote indicator
           if (post.isQuote)
             Positioned(
               top: 6,
@@ -598,6 +648,7 @@ class _GalleryItem extends StatelessWidget {
               ),
             ),
 
+          // Selection overlay
           if (isSelectionMode)
             Container(
               color: isSelected
@@ -605,6 +656,7 @@ class _GalleryItem extends StatelessWidget {
                   : Colors.black.withValues(alpha: 0.1),
             ),
 
+          // Selection checkbox
           if (isSelectionMode)
             Positioned(
               top: 6,

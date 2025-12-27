@@ -418,8 +418,7 @@ class HomeScreenV3 extends StatelessWidget {
               // Suggested Users
               const SliverToBoxAdapter(child: _SuggestedUsersSection()),
 
-              // Extra padding for floating nav bar
-              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+              const SliverToBoxAdapter(child: SizedBox(height: 32)),
             ],
           ),
         ),
@@ -445,6 +444,42 @@ class HomeScreenV3 extends StatelessWidget {
         padding: const EdgeInsets.all(HomeScreenConstants.paddingLG),
         onPressed: () => _showProfileSheet(context),
       ),
+
+      /*  leading: GestureDetector(
+        onTap: () => _showProfileSheet(context),
+        child: Padding(
+          padding: const EdgeInsets.all(HomeScreenConstants.paddingLG),
+          child: uid != null
+              ? ChangeNotifierProvider(
+                  create: (_) => UserAvatarController(uid),
+                  child: Consumer<UserAvatarController>(
+                    builder: (_, controller, __) => CircleAvatar(
+                      radius: HomeScreenConstants.avatarRadius,
+                      backgroundColor: scheme.surfaceContainerHighest,
+                      backgroundImage: controller.avatarUrl != null
+                          ? NetworkImage(controller.avatarUrl!)
+                          : null,
+                      child: controller.avatarUrl == null
+                          ? Icon(
+                              Icons.person,
+                              size: HomeScreenConstants.avatarRadius,
+                              color: scheme.onSurfaceVariant,
+                            )
+                          : null,
+                    ),
+                  ),
+                )
+              : CircleAvatar(
+                  radius: HomeScreenConstants.avatarRadius,
+                  backgroundColor: scheme.surfaceContainerHighest,
+                  child: Icon(
+                    Icons.person,
+                    size: HomeScreenConstants.avatarRadius,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+        ),
+      ), */
 
       // Title
       title: Text(
@@ -2176,8 +2211,8 @@ class _ProfileBottomSheet extends StatelessWidget {
     final user = FirebaseAuth.instance.currentUser;
 
     return DraggableScrollableSheet(
-      initialChildSize: 0.65,
-      minChildSize: 0.4,
+      initialChildSize: 0.6,
+      minChildSize: 0.35,
       maxChildSize: 0.9,
       expand: false,
       builder: (context, scrollController) {
@@ -2209,21 +2244,25 @@ class _ProfileBottomSheet extends StatelessWidget {
               final isVerified = userData['isVerified'] == true;
 
               final followersCount = userData['followersCount'] ?? 0;
-              final followingCount = userData['followingCount'] ?? 0;
               final mutualsCount = userData['mutualsCount'] ?? 0;
 
               return ListView(
                 controller: scrollController,
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                padding: const EdgeInsets.fromLTRB(
+                  HomeScreenConstants.paddingXL,
+                  12,
+                  HomeScreenConstants.paddingXL,
+                  16,
+                ),
                 children: [
-                  // ═══════════════════════════════════════════════════════════
+                  // ─────────────────────────────
                   // DRAG HANDLE
-                  // ═══════════════════════════════════════════════════════════
+                  // ─────────────────────────────
                   Center(
                     child: Container(
                       width: 36,
                       height: 4,
-                      margin: const EdgeInsets.only(bottom: 16),
+                      margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
                         color: scheme.outlineVariant,
                         borderRadius: BorderRadius.circular(2),
@@ -2231,10 +2270,89 @@ class _ProfileBottomSheet extends StatelessWidget {
                     ),
                   ),
 
-                  // ═══════════════════════════════════════════════════════════
-                  // PROFILE CARD (Gradient, Tappable)
-                  // ═══════════════════════════════════════════════════════════
-                  GestureDetector(
+                  // ─────────────────────────────
+                  // PROFILE HEADER (COMPACT)
+                  // ─────────────────────────────
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 32,
+                        backgroundColor: scheme.surfaceContainerHighest,
+                        backgroundImage: avatarUrl != null
+                            ? NetworkImage(avatarUrl)
+                            : null,
+                        child: avatarUrl == null
+                            ? Icon(
+                                Icons.person,
+                                size: 28,
+                                color: scheme.onSurfaceVariant,
+                              )
+                            : null,
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    displayName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: scheme.onSurface,
+                                    ),
+                                  ),
+                                ),
+                                if (isVerified) ...[
+                                  const SizedBox(width: 6),
+                                  const VerifiedBadge(size: 16),
+                                ],
+                              ],
+                            ),
+                            if (handle != null)
+                              Text(
+                                '@$handle',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                _InlineStat(
+                                  label: 'Followers',
+                                  value: followersCount,
+                                  scheme: scheme,
+                                ),
+                                const SizedBox(width: 16),
+                                _InlineStat(
+                                  label: 'Mutuals',
+                                  value: mutualsCount,
+                                  scheme: scheme,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+                  Divider(color: scheme.outlineVariant.withOpacity(0.5)),
+
+                  // ─────────────────────────────
+                  // MENU
+                  // ─────────────────────────────
+                  _SheetMenuItem(
+                    icon: Icons.person_outline,
+                    label: 'View Profile',
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.push(
@@ -2244,329 +2362,77 @@ class _ProfileBottomSheet extends StatelessWidget {
                         ),
                       );
                     },
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            scheme.primaryContainer.withOpacity(0.4),
-                            scheme.secondaryContainer.withOpacity(0.4),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: scheme.outlineVariant.withOpacity(0.3),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          // Avatar
-                          CircleAvatar(
-                            radius: 32,
-                            backgroundColor: scheme.surfaceContainerHighest,
-                            backgroundImage: avatarUrl != null
-                                ? NetworkImage(avatarUrl)
-                                : null,
-                            child: avatarUrl == null
-                                ? Icon(
-                                    Icons.person,
-                                    size: 32,
-                                    color: scheme.onSurfaceVariant,
-                                  )
-                                : null,
-                          ),
-
-                          const SizedBox(width: 16),
-
-                          // Info
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Name + Verified
-                                Row(
-                                  children: [
-                                    Flexible(
-                                      child: Text(
-                                        displayName,
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: scheme.onSurface,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    if (isVerified) ...[
-                                      const SizedBox(width: 6),
-                                      const VerifiedBadge(size: 18),
-                                    ],
-                                  ],
-                                ),
-
-                                // Handle
-                                if (handle != null)
-                                  Text(
-                                    '@$handle',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: scheme.onSurfaceVariant,
-                                    ),
-                                  ),
-
-                                const SizedBox(height: 10),
-
-                                // Stats Row
-                                Row(
-                                  children: [
-                                    _buildStatColumn(
-                                      followersCount,
-                                      'Followers',
-                                      scheme,
-                                    ),
-                                    const SizedBox(width: 16),
-                                    _buildStatColumn(
-                                      followingCount,
-                                      'Following',
-                                      scheme,
-                                    ),
-                                    const SizedBox(width: 16),
-                                    _buildStatColumn(
-                                      mutualsCount,
-                                      'Mutuals',
-                                      scheme,
-                                      highlight: true,
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          // Chevron
-                          Icon(
-                            Icons.chevron_right,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
 
-                  const SizedBox(height: 20),
-
-                  // ═══════════════════════════════════════════════════════════
-                  // QUICK ACTIONS ROW
-                  // ═══════════════════════════════════════════════════════════
-                  Row(
-                    children: [
-                      _buildQuickAction(
-                        context,
-                        Icons.edit_outlined,
-                        'Edit',
-                        () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ProfileEntry(userId: user!.uid),
-                            ),
-                          );
-                        },
-                        scheme,
-                      ),
-                      const SizedBox(width: 12),
-                      _buildQuickAction(
-                        context,
-                        Icons.bookmark_outline,
-                        'Saved',
-                        () {
-                          Navigator.pop(context);
-                          // Navigate to saved posts
-                        },
-                        scheme,
-                      ),
-                      const SizedBox(width: 12),
-                      _buildQuickAction(
-                        context,
-                        Icons.share_outlined,
-                        'Share',
-                        () {
-                          // Share profile
-                        },
-                        scheme,
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // ═══════════════════════════════════════════════════════════
-                  // ACCOUNT SECTION
-                  // ═══════════════════════════════════════════════════════════
-                  _buildSectionHeader('ACCOUNT', scheme),
-                  const SizedBox(height: 8),
-                  _buildMenuGroup(scheme, [
-                    _buildMenuTile(
-                      Icons.person_outline,
-                      'View Profile',
-                      scheme,
-                      () {
+                  if (isAdmin)
+                    _SheetMenuItem(
+                      icon: Icons.admin_panel_settings,
+                      label: 'Admin Dashboard',
+                      iconColor: Colors.purple,
+                      onTap: () {
                         Navigator.pop(context);
-                        Navigator.push(
+                        Navigator.pushNamed(context, '/admin');
+                      },
+                    ),
+
+                  if (!isVerified)
+                    _SheetMenuItem(
+                      icon: Icons.verified_outlined,
+                      label: 'Request Verification',
+                      iconColor: Colors.blue,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showVerificationDialog(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => ProfileEntry(userId: user!.uid),
-                          ),
+                          user!.uid,
+                          displayName,
                         );
                       },
                     ),
-                    if (!isVerified)
-                      _buildMenuTile(
-                        Icons.verified_outlined,
-                        'Request Verification',
-                        scheme,
-                        () {
-                          Navigator.pop(context);
-                          _showVerificationDialog(
-                            context,
-                            user!.uid,
-                            displayName,
-                          );
-                        },
-                        iconColor: Colors.blue,
-                      ),
-                    if (isAdmin)
-                      _buildMenuTile(
-                        Icons.admin_panel_settings,
-                        'Admin Dashboard',
-                        scheme,
-                        () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(context, '/admin');
-                        },
-                        iconColor: Colors.purple,
-                      ),
-                  ]),
 
-                  const SizedBox(height: 16),
-
-                  // ═══════════════════════════════════════════════════════════
-                  // PRIVACY SECTION
-                  // ═══════════════════════════════════════════════════════════
-                  _buildSectionHeader('PRIVACY', scheme),
-                  const SizedBox(height: 8),
-                  _buildMenuGroup(scheme, [
-                    _buildMenuTile(
-                      Icons.block_outlined,
-                      'Blocked Accounts',
-                      scheme,
-                      () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, '/blocked');
-                      },
-                    ),
-                    _buildMenuTile(
-                      Icons.volume_off_outlined,
-                      'Muted Accounts',
-                      scheme,
-                      () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, '/muted');
-                      },
-                    ),
-                  ]),
-
-                  const SizedBox(height: 16),
-
-                  // ═══════════════════════════════════════════════════════════
-                  // PREFERENCES SECTION
-                  // ═══════════════════════════════════════════════════════════
-                  _buildSectionHeader('PREFERENCES', scheme),
-                  const SizedBox(height: 8),
-                  _buildMenuGroup(scheme, [
-                    Consumer<ThemeController>(
-                      builder: (_, controller, __) => _buildMenuTile(
-                        controller.isDarkMode
-                            ? Icons.light_mode_outlined
-                            : Icons.dark_mode_outlined,
-                        controller.isDarkMode ? 'Light Mode' : 'Dark Mode',
-                        scheme,
-                        () => controller.toggleTheme(),
-                        trailing: Switch.adaptive(
-                          value: controller.isDarkMode,
-                          onChanged: (_) => controller.toggleTheme(),
-                        ),
-                      ),
-                    ),
-                  ]),
-
-                  const SizedBox(height: 16),
-
-                  // ═══════════════════════════════════════════════════════════
-                  // SUPPORT SECTION
-                  // ═══════════════════════════════════════════════════════════
-                  _buildSectionHeader('SUPPORT', scheme),
-                  const SizedBox(height: 8),
-                  _buildMenuGroup(scheme, [
-                    _buildMenuTile(
-                      Icons.help_outline,
-                      'Help & Support',
-                      scheme,
-                      () {
-                        Navigator.pop(context);
-                      },
-                    ),
-                    _buildMenuTile(
-                      Icons.info_outline,
-                      'About Piccture',
-                      scheme,
-                      () {
-                        Navigator.pop(context);
-                        _showAboutDialog(context);
-                      },
-                    ),
-                  ]),
-
-                  const SizedBox(height: 24),
-
-                  // ═══════════════════════════════════════════════════════════
-                  // LOGOUT BUTTON
-                  // ═══════════════════════════════════════════════════════════
-                  Container(
-                    decoration: BoxDecoration(
-                      color: scheme.error.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: scheme.error.withOpacity(0.3)),
-                    ),
-                    child: InkWell(
-                      onTap: () => _handleLogout(context),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.logout, size: 20, color: scheme.error),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Log Out',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: scheme.error,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                  _SheetMenuItem(
+                    icon: Icons.block_outlined,
+                    label: 'Blocked Accounts',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/blocked');
+                    },
                   ),
 
-                  SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+                  _SheetMenuItem(
+                    icon: Icons.volume_off_outlined,
+                    label: 'Muted Accounts',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/muted');
+                    },
+                  ),
+
+                  Divider(color: scheme.outlineVariant.withOpacity(0.5)),
+
+                  _SheetMenuItem(
+                    icon: Icons.dark_mode_outlined,
+                    label: 'Dark Mode',
+                    trailing: Consumer<ThemeController>(
+                      builder: (_, controller, __) => Switch(
+                        value: controller.isDarkMode,
+                        onChanged: (_) => controller.toggleTheme(),
+                      ),
+                    ),
+                    onTap: () => context.read<ThemeController>().toggleTheme(),
+                  ),
+
+                  Divider(color: scheme.outlineVariant.withOpacity(0.5)),
+
+                  _SheetMenuItem(
+                    icon: Icons.logout,
+                    label: 'Log Out',
+                    iconColor: scheme.error,
+                    textColor: scheme.error,
+                    onTap: () => _handleLogout(context),
+                  ),
+
+                  SizedBox(height: MediaQuery.of(context).padding.bottom + 12),
                 ],
               );
             },
@@ -2576,244 +2442,32 @@ class _ProfileBottomSheet extends StatelessWidget {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // HELPER: Stat Column
-  // ─────────────────────────────────────────────────────────────────────────
-  Widget _buildStatColumn(
-    int value,
-    String label,
-    ColorScheme scheme, {
-    bool highlight = false,
-  }) {
-    String formatted;
-    if (value >= 1000000) {
-      formatted = '${(value / 1000000).toStringAsFixed(1)}M';
-    } else if (value >= 1000) {
-      formatted = '${(value / 1000).toStringAsFixed(1)}K';
-    } else {
-      formatted = value.toString();
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          formatted,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: highlight
-                ? HomeScreenConstants.mutualBadgeColor
-                : scheme.onSurface,
-          ),
-        ),
-        Text(
-          label,
-          style: TextStyle(fontSize: 10, color: scheme.onSurfaceVariant),
-        ),
-      ],
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // HELPER: Quick Action Button
-  // ─────────────────────────────────────────────────────────────────────────
-  Widget _buildQuickAction(
-    BuildContext context,
-    IconData icon,
-    String label,
-    VoidCallback onTap,
-    ColorScheme scheme,
-  ) {
-    return Expanded(
-      child: Material(
-        color: scheme.surfaceContainerHighest.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Column(
-              children: [
-                Icon(icon, size: 24, color: scheme.onSurface),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: scheme.onSurface,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // HELPER: Section Header
-  // ─────────────────────────────────────────────────────────────────────────
-  Widget _buildSectionHeader(String title, ColorScheme scheme) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 1.2,
-          color: scheme.onSurfaceVariant,
-        ),
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // HELPER: Menu Group Container
-  // ─────────────────────────────────────────────────────────────────────────
-  Widget _buildMenuGroup(ColorScheme scheme, List<Widget> children) {
-    final filteredChildren = children.where((c) => c is! SizedBox).toList();
-
-    return Container(
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: filteredChildren.asMap().entries.map((entry) {
-          final isLast = entry.key == filteredChildren.length - 1;
-          return Column(
-            children: [
-              entry.value,
-              if (!isLast)
-                Divider(
-                  height: 1,
-                  indent: 52,
-                  color: scheme.outlineVariant.withOpacity(0.3),
-                ),
-            ],
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // HELPER: Menu Tile
-  // ─────────────────────────────────────────────────────────────────────────
-  Widget _buildMenuTile(
-    IconData icon,
-    String label,
-    ColorScheme scheme,
-    VoidCallback onTap, {
-    Color? iconColor,
-    Widget? trailing,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-        child: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: (iconColor ?? scheme.primary).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, size: 18, color: iconColor ?? scheme.primary),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: scheme.onSurface,
-                ),
-              ),
-            ),
-            trailing ??
-                Icon(
-                  Icons.chevron_right,
-                  size: 20,
-                  color: scheme.onSurfaceVariant,
-                ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────
   // VERIFICATION DIALOG
-  // ─────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────
   void _showVerificationDialog(
     BuildContext context,
     String uid,
     String displayName,
   ) {
-    final scheme = Theme.of(context).colorScheme;
-
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.verified, color: Colors.blue.shade400),
-            const SizedBox(width: 8),
-            const Text('Request Verification'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Gazetteer badges are for:',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: scheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text('• Photographers & content creators'),
-            const Text('• Journalists & reporters'),
-            const Text('• Notable public figures'),
-            const SizedBox(height: 16),
-            Text(
-              'Requirements:',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: scheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text('• 30+ days account age'),
-            const Text('• 10+ original posts'),
-            const Text('• 100+ followers'),
-          ],
+        title: const Text('Request Verification'),
+        content: const Text(
+          'Verification is granted to notable creators and public figures.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Cancel'),
           ),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.send, size: 18),
-            label: const Text('Submit'),
+          ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
               await _submitVerificationRequest(context, uid, displayName);
             },
+            child: const Text('Submit'),
           ),
         ],
       ),
@@ -2835,15 +2489,8 @@ class _ProfileBottomSheet extends StatelessWidget {
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8),
-                Text('Verification request submitted!'),
-              ],
-            ),
-            backgroundColor: Colors.green,
+          const SnackBar(
+            content: Text('Verification request submitted'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -2855,28 +2502,6 @@ class _ProfileBottomSheet extends StatelessWidget {
         );
       }
     }
-  }
-
-  void _showAboutDialog(BuildContext context) {
-    showAboutDialog(
-      context: context,
-      applicationName: 'Piccture',
-      applicationVersion: '1.0.0',
-      applicationIcon: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: HomeScreenConstants.brandAccent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Icon(Icons.camera_alt, color: Colors.white),
-      ),
-      children: const [
-        Text('Share your world through pictures.'),
-        SizedBox(height: 8),
-        Text('© 2024 Piccture'),
-      ],
-    );
   }
 }
 
