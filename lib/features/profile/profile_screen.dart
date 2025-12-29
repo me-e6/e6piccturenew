@@ -45,7 +45,8 @@ class _ProfileScreenBody extends StatelessWidget {
         user.videoDpUrl != null && user.videoDpUrl!.isNotEmpty;
 
     // ✅ Check if user is a Gazetteer
-    final bool isGazetteer = user.type == 'gazetteer' || user.role == 'gazetteer';
+    final bool isGazetteer =
+        user.type == 'gazetteer' || user.role == 'gazetteer';
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile'), centerTitle: true),

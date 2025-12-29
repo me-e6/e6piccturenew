@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 import '../../verification/gazetteer_widgets.dart';
 
 /// ============================================================================
-/// PROFILE IDENTITY BANNER - v3 (With Stamp-Style Gazetteer Badge)
+/// PROFILE IDENTITY BANNER - v2 (With Gazetteer Badge)
 /// ============================================================================
 /// Features:
 /// - ✅ Twitter-style banner + avatar overlap
 /// - ✅ Verified badge (blue checkmark)
-/// - ✅ Gazetteer STAMP badge (ink stamp style) - NEW!
+/// - ✅ Gazetteer badge (stamp icon) - NEW!
 /// - ✅ Video DP support
 /// - ✅ Edit profile actions
 /// - ✅ Follow button for non-owners
@@ -19,7 +18,7 @@ class ProfileIdentityBanner extends StatelessWidget {
   final String? avatarUrl;
   final String? bannerUrl;
   final bool isVerified;
-  final bool isGazetteer;
+  final bool isGazetteer; // ✅ NEW
   final bool hasVideoDp;
   final String? bio;
 
@@ -52,7 +51,7 @@ class ProfileIdentityBanner extends StatelessWidget {
     this.avatarUrl,
     this.bannerUrl,
     required this.isVerified,
-    this.isGazetteer = false,
+    this.isGazetteer = false, // ✅ NEW
     required this.hasVideoDp,
     this.bio,
     required this.isOwner,
@@ -369,10 +368,16 @@ class ProfileIdentityBanner extends StatelessWidget {
                     ),
                   ),
 
-                  // ✅ Verified Badge (Blue Checkmark)
+                  // ✅ Verified Badge
                   if (isVerified) ...[
+                    const SizedBox(width: 4),
+                    const Icon(Icons.verified, size: 18, color: Colors.blue),
+                  ],
+
+                  // ✅ NEW: Gazetteer Badge
+                  if (isGazetteer) ...[
                     const SizedBox(width: 6),
-                    Icon(Icons.verified, size: 20, color: Colors.blue.shade500),
+                    _GazetteerBadge(),
                   ],
                 ],
               ),
@@ -383,14 +388,8 @@ class ProfileIdentityBanner extends StatelessWidget {
               if (handle != null && handle!.isNotEmpty)
                 Text(
                   '@$handle',
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
-
-              // ✅ GAZETTEER STAMP BADGE (Below handle, prominent)
-              if (isGazetteer || isVerified) ...[
-                const SizedBox(height: 10),
-                const GazetteerStampBadge(),
-              ],
 
               // Bio
               if (bio != null && bio!.isNotEmpty) ...[
@@ -411,229 +410,40 @@ class ProfileIdentityBanner extends StatelessWidget {
 }
 
 /// ============================================================================
-/// GAZETTEER STAMP BADGE - BLUE INK STAMP STYLE
+/// GAZETTEER BADGE WIDGET
 /// ============================================================================
-/// Looks like an official rubber stamp with blue ink effect
-/// Features:
-/// - Double border (stamp effect)
-/// - Slightly rotated for authenticity
-/// - "GAZETTEER" text with stars
-/// - Distressed/ink bleed effect
+/// Blue stamp icon with "Gazetteer" label
+/// Shows for verified content creators
 /// ============================================================================
-class GazetteerStampBadge extends StatelessWidget {
-  final double scale;
-
-  const GazetteerStampBadge({super.key, this.scale = 1.0});
-
+class _GazetteerBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    // Stamp blue color (like ink)
-    const stampColor = Color(0xFF1565C0); // Deep blue ink
-
-    return Transform.rotate(
-      angle: -0.05, // Slight tilt like a real stamp
-      child: Transform.scale(
-        scale: scale,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: stampColor, width: 2.5),
-            boxShadow: [
-              // Ink bleed effect
-              BoxShadow(
-                color: stampColor.withValues(alpha: 0.15),
-                blurRadius: 2,
-                spreadRadius: 1,
-              ),
-            ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.blue.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.withValues(alpha: 0.3), width: 1),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.workspace_premium, // Stamp/badge icon
+            size: 12,
+            color: Colors.blue,
           ),
-          child: IntrinsicWidth(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Top decorative line
-                Container(
-                  height: 1.5,
-                  color: stampColor,
-                  margin: const EdgeInsets.only(bottom: 4),
-                ),
-
-                // Main text with stars
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Left star
-                    Icon(Icons.star, size: 10, color: stampColor),
-                    const SizedBox(width: 6),
-
-                    // GAZETTEER text
-                    Text(
-                      'GAZETTEER',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
-                        color: stampColor,
-                        letterSpacing: 2.0,
-                        fontFamily: 'monospace',
-                      ),
-                    ),
-
-                    const SizedBox(width: 6),
-                    // Right star
-                    Icon(Icons.star, size: 10, color: stampColor),
-                  ],
-                ),
-
-                // "VERIFIED" subtitle
-                Text(
-                  'VERIFIED',
-                  style: TextStyle(
-                    fontSize: 7,
-                    fontWeight: FontWeight.w700,
-                    color: stampColor,
-                    letterSpacing: 3.0,
-                  ),
-                ),
-
-                // Bottom decorative line
-                Container(
-                  height: 1.5,
-                  color: stampColor,
-                  margin: const EdgeInsets.only(top: 4),
-                ),
-              ],
+          SizedBox(width: 3),
+          Text(
+            'Gazetteer',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Colors.blue,
             ),
           ),
-        ),
+        ],
       ),
     );
-  }
-}
-
-/// ============================================================================
-/// CIRCULAR GAZETTEER STAMP - Alternative Style
-/// ============================================================================
-/// Round stamp like an official seal
-/// ============================================================================
-class GazetteerCircularStamp extends StatelessWidget {
-  final double size;
-
-  const GazetteerCircularStamp({super.key, this.size = 60});
-
-  @override
-  Widget build(BuildContext context) {
-    const stampColor = Color(0xFF1565C0);
-
-    return Transform.rotate(
-      angle: -0.1,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.transparent,
-          border: Border.all(color: stampColor, width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: stampColor.withValues(alpha: 0.2),
-              blurRadius: 3,
-              spreadRadius: 1,
-            ),
-          ],
-        ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Inner circle
-            Container(
-              width: size - 10,
-              height: size - 10,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: stampColor, width: 1.5),
-              ),
-            ),
-
-            // Center icon
-            Icon(Icons.verified, size: size * 0.4, color: stampColor),
-
-            // Curved text would go here (complex, using simple text instead)
-            Positioned(
-              bottom: 8,
-              child: Text(
-                'GAZETTEER',
-                style: TextStyle(
-                  fontSize: size * 0.12,
-                  fontWeight: FontWeight.w900,
-                  color: stampColor,
-                  letterSpacing: 1,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// ============================================================================
-/// INLINE GAZETTEER BADGE - For use in post headers
-/// ============================================================================
-/// Compact stamp for use next to names in feeds
-/// ============================================================================
-class GazetteerInlineBadge extends StatelessWidget {
-  final double height;
-
-  const GazetteerInlineBadge({super.key, this.height = 16});
-
-  @override
-  Widget build(BuildContext context) {
-    const stampColor = Color(0xFF1565C0);
-
-    return Transform.rotate(
-      angle: -0.03,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: stampColor.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(3),
-          border: Border.all(color: stampColor, width: 1.5),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.verified, size: height * 0.7, color: stampColor),
-            const SizedBox(width: 3),
-            Text(
-              'GAZETTEER',
-              style: TextStyle(
-                fontSize: height * 0.55,
-                fontWeight: FontWeight.w800,
-                color: stampColor,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// ============================================================================
-/// COMPACT VERIFIED BADGE - Just the checkmark for tight spaces
-/// ============================================================================
-class VerifiedBadge extends StatelessWidget {
-  final double size;
-
-  const VerifiedBadge({super.key, this.size = 16});
-
-  @override
-  Widget build(BuildContext context) {
-    return Icon(Icons.verified, size: size, color: Colors.blue.shade500);
   }
 }

@@ -21,6 +21,7 @@
 // SECTION 1: DART/FLUTTER IMPORTS
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:flutter/material.dart';
+import '../verification/gazetteer_widgets.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SECTION 2: FIREBASE IMPORTS
@@ -259,7 +260,12 @@ class VerifiedBadge extends StatelessWidget {
   }
 }
 
-/// Gazetteer badge for verified content creators
+/// ============================================================================
+/// GAZETTEER STAMP BADGE - Blue Ink Stamp Style
+/// ============================================================================
+/// Looks like an official rubber stamp with blue ink effect
+/// Use: Next to author name in posts for verified Gazetteers
+/// ============================================================================
 class GazetteerBadge extends StatelessWidget {
   final double iconSize;
   final double fontSize;
@@ -280,47 +286,146 @@ class GazetteerBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Simple verified icon if no label
     if (!showLabel) {
       return Icon(
-        Icons.workspace_premium,
+        Icons.verified,
         size: iconSize,
         color: HomeScreenConstants.gazetteerBadgeColor,
       );
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: HomeScreenConstants.paddingSM,
-        vertical: 2,
-      ),
-      decoration: BoxDecoration(
-        color: HomeScreenConstants.gazetteerBadgeColor.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(
-          HomeScreenConstants.badgeBorderRadius,
+    // Stamp-style badge with label
+    return const GazetteerStampBadgeInline();
+  }
+}
+
+/// ============================================================================
+/// GAZETTEER STAMP BADGE INLINE - Compact stamp for post headers
+/// ============================================================================
+class GazetteerStampBadgeInline extends StatelessWidget {
+  const GazetteerStampBadgeInline({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    const stampColor = Color(0xFF1565C0); // Deep blue ink
+
+    return Transform.rotate(
+      angle: -0.03, // Slight tilt like a real stamp
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: stampColor.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(3),
+          border: Border.all(color: stampColor, width: 1.5),
         ),
-        border: Border.all(
-          color: HomeScreenConstants.gazetteerBadgeColor.withValues(alpha: 0.3),
-          width: HomeScreenConstants.badgeBorderWidth,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.workspace_premium,
-            size: iconSize,
-            color: HomeScreenConstants.gazetteerBadgeColor,
-          ),
-          const SizedBox(width: 3),
-          Text(
-            'Gazetteer',
-            style: TextStyle(
-              fontSize: fontSize,
-              fontWeight: HomeScreenConstants.fontWeightSemiBold,
-              color: HomeScreenConstants.gazetteerBadgeColor,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.verified, size: 11, color: stampColor),
+            const SizedBox(width: 3),
+            Text(
+              'GAZETTEER',
+              style: TextStyle(
+                fontSize: 8,
+                fontWeight: FontWeight.w800,
+                color: stampColor,
+                letterSpacing: 0.5,
+                fontFamily: 'monospace',
+              ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// ============================================================================
+/// GAZETTEER STAMP BADGE LARGE - For profile pages
+/// ============================================================================
+class GazetteerStampBadgeLarge extends StatelessWidget {
+  const GazetteerStampBadgeLarge({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    const stampColor = Color(0xFF1565C0); // Deep blue ink
+
+    return Transform.rotate(
+      angle: -0.05, // Slight tilt like a real stamp
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: stampColor, width: 2.5),
+          boxShadow: [
+            // Ink bleed effect
+            BoxShadow(
+              color: stampColor.withValues(alpha: 0.15),
+              blurRadius: 2,
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+        child: IntrinsicWidth(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Top decorative line
+              Container(
+                height: 1.5,
+                color: stampColor,
+                margin: const EdgeInsets.only(bottom: 4),
+              ),
+
+              // Main text with stars
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Left star
+                  Icon(Icons.star, size: 10, color: stampColor),
+                  const SizedBox(width: 6),
+
+                  // GAZETTEER text
+                  Text(
+                    'GAZETTEER',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: stampColor,
+                      letterSpacing: 2.0,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+
+                  const SizedBox(width: 6),
+                  // Right star
+                  Icon(Icons.star, size: 10, color: stampColor),
+                ],
+              ),
+
+              // "VERIFIED" subtitle
+              Text(
+                'VERIFIED',
+                style: TextStyle(
+                  fontSize: 7,
+                  fontWeight: FontWeight.w700,
+                  color: stampColor,
+                  letterSpacing: 3.0,
+                ),
+              ),
+
+              // Bottom decorative line
+              Container(
+                height: 1.5,
+                color: stampColor,
+                margin: const EdgeInsets.only(top: 4),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -445,6 +550,42 @@ class HomeScreenV3 extends StatelessWidget {
         padding: const EdgeInsets.all(HomeScreenConstants.paddingLG),
         onPressed: () => _showProfileSheet(context),
       ),
+
+      /*  leading: GestureDetector(
+        onTap: () => _showProfileSheet(context),
+        child: Padding(
+          padding: const EdgeInsets.all(HomeScreenConstants.paddingLG),
+          child: uid != null
+              ? ChangeNotifierProvider(
+                  create: (_) => UserAvatarController(uid),
+                  child: Consumer<UserAvatarController>(
+                    builder: (_, controller, __) => CircleAvatar(
+                      radius: HomeScreenConstants.avatarRadius,
+                      backgroundColor: scheme.surfaceContainerHighest,
+                      backgroundImage: controller.avatarUrl != null
+                          ? NetworkImage(controller.avatarUrl!)
+                          : null,
+                      child: controller.avatarUrl == null
+                          ? Icon(
+                              Icons.person,
+                              size: HomeScreenConstants.avatarRadius,
+                              color: scheme.onSurfaceVariant,
+                            )
+                          : null,
+                    ),
+                  ),
+                )
+              : CircleAvatar(
+                  radius: HomeScreenConstants.avatarRadius,
+                  backgroundColor: scheme.surfaceContainerHighest,
+                  child: Icon(
+                    Icons.person,
+                    size: HomeScreenConstants.avatarRadius,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+        ),
+      ), */
 
       // Title
       title: Text(
@@ -873,14 +1014,10 @@ class _PostHeader extends StatelessWidget {
                                 ),
                               ),
 
-                              // ✅ VERIFIED/GAZETTEER BADGE
+                              // ✅ GAZETTEER STAMP BADGE (for verified users)
                               if (post.authorIsVerified) ...[
-                                const SizedBox(
-                                  width: HomeScreenConstants.paddingXS,
-                                ),
-                                const VerifiedBadge(
-                                  size: HomeScreenConstants.verifiedIconSize,
-                                ),
+                                const SizedBox(width: 6),
+                                const GazetteerStampBadgeInline(),
                               ],
                             ],
                           ),
