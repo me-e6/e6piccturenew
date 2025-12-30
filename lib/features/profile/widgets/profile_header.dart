@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../common/widgets/gazetter_badge.dart';
+import '../../common/widgets/gazetteer_badge.dart';
 
 class ProfileHeader extends StatelessWidget {
   final String displayName;
@@ -58,8 +59,7 @@ class ProfileHeader extends StatelessWidget {
                     const SizedBox(width: 6),
 
                     // ✅ VERIFIED GAZETTER
-                    if (isVerified)
-                      const GazetterBadge(iconSize: 16, fontSize: 12),
+                    if (isVerified) GazetteerBadge.small(),
                   ],
                 ),
 

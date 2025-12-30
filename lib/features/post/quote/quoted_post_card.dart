@@ -7,14 +7,14 @@ import 'quote_model.dart';
 /// QUOTED POST CARD - v2 (Visual Card Design)
 /// ------------------------------------------------------------
 /// Displays a quote post as a VISUAL CARD with image-first design.
-/// 
+///
 /// ✅ NEW DESIGN:
 /// - Full-bleed background image
 /// - Quote commentary as overlay on top
 /// - Compact original author badge (bottom-right)
 /// - "Quote" indicator badge (top-right)
 /// - NO text outside the image - everything is visual
-/// 
+///
 /// Used in:
 /// - Feed (embedded in quote posts)
 /// - Post details (show quoted content)
@@ -22,7 +22,7 @@ import 'quote_model.dart';
 /// ------------------------------------------------------------
 class QuotedPostCard extends StatelessWidget {
   final QuotedPostPreview preview;
-  final String? commentary;  // ✅ NEW: Commentary to display as overlay
+  final String? commentary; // ✅ NEW: Commentary to display as overlay
   final VoidCallback? onTap;
   final bool showBorder;
   final bool compact;
@@ -74,13 +74,15 @@ class QuotedPostCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(compact ? 12 : 16),
-            boxShadow: compact ? null : [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            boxShadow: compact
+                ? null
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(compact ? 12 : 16),
@@ -151,10 +153,7 @@ class QuotedPostCard extends StatelessWidget {
                                 fontSize: compact ? 12 : 14,
                                 fontWeight: FontWeight.w600,
                                 shadows: const [
-                                  Shadow(
-                                    color: Colors.black54,
-                                    blurRadius: 4,
-                                  ),
+                                  Shadow(color: Colors.black54, blurRadius: 4),
                                 ],
                               ),
                               maxLines: 2,
@@ -191,9 +190,7 @@ class QuotedPostCard extends StatelessWidget {
                         ),
                         SizedBox(width: compact ? 3 : 4),
                         Text(
-                          authorHandle != null
-                              ? '@$authorHandle'
-                              : authorName,
+                          authorHandle != null ? '@$authorHandle' : authorName,
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.9),
                             fontSize: compact ? 9 : 11,
@@ -305,10 +302,7 @@ class QuotedPostCard extends StatelessWidget {
                 ],
               ),
               SizedBox(height: compact ? 8 : 12),
-              Divider(
-                height: 1,
-                color: scheme.outlineVariant.withOpacity(0.3),
-              ),
+              Divider(height: 1, color: scheme.outlineVariant.withOpacity(0.3)),
               SizedBox(height: compact ? 8 : 12),
             ],
 
@@ -316,7 +310,8 @@ class QuotedPostCard extends StatelessWidget {
             _buildAuthorRow(theme, scheme),
 
             // Preview text (if available)
-            if (preview.previewText != null && preview.previewText!.isNotEmpty) ...[
+            if (preview.previewText != null &&
+                preview.previewText!.isNotEmpty) ...[
               SizedBox(height: compact ? 6 : 8),
               Text(
                 preview.previewText!,
@@ -343,7 +338,9 @@ class QuotedPostCard extends StatelessWidget {
         if (preview.authorAvatarUrl != null)
           CircleAvatar(
             radius: compact ? 10 : 12,
-            backgroundImage: CachedNetworkImageProvider(preview.authorAvatarUrl!),
+            backgroundImage: CachedNetworkImageProvider(
+              preview.authorAvatarUrl!,
+            ),
             backgroundColor: scheme.surfaceContainerHighest,
           )
         else
@@ -376,11 +373,7 @@ class QuotedPostCard extends StatelessWidget {
         // Verification badge
         if (preview.isVerifiedOwner) ...[
           const SizedBox(width: 4),
-          Icon(
-            Icons.verified,
-            size: compact ? 12 : 14,
-            color: scheme.primary,
-          ),
+          const Icon(Icons.verified, size: 14, color: Colors.blue),
         ],
 
         // Handle
@@ -389,7 +382,7 @@ class QuotedPostCard extends StatelessWidget {
           Text(
             '@${preview.authorHandle}',
             style: theme.textTheme.bodySmall?.copyWith(
-              color: scheme.onSurfaceVariant.withOpacity(0.7),
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
               fontSize: compact ? 10 : 12,
             ),
             maxLines: 1,
@@ -497,10 +490,7 @@ class QuotePostFeedItem extends StatelessWidget {
 
             // Engagement bar (likes, comments, etc.)
             if (engagementBar != null) ...[
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: engagementBar!,
-              ),
+              Padding(padding: const EdgeInsets.all(12), child: engagementBar!),
             ],
           ],
         ),

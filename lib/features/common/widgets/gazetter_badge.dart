@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+/* import 'package:flutter/material.dart';
 
 class GazetterBadge extends StatelessWidget {
   final double iconSize;
@@ -25,3 +25,4 @@ class GazetterBadge extends StatelessWidget {
     );
   }
 }
+ */

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-
+import '../../common/widgets/gazetteer_badge.dart';
 import './../create/post_model.dart';
 import '../../post/widgets/post_options_menu.dart';
 import '../../common/widgets/badges_widgets.dart';
@@ -244,7 +244,7 @@ class _AuthorHeader extends StatelessWidget {
                       ],
                       if (isGazetteer) ...[
                         const SizedBox(width: 4),
-                        const GazetteerBadge.iconOnly(iconSize: 14),
+                        GazetteerBadge.small(),
                       ],
                     ],
                   ),
@@ -260,7 +260,7 @@ class _AuthorHeader extends StatelessWidget {
                             color: scheme.onSurfaceVariant,
                           ),
                         ),
-                      if (isMutual) const MutualBadge.inline(),
+                      if (isMutual) const MutualBadge(fontSize: 5),
                       Text(
                         ' · ${_formatTime(post.createdAt)}',
                         style: TextStyle(

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import 'package:e6piccturenew/features/common/widgets/gazetteer_badge.dart';
 import '../post/create/post_model.dart';
 import '../engagement/engagement_controller.dart';
 import '../engagement/engagement_lists_sheet.dart'; // ✅ NEW
@@ -44,8 +44,10 @@ class _DayAlbumViewerScreenState extends State<DayAlbumViewerScreen> {
   double _dragOffset = 0.0;
   bool _engagementSheetShown = false; // ✅ Track if sheet was shown
 
-  static const double _engagementThreshold = 80.0; // ✅ First threshold for engagement
-  static const double _dismissThreshold = 200.0;   // ✅ Second threshold for dismiss
+  static const double _engagementThreshold =
+      80.0; // ✅ First threshold for engagement
+  static const double _dismissThreshold =
+      200.0; // ✅ Second threshold for dismiss
   static const double _maxDrag = 350.0;
 
   @override
@@ -88,7 +90,8 @@ class _DayAlbumViewerScreenState extends State<DayAlbumViewerScreen> {
             if (_dragOffset > _dismissThreshold) {
               // Second threshold - dismiss the screen
               Navigator.pop(context);
-            } else if (_dragOffset > _engagementThreshold && !_engagementSheetShown) {
+            } else if (_dragOffset > _engagementThreshold &&
+                !_engagementSheetShown) {
               // First threshold - show engagement lists
               _showEngagementLists();
               _engagementSheetShown = true;
@@ -177,7 +180,7 @@ class _SwipeDownHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasEngagement = post.repicCount > 0 || post.quoteReplyCount > 0;
-    
+
     if (!hasEngagement) return const SizedBox.shrink();
 
     return Positioned(
@@ -202,10 +205,7 @@ class _SwipeDownHint extends StatelessWidget {
               const SizedBox(width: 4),
               Text(
                 'Swipe for ${post.repicCount} repics, ${post.quoteReplyCount} quotes',
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 11,
-                ),
+                style: const TextStyle(color: Colors.white70, fontSize: 11),
               ),
             ],
           ),
@@ -406,7 +406,9 @@ class _MemoryPostState extends State<_MemoryPost> {
                 itemBuilder: (context, index) {
                   return LayoutBuilder(
                     builder: (context, constraints) {
-                      final pixelRatio = MediaQuery.of(context).devicePixelRatio;
+                      final pixelRatio = MediaQuery.of(
+                        context,
+                      ).devicePixelRatio;
                       final width = constraints.maxWidth > 0
                           ? constraints.maxWidth
                           : 400;
@@ -489,7 +491,11 @@ class _MemoryPostState extends State<_MemoryPost> {
                   const SizedBox(height: 16),
                 ],
                 Expanded(
-                  child: _buildQuotedPreviewCard(context, scheme, quotedPreview),
+                  child: _buildQuotedPreviewCard(
+                    context,
+                    scheme,
+                    quotedPreview,
+                  ),
                 ),
               ],
             ),
@@ -627,12 +633,9 @@ class _MemoryPostState extends State<_MemoryPost> {
                                   ),
                                 ),
                                 if (isVerified) ...[
-                                  const SizedBox(width: 4),
-                                  Icon(
-                                    Icons.verified,
-                                    size: 16,
-                                    color: scheme.primary,
-                                  ),
+                                  const SizedBox(width: 6),
+                                  GazetteerBadge.small(),
+                                  //const GazetteerStampBadge(size: 70),
                                 ],
                               ],
                             ),
@@ -700,10 +703,7 @@ class _TopOverlay extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Colors.black.withOpacity(0.4),
-              Colors.transparent,
-            ],
+            colors: [Colors.black.withOpacity(0.4), Colors.transparent],
           ),
         ),
         child: Row(
@@ -735,11 +735,7 @@ class _TopOverlay extends StatelessWidget {
                   color: scheme.surface.withOpacity(0.7),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  Icons.close,
-                  color: scheme.onSurface,
-                  size: 20,
-                ),
+                child: Icon(Icons.close, color: scheme.onSurface, size: 20),
               ),
             ),
           ],
@@ -761,7 +757,9 @@ class _ImageDots extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activeColor = Theme.of(context).colorScheme.primary;
-    final inactiveColor = Theme.of(context).colorScheme.onSurface.withOpacity(0.3);
+    final inactiveColor = Theme.of(
+      context,
+    ).colorScheme.onSurface.withOpacity(0.3);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -794,7 +792,9 @@ class _PostTimelineDots extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activeColor = Theme.of(context).colorScheme.primary;
-    final inactiveColor = Theme.of(context).colorScheme.onSurface.withOpacity(0.4);
+    final inactiveColor = Theme.of(
+      context,
+    ).colorScheme.onSurface.withOpacity(0.4);
 
     return Positioned(
       top: 44,

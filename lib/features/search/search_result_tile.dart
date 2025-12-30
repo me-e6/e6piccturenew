@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '.././profile/user_model.dart';
 import '.././follow/follow_controller.dart';
-import '.././profile/profile_controller.dart';
-import '.././follow/mutual_controller.dart';
-import '.././profile/profile_screen.dart';
+
 import '../../features/profile/profile_entry.dart';
 
 class SearchResultTile extends StatelessWidget {

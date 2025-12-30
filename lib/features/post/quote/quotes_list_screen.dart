@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:e6piccturenew/features/common/widgets/gazetteer_badge.dart';
 
 import 'quote_controller.dart';
 import 'quote_model.dart';
@@ -222,7 +223,11 @@ class _VisualQuoteListItem extends StatelessWidget {
                       ? CachedNetworkImageProvider(quoteAuthorAvatarUrl)
                       : null,
                   child: quoteAuthorAvatarUrl == null
-                      ? Icon(Icons.person, size: 16, color: scheme.onSurfaceVariant)
+                      ? Icon(
+                          Icons.person,
+                          size: 16,
+                          color: scheme.onSurfaceVariant,
+                        )
                       : null,
                 ),
                 const SizedBox(width: 10),
@@ -246,7 +251,8 @@ class _VisualQuoteListItem extends StatelessWidget {
                           ),
                           if (isVerified) ...[
                             const SizedBox(width: 4),
-                            Icon(Icons.verified, size: 14, color: scheme.primary),
+                            GazetteerBadge.small(),
+                            //const GazetteerStampBadge(size: 70),
                           ],
                         ],
                       ),
@@ -284,7 +290,8 @@ class _VisualQuoteListItem extends StatelessWidget {
                 preview: quotedPreview,
                 commentary: commentary,
                 compact: true,
-                onTap: () => _navigateToOriginalPost(context, quotedPreview.postId),
+                onTap: () =>
+                    _navigateToOriginalPost(context, quotedPreview.postId),
               ),
             ),
 
@@ -295,15 +302,26 @@ class _VisualQuoteListItem extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
             child: Row(
               children: [
-                _buildStat(context, Icons.favorite_border, data['likeCount'] as int? ?? 0),
+                _buildStat(
+                  context,
+                  Icons.favorite_border,
+                  data['likeCount'] as int? ?? 0,
+                ),
                 const SizedBox(width: 20),
-                _buildStat(context, Icons.chat_bubble_outline, data['replyCount'] as int? ?? 0),
+                _buildStat(
+                  context,
+                  Icons.chat_bubble_outline,
+                  data['replyCount'] as int? ?? 0,
+                ),
                 const Spacer(),
                 // View quote button
                 TextButton(
                   onPressed: () => _navigateToQuotePost(context, doc.id),
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),

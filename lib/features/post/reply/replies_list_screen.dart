@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:e6piccturenew/features/common/widgets/gazetteer_badge.dart';
 
 import '../create/post_model.dart';
 import 'reply_model.dart';
@@ -185,8 +186,10 @@ class _ReplyTile extends StatelessWidget {
                         ),
                         if (isVerified) ...[
                           const SizedBox(width: 4),
-                          Icon(Icons.verified, size: 14, color: scheme.primary),
+                          GazetteerBadge.small(),
+                          //const GazetteerStampBadge(size: 70),
                         ],
+
                         if (authorHandle != null) ...[
                           const SizedBox(width: 4),
                           Text(

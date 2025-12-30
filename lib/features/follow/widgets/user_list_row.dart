@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../profile/user_model.dart';
+import 'package:e6piccturenew/features/common/widgets/gazetteer_badge.dart';
 
 class UserListRow extends StatelessWidget {
   final UserModel user;
@@ -48,12 +49,9 @@ class UserListRow extends StatelessWidget {
                         ),
                       ),
                       if (user.isVerified) ...[
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.verified,
-                          size: 14,
-                          color: Colors.blue,
-                        ),
+                        const SizedBox(width: 6),
+                        GazetteerBadge.small(),
+                        //const GazetteerStampBadge(size: 70),
                       ],
                     ],
                   ),

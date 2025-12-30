@@ -7,7 +7,7 @@ import 'notification_service.dart';
 /// NOTIFICATIONS SCREEN
 /// ============================================================================
 /// Shows all notifications for the current user.
-/// 
+///
 /// Features:
 /// - ✅ Real-time updates
 /// - ✅ Pull to refresh
@@ -46,7 +46,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Future<void> _markAllAsRead() async {
     await _service.markAllAsRead();
     _loadNotifications();
-    
+
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -140,20 +140,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _notifications.isEmpty
-              ? _buildEmptyState(scheme)
-              : RefreshIndicator(
-                  onRefresh: _loadNotifications,
-                  child: ListView.builder(
-                    itemCount: _notifications.length,
-                    itemBuilder: (context, index) {
-                      final notification = _notifications[index];
-                      return _NotificationTile(
-                        notification: notification,
-                        onTap: () => _handleNotificationTap(notification),
-                      );
-                    },
-                  ),
-                ),
+          ? _buildEmptyState(scheme)
+          : RefreshIndicator(
+              onRefresh: _loadNotifications,
+              child: ListView.builder(
+                itemCount: _notifications.length,
+                itemBuilder: (context, index) {
+                  final notification = _notifications[index];
+                  return _NotificationTile(
+                    notification: notification,
+                    onTap: () => _handleNotificationTap(notification),
+                  );
+                },
+              ),
+            ),
     );
   }
 
@@ -170,10 +170,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           const SizedBox(height: 16),
           Text(
             'No notifications yet',
-            style: TextStyle(
-              fontSize: 18,
-              color: scheme.onSurfaceVariant,
-            ),
+            style: TextStyle(fontSize: 18, color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: 8),
           Text(
@@ -196,10 +193,7 @@ class _NotificationTile extends StatelessWidget {
   final NotificationModel notification;
   final VoidCallback onTap;
 
-  const _NotificationTile({
-    required this.notification,
-    required this.onTap,
-  });
+  const _NotificationTile({required this.notification, required this.onTap});
 
   IconData _getIcon() {
     switch (notification.type) {
@@ -250,11 +244,13 @@ class _NotificationTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: notification.isRead 
-              ? null 
+          color: notification.isRead
+              ? null
               : scheme.primaryContainer.withValues(alpha: 0.1),
           border: Border(
-            bottom: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.3)),
+            bottom: BorderSide(
+              color: scheme.outlineVariant.withValues(alpha: 0.3),
+            ),
           ),
         ),
         child: Row(
@@ -268,11 +264,7 @@ class _NotificationTile extends StatelessWidget {
                 color: _getIconColor(scheme).withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                _getIcon(),
-                size: 20,
-                color: _getIconColor(scheme),
-              ),
+              child: Icon(_getIcon(), size: 20, color: _getIconColor(scheme)),
             ),
 
             const SizedBox(width: 12),
@@ -305,14 +297,20 @@ class _NotificationTile extends StatelessWidget {
                             children: [
                               TextSpan(
                                 text: notification.actorName,
-                                style: const TextStyle(fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                               if (notification.actorIsVerified)
                                 const WidgetSpan(
                                   alignment: PlaceholderAlignment.middle,
                                   child: Padding(
                                     padding: EdgeInsets.only(left: 4),
-                                    child: Icon(Icons.verified, size: 14, color: Colors.blue),
+                                    child: Icon(
+                                      Icons.verified,
+                                      size: 14,
+                                      color: Colors.blue,
+                                    ),
                                   ),
                                 ),
                               TextSpan(text: ' ${_getActionText()}'),
@@ -324,7 +322,8 @@ class _NotificationTile extends StatelessWidget {
                   ),
 
                   // Message if present
-                  if (notification.message != null && notification.message!.isNotEmpty) ...[
+                  if (notification.message != null &&
+                      notification.message!.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(
                       notification.message!,
@@ -442,10 +441,7 @@ class NotificationBadge extends StatelessWidget {
               color: Colors.red,
               shape: BoxShape.circle,
             ),
-            constraints: const BoxConstraints(
-              minWidth: 16,
-              minHeight: 16,
-            ),
+            constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
             child: Text(
               count > 99 ? '99+' : count.toString(),
               style: const TextStyle(

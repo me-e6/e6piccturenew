@@ -1,173 +1,62 @@
+// ============================================================================
+// FILE: lib/features/common/widgets/badges_widgets.dart
+// ============================================================================
+// Version: 2.0.0 - CLEANED
+//
+// SINGLE SOURCE OF TRUTH for all badge widgets
+// Import this file wherever badges are needed
+// ============================================================================
+
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
+import 'package:e6piccturenew/features/common/widgets/gazetteer_badge.dart';
 
-/// ============================================================================
-/// MUTUAL BADGE WIDGET
-/// ============================================================================
-/// Shows "Mutual" label for users who follow each other.
-/// Use in post headers, profile cards, user lists.
-/// 
-/// Variants:
-/// - Default: Pill with icon + text
-/// - Compact: Just icon
-/// - Inline: Text only
-/// ============================================================================
-class MutualBadge extends StatelessWidget {
-  final MutualBadgeStyle style;
-  final double? fontSize;
-  final double? iconSize;
+// ============================================================================
+// COLORS
+// ============================================================================
 
-  const MutualBadge({
-    super.key,
-    this.style = MutualBadgeStyle.pill,
-    this.fontSize,
-    this.iconSize,
-  });
-
-  /// Compact version (just icon)
-  const MutualBadge.compact({super.key})
-      : style = MutualBadgeStyle.compact,
-        fontSize = null,
-        iconSize = 14;
-
-  /// Inline version (text only)
-  const MutualBadge.inline({super.key, this.fontSize = 11})
-      : style = MutualBadgeStyle.inline,
-        iconSize = null;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    switch (style) {
-      case MutualBadgeStyle.pill:
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-            color: Colors.green.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: Colors.green.withValues(alpha: 0.3),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.sync_alt,
-                size: iconSize ?? 12,
-                color: Colors.green.shade700,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                'Mutual',
-                style: TextStyle(
-                  fontSize: fontSize ?? 10,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.green.shade700,
-                ),
-              ),
-            ],
-          ),
-        );
-
-      case MutualBadgeStyle.compact:
-        return Container(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: Colors.green.withValues(alpha: 0.12),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            Icons.sync_alt,
-            size: iconSize ?? 14,
-            color: Colors.green.shade700,
-          ),
-        );
-
-      case MutualBadgeStyle.inline:
-        return Text(
-          '· Mutual',
-          style: TextStyle(
-            fontSize: fontSize ?? 11,
-            fontWeight: FontWeight.w500,
-            color: Colors.green.shade700,
-          ),
-        );
-    }
-  }
+abstract class BadgeColors {
+  static const Color verified = Color(0xFF1DA1F2); // Twitter blue
+  static const Color gazetteer = Color(0xFF3B6DB5); // Royal blue (stamp)
+  static const Color mutual = Color(0xFF4CAF50); // Green
 }
 
-enum MutualBadgeStyle {
-  pill,    // Icon + "Mutual" in pill
-  compact, // Just icon in circle
-  inline,  // Just "· Mutual" text
-}
+// ============================================================================
+// VERIFIED BADGE - Simple blue checkmark
+// ============================================================================
 
-/// ============================================================================
-/// VERIFIED BADGE (Unified)
-/// ============================================================================
-/// Blue checkmark for verified users
-/// ============================================================================
 class VerifiedBadge extends StatelessWidget {
   final double size;
-  final Color? color;
 
-  const VerifiedBadge({
-    super.key,
-    this.size = 16,
-    this.color,
-  });
+  const VerifiedBadge({super.key, this.size = 16});
 
   @override
   Widget build(BuildContext context) {
-    return Icon(
-      Icons.verified,
-      size: size,
-      color: color ?? Colors.blue,
-    );
+    return GazetteerBadge.small();
   }
 }
 
-/// ============================================================================
-/// GAZETTEER BADGE (Inline version for lists)
-/// ============================================================================
-/// Blue stamp for Gazetteer users
-/// ============================================================================
-class GazetteerBadge extends StatelessWidget {
-  final double iconSize;
-  final double fontSize;
-  final bool showLabel;
+// ============================================================================
+// GAZETTEER BADGE INLINE - For post headers (compact)
+// ============================================================================
+/* 
+class GazetteerBadgeInline extends StatelessWidget {
+  final double height;
 
-  const GazetteerBadge({
-    super.key,
-    this.iconSize = 14,
-    this.fontSize = 10,
-    this.showLabel = true,
-  });
-
-  /// Icon only version
-  const GazetteerBadge.iconOnly({super.key, this.iconSize = 14})
-      : fontSize = 10,
-        showLabel = false;
+  const GazetteerBadgeInline({super.key, this.height = 16});
 
   @override
   Widget build(BuildContext context) {
-    if (!showLabel) {
-      return Icon(
-        Icons.workspace_premium,
-        size: iconSize,
-        color: Colors.blue,
-      );
-    }
-
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: EdgeInsets.symmetric(
+        horizontal: height * 0.4,
+        vertical: height * 0.12,
+      ),
       decoration: BoxDecoration(
-        color: Colors.blue.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        color: BadgeColors.gazetteer.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(height * 0.25),
         border: Border.all(
-          color: Colors.blue.withValues(alpha: 0.3),
+          color: BadgeColors.gazetteer.withValues(alpha: 0.6),
           width: 1,
         ),
       ),
@@ -175,17 +64,18 @@ class GazetteerBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            Icons.workspace_premium,
-            size: iconSize,
-            color: Colors.blue,
+            Icons.verified,
+            size: height * 0.7,
+            color: BadgeColors.gazetteer,
           ),
-          const SizedBox(width: 3),
+          SizedBox(width: height * 0.15),
           Text(
-            'Gazetteer',
+            'GAZETTEER',
             style: TextStyle(
-              fontSize: fontSize,
-              fontWeight: FontWeight.w600,
-              color: Colors.blue,
+              color: BadgeColors.gazetteer,
+              fontSize: height * 0.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.5,
             ),
           ),
         ],
@@ -193,179 +83,217 @@ class GazetteerBadge extends StatelessWidget {
     );
   }
 }
+ */
+// ============================================================================
+// GAZETTEER STAMP BADGE - Circular stamp for profiles
+// ============================================================================
 
-/// ============================================================================
-/// USER BADGES ROW
-/// ============================================================================
-/// Displays all applicable badges for a user in a row
-/// Order: Verified → Gazetteer → Mutual
-/// ============================================================================
-class UserBadgesRow extends StatelessWidget {
-  final bool isVerified;
-  final bool isGazetteer;
-  final bool isMutual;
-  final double spacing;
-  final double iconSize;
+class GazetteerStampBadge extends StatelessWidget {
+  final double size;
 
-  const UserBadgesRow({
-    super.key,
-    this.isVerified = false,
-    this.isGazetteer = false,
-    this.isMutual = false,
-    this.spacing = 4,
-    this.iconSize = 14,
-  });
+  const GazetteerStampBadge({super.key, this.size = 70});
 
   @override
   Widget build(BuildContext context) {
-    if (!isVerified && !isGazetteer && !isMutual) {
-      return const SizedBox.shrink();
-    }
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (isVerified) ...[
-          VerifiedBadge(size: iconSize),
-          SizedBox(width: spacing),
-        ],
-        if (isGazetteer) ...[
-          GazetteerBadge.iconOnly(iconSize: iconSize),
-          SizedBox(width: spacing),
-        ],
-        if (isMutual) const MutualBadge.compact(),
-      ],
+    return CustomPaint(
+      size: Size(size, size),
+      painter: _GazetteerStampPainter(),
     );
   }
 }
 
-/// ============================================================================
-/// POST AUTHOR HEADER (with all badges)
-/// ============================================================================
-/// Complete header for post cards showing:
-/// - Avatar
-/// - Display name + handle
-/// - All badges
-/// - Timestamp
-/// ============================================================================
-class PostAuthorHeader extends StatelessWidget {
-  final String displayName;
-  final String? handle;
-  final String? avatarUrl;
-  final bool isVerified;
-  final bool isGazetteer;
-  final bool isMutual;
-  final DateTime? createdAt;
-  final VoidCallback? onTap;
+class _GazetteerStampPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
 
-  const PostAuthorHeader({
-    super.key,
-    required this.displayName,
-    this.handle,
-    this.avatarUrl,
-    this.isVerified = false,
-    this.isGazetteer = false,
-    this.isMutual = false,
-    this.createdAt,
-    this.onTap,
-  });
+    final strokePaint = Paint()
+      ..color = BadgeColors.gazetteer
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
 
-  String _formatTime(DateTime dt) {
-    final now = DateTime.now();
-    final diff = now.difference(dt);
+    final fillPaint = Paint()
+      ..color = BadgeColors.gazetteer
+      ..style = PaintingStyle.fill;
 
-    if (diff.inMinutes < 1) return 'now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
-    if (diff.inHours < 24) return '${diff.inHours}h';
-    if (diff.inDays < 7) return '${diff.inDays}d';
-    return '${dt.day}/${dt.month}';
+    // Outer ring
+    _drawDistressedCircle(
+      canvas,
+      center,
+      radius * 0.95,
+      strokePaint..strokeWidth = size.width * 0.045,
+    );
+    // Second ring
+    _drawDistressedCircle(
+      canvas,
+      center,
+      radius * 0.80,
+      strokePaint..strokeWidth = size.width * 0.018,
+    );
+    // Third ring
+    _drawDistressedCircle(
+      canvas,
+      center,
+      radius * 0.72,
+      strokePaint..strokeWidth = size.width * 0.012,
+    );
+    // Inner ring
+    _drawDistressedCircle(
+      canvas,
+      center,
+      radius * 0.45,
+      strokePaint..strokeWidth = size.width * 0.025,
+    );
+
+    // Curved text
+    _drawCurvedText(
+      canvas,
+      center,
+      radius * 0.62,
+      'GAZETTEER',
+      size.width * 0.11,
+    );
+
+    // Center G
+    _drawCenterG(canvas, center, size.width * 0.35);
+
+    // Stars
+    _drawStar(
+      canvas,
+      Offset(center.dx - radius * 0.52, center.dy + radius * 0.28),
+      size.width * 0.045,
+      fillPaint,
+    );
+    _drawStar(
+      canvas,
+      Offset(center.dx + radius * 0.52, center.dy + radius * 0.28),
+      size.width * 0.045,
+      fillPaint,
+    );
+  }
+
+  void _drawDistressedCircle(
+    Canvas canvas,
+    Offset center,
+    double radius,
+    Paint paint,
+  ) {
+    final path = Path();
+    final random = math.Random(42);
+    for (int i = 0; i <= 360; i += 2) {
+      final angle = i * math.pi / 180;
+      final distress = 1 + (random.nextDouble() - 0.5) * 0.1;
+      final r = radius * distress;
+      final x = center.dx + r * math.cos(angle);
+      final y = center.dy + r * math.sin(angle);
+      if (i == 0)
+        path.moveTo(x, y);
+      else
+        path.lineTo(x, y);
+    }
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  void _drawCurvedText(
+    Canvas canvas,
+    Offset center,
+    double radius,
+    String text,
+    double fontSize,
+  ) {
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+    const startAngle = -math.pi * 0.78;
+    const sweepAngle = math.pi * 0.56;
+    final anglePerChar = sweepAngle / (text.length - 1);
+
+    for (int i = 0; i < text.length; i++) {
+      final angle = startAngle + (anglePerChar * i);
+      textPainter.text = TextSpan(
+        text: text[i],
+        style: TextStyle(
+          color: BadgeColors.gazetteer,
+          fontSize: fontSize,
+          fontWeight: FontWeight.w900,
+        ),
+      );
+      textPainter.layout();
+      canvas.save();
+      canvas.translate(
+        center.dx + radius * math.cos(angle),
+        center.dy + radius * math.sin(angle),
+      );
+      canvas.rotate(angle + math.pi / 2);
+      textPainter.paint(
+        canvas,
+        Offset(-textPainter.width / 2, -textPainter.height / 2),
+      );
+      canvas.restore();
+    }
+  }
+
+  void _drawCenterG(Canvas canvas, Offset center, double fontSize) {
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: 'G',
+        style: TextStyle(
+          color: BadgeColors.gazetteer,
+          fontSize: fontSize,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        center.dx - textPainter.width / 2,
+        center.dy - textPainter.height / 2,
+      ),
+    );
+  }
+
+  void _drawStar(Canvas canvas, Offset center, double size, Paint paint) {
+    final path = Path();
+    for (int i = 0; i < 8; i++) {
+      final radius = i.isEven ? size : size * 0.4;
+      final angle = (i * math.pi / 4) - math.pi / 2;
+      final point = Offset(
+        center.dx + radius * math.cos(angle),
+        center.dy + radius * math.sin(angle),
+      );
+      if (i == 0)
+        path.moveTo(point.dx, point.dy);
+      else
+        path.lineTo(point.dx, point.dy);
+    }
+    path.close();
+    canvas.drawPath(path, paint);
   }
 
   @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ============================================================================
+// MUTUAL BADGE
+// ============================================================================
+
+class MutualBadge extends StatelessWidget {
+  final double fontSize;
+
+  const MutualBadge({super.key, this.fontSize = 12});
+
+  @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          children: [
-            // Avatar
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: scheme.surfaceContainerHighest,
-              backgroundImage: avatarUrl != null && avatarUrl!.isNotEmpty
-                  ? NetworkImage(avatarUrl!)
-                  : null,
-              child: avatarUrl == null || avatarUrl!.isEmpty
-                  ? Icon(Icons.person, size: 18, color: scheme.onSurfaceVariant)
-                  : null,
-            ),
-
-            const SizedBox(width: 10),
-
-            // Name + Handle + Badges
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Name row with badges
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          displayName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (isVerified) ...[
-                        const SizedBox(width: 4),
-                        const VerifiedBadge(size: 14),
-                      ],
-                      if (isGazetteer) ...[
-                        const SizedBox(width: 4),
-                        const GazetteerBadge.iconOnly(iconSize: 14),
-                      ],
-                    ],
-                  ),
-
-                  // Handle row with mutual badge
-                  Row(
-                    children: [
-                      if (handle != null && handle!.isNotEmpty)
-                        Text(
-                          '@$handle',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      if (isMutual) ...[
-                        const SizedBox(width: 6),
-                        const MutualBadge.inline(),
-                      ],
-                      if (createdAt != null) ...[
-                        Text(
-                          ' · ${_formatTime(createdAt!)}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+    return Text(
+      '· Mutual',
+      style: TextStyle(
+        fontSize: fontSize,
+        fontWeight: FontWeight.w500,
+        color: BadgeColors.mutual,
       ),
     );
   }

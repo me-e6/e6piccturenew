@@ -21,7 +21,6 @@
 // SECTION 1: DART/FLUTTER IMPORTS
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:flutter/material.dart';
-import '../verification/gazetteer_widgets.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SECTION 2: FIREBASE IMPORTS
@@ -38,12 +37,15 @@ import 'package:provider/provider.dart';
 // SECTION 4: CORE/SHARED IMPORTS
 // ─────────────────────────────────────────────────────────────────────────────
 import '../../core/theme/theme_controller.dart';
+import 'package:e6piccturenew/features/common/widgets/gazetteer_badge.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SECTION 5: FEATURE IMPORTS - AUTH
 // ─────────────────────────────────────────────────────────────────────────────
 import '../auth/auth_gate.dart';
 import '../auth/auth_service.dart';
+import 'package:e6piccturenew/features/common/widgets/gazetteer_badge.dart';
+import '../common/widgets/badges_widgets.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SECTION 6: FEATURE IMPORTS - FEED
@@ -59,6 +61,7 @@ import '../post/create/post_model.dart';
 import '../post/quote/quote_post_screen.dart';
 import '../post/reply/reply_screen.dart';
 import '../post/reply/replies_list_screen.dart';
+import '../post/widgets/share_post_sheet.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SECTION 8: FEATURE IMPORTS - ENGAGEMENT
@@ -261,87 +264,6 @@ class VerifiedBadge extends StatelessWidget {
 }
 
 /// ============================================================================
-/// GAZETTEER STAMP BADGE - Blue Ink Stamp Style
-/// ============================================================================
-/// Looks like an official rubber stamp with blue ink effect
-/// Use: Next to author name in posts for verified Gazetteers
-/// ============================================================================
-class GazetteerBadge extends StatelessWidget {
-  final double iconSize;
-  final double fontSize;
-  final bool showLabel;
-
-  const GazetteerBadge({
-    super.key,
-    this.iconSize = HomeScreenConstants.badgeIconSize,
-    this.fontSize = HomeScreenConstants.badgeTextSize,
-    this.showLabel = false,
-  });
-
-  const GazetteerBadge.withLabel({
-    super.key,
-    this.iconSize = HomeScreenConstants.badgeIconSize,
-    this.fontSize = HomeScreenConstants.badgeTextSize,
-  }) : showLabel = true;
-
-  @override
-  Widget build(BuildContext context) {
-    // Simple verified icon if no label
-    if (!showLabel) {
-      return Icon(
-        Icons.verified,
-        size: iconSize,
-        color: HomeScreenConstants.gazetteerBadgeColor,
-      );
-    }
-
-    // Stamp-style badge with label
-    return const GazetteerStampBadgeInline();
-  }
-}
-
-/// ============================================================================
-/// GAZETTEER STAMP BADGE INLINE - Compact stamp for post headers
-/// ============================================================================
-class GazetteerStampBadgeInline extends StatelessWidget {
-  const GazetteerStampBadgeInline({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    const stampColor = Color(0xFF1565C0); // Deep blue ink
-
-    return Transform.rotate(
-      angle: -0.03, // Slight tilt like a real stamp
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: stampColor.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(3),
-          border: Border.all(color: stampColor, width: 1.5),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.verified, size: 11, color: stampColor),
-            const SizedBox(width: 3),
-            Text(
-              'GAZETTEER',
-              style: TextStyle(
-                fontSize: 8,
-                fontWeight: FontWeight.w800,
-                color: stampColor,
-                letterSpacing: 0.5,
-                fontFamily: 'monospace',
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// ============================================================================
 /// GAZETTEER STAMP BADGE LARGE - For profile pages
 /// ============================================================================
 class GazetteerStampBadgeLarge extends StatelessWidget {
@@ -454,7 +376,7 @@ class MutualBadge extends StatelessWidget {
 }
 
 /// Row of user badges (Verified + Gazetteer)
-class UserBadgeRow extends StatelessWidget {
+/* class UserBadgeRow extends StatelessWidget {
   final bool isVerified;
 
   const UserBadgeRow({super.key, required this.isVerified});
@@ -471,7 +393,7 @@ class UserBadgeRow extends StatelessWidget {
       ],
     );
   }
-}
+} */
 
 // ============================================================================
 // SECTION 13: HOME SCREEN V3 MAIN WIDGET
@@ -1017,39 +939,11 @@ class _PostHeader extends StatelessWidget {
                               // ✅ GAZETTEER STAMP BADGE (for verified users)
                               if (post.authorIsVerified) ...[
                                 const SizedBox(width: 6),
-                                const GazetteerStampBadgeInline(),
+                                const GazetteerBadgeInline(height: 18),
+                                //GazetteerStampBadgeInline(),
                               ],
                             ],
                           ),
-
-                          // ═══════════════════════════════════════════════════
-                          // HANDLE ROW WITH MUTUAL BADGE
-                          // ═══════════════════════════════════════════════════
-                          /* if (post.authorHandle != null &&
-                              post.authorHandle!.isNotEmpty)
-                            Consumer<FollowController>(
-                              builder: (context, controller, _) {
-                                final isMutual = controller.isMutual;
-
-                                return Row(
-                                  children: [
-                                    Text(
-                                      '@${post.authorHandle}',
-                                      style: TextStyle(
-                                        fontSize: HomeScreenConstants.fontSizeSM,
-                                        color: scheme.onSurfaceVariant,
-                                      ),
-                                    ),
-
-                                    // ✅ MUTUAL BADGE
-                                    if (isMutual && !isOwner) ...[
-                                      const SizedBox(width: HomeScreenConstants.paddingSM),
-                                      const MutualBadge(),
-                                    ],
-                                  ],
-                                );
-                              },
-                            ), */
                         ],
                       ),
                     ),
@@ -1608,7 +1502,7 @@ class _EngagementBar extends StatelessWidget {
           ),
 
           // REPLY
-          _EngagementAction(
+          /*   _EngagementAction(
             icon: Icons.chat_bubble_outline,
             color: iconColor,
             count: currentPost.replyCount,
@@ -1616,7 +1510,7 @@ class _EngagementBar extends StatelessWidget {
             onCountTap: currentPost.replyCount > 0
                 ? () => _navigateToRepliesList(context, currentPost)
                 : null,
-          ),
+          ), */
 
           // QUOTE
           _EngagementAction(
@@ -1646,6 +1540,27 @@ class _EngagementBar extends StatelessWidget {
             color: currentPost.hasSaved ? Colors.amber : iconColor,
             count: currentPost.saveCount,
             onPressed: engagement.isProcessing ? null : engagement.toggleSave,
+            onCountTap: null,
+          ),
+
+          // SHARE
+          _EngagementAction(
+            icon: Icons.share_outlined,
+            color: iconColor,
+            count: 0,
+            showCount: false,
+            onPressed: () {
+              SharePostSheet.show(
+                context,
+                postId: currentPost.postId,
+                postUrl: 'https://piccture.app/post/${currentPost.postId}',
+                imageUrl: currentPost.imageUrls.isNotEmpty
+                    ? currentPost.imageUrls.first
+                    : null,
+                caption: currentPost.caption,
+                authorName: currentPost.authorName,
+              );
+            },
             onCountTap: null,
           ),
         ],
@@ -1708,6 +1623,7 @@ class _EngagementAction extends StatelessWidget {
   final IconData icon;
   final Color color;
   final int count;
+  final bool showCount;
   final VoidCallback? onPressed;
   final VoidCallback? onCountTap;
 
@@ -1715,6 +1631,7 @@ class _EngagementAction extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.count,
+    this.showCount = true,
     this.onPressed,
     this.onCountTap,
   });
@@ -1738,7 +1655,7 @@ class _EngagementAction extends StatelessWidget {
             ),
           ),
         ),
-        if (count > 0)
+        if (showCount && count > 0)
           GestureDetector(
             onTap: onCountTap,
             child: Padding(
@@ -1923,9 +1840,10 @@ class _SuggestedUserCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+
                 if (isVerified) ...[
-                  const SizedBox(width: 2),
-                  const VerifiedBadge(size: 12),
+                  const SizedBox(width: 6),
+                  const GazetteerBadge(size: 20),
                 ],
               ],
             ),
@@ -1951,358 +1869,6 @@ class _SuggestedUserCard extends StatelessWidget {
 // ============================================================================
 // SECTION 24: PROFILE BOTTOM SHEET
 // ============================================================================
-/* 
-class _ProfileBottomSheet extends StatelessWidget {
-  const _ProfileBottomSheet();
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final user = FirebaseAuth.instance.currentUser;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(HomeScreenConstants.sheetBorderRadius),
-        ),
-      ),
-      child: StreamBuilder<DocumentSnapshot>(
-        stream: user != null
-            ? FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(user.uid)
-                  .snapshots()
-            : null,
-        builder: (context, snapshot) {
-          final userData = snapshot.data?.data() as Map<String, dynamic>? ?? {};
-          final displayName =
-              userData['displayName'] ?? user?.displayName ?? 'User';
-          final handle = userData['handle'] ?? userData['username'];
-          final avatarUrl = userData['profileImageUrl'] ?? userData['photoUrl'];
-          final isAdmin = userData['isAdmin'] == true;
-          final isVerified = userData['isVerified'] == true;
-
-          return ListView(
-            shrinkWrap: true,
-            padding: const EdgeInsets.all(HomeScreenConstants.paddingXL),
-            children: [
-              // Handle bar
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    color: scheme.outlineVariant,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-
-              // User info header
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: scheme.surfaceContainerHighest,
-                    backgroundImage: avatarUrl != null
-                        ? NetworkImage(avatarUrl)
-                        : null,
-                    child: avatarUrl == null
-                        ? Icon(
-                            Icons.person,
-                            size: 28,
-                            color: scheme.onSurfaceVariant,
-                          )
-                        : null,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                displayName,
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: scheme.onSurface,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            if (isVerified) ...[
-                              const SizedBox(width: 4),
-                              const VerifiedBadge(size: 18),
-                            ],
-                          ],
-                        ),
-                        if (handle != null)
-                          Text(
-                            '@$handle',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-              Divider(color: scheme.outlineVariant.withValues(alpha: 0.5)),
-
-              // Menu Items
-              _SheetMenuItem(
-                icon: Icons.person_outline,
-                label: 'View Profile',
-                onTap: () {
-                  Navigator.pop(context);
-                  if (user != null) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ProfileEntry(userId: user.uid),
-                      ),
-                    );
-                  }
-                },
-              ),
-
-              // Admin Dashboard (if admin)
-              if (isAdmin)
-                _SheetMenuItem(
-                  icon: Icons.admin_panel_settings,
-                  label: 'Admin Dashboard',
-                  iconColor: Colors.purple,
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushNamed(context, '/admin');
-                  },
-                ),
-
-              // Verification Request
-              if (!isVerified)
-                _SheetMenuItem(
-                  icon: Icons.verified_outlined,
-                  label: 'Request Verification',
-                  iconColor: Colors.blue,
-                  onTap: () {
-                    Navigator.pop(context);
-                    if (user != null) {
-                      _showVerificationDialog(context, user.uid, displayName);
-                    }
-                  },
-                ),
-
-              _SheetMenuItem(
-                icon: Icons.block_outlined,
-                label: 'Blocked Accounts',
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/blocked');
-                },
-              ),
-
-              _SheetMenuItem(
-                icon: Icons.volume_off_outlined,
-                label: 'Muted Accounts',
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/muted');
-                },
-              ),
-
-              Divider(color: scheme.outlineVariant.withValues(alpha: 0.5)),
-
-              // Theme Toggle
-              _SheetMenuItem(
-                icon: Icons.dark_mode_outlined,
-                label: 'Dark Mode',
-                trailing: Consumer<ThemeController>(
-                  builder: (context, controller, _) {
-                    return Switch(
-                      value: controller.isDarkMode,
-                      onChanged: (_) => controller.toggleTheme(),
-                    );
-                  },
-                ),
-                onTap: () {
-                  context.read<ThemeController>().toggleTheme();
-                },
-              ),
-
-              Divider(color: scheme.outlineVariant.withValues(alpha: 0.5)),
-
-              // Help & About
-              _SheetMenuItem(
-                icon: Icons.help_outline,
-                label: 'Help & Support',
-                onTap: () {
-                  Navigator.pop(context);
-                },
-              ),
-
-              _SheetMenuItem(
-                icon: Icons.info_outline,
-                label: 'About Piccture',
-                onTap: () {
-                  Navigator.pop(context);
-                  _showAboutDialog(context);
-                },
-              ),
-
-              Divider(color: scheme.outlineVariant.withValues(alpha: 0.5)),
-
-              // Logout
-              _SheetMenuItem(
-                icon: Icons.logout,
-                label: 'Log Out',
-                iconColor: scheme.error,
-                textColor: scheme.error,
-                onTap: () => _handleLogout(context),
-              ),
-
-              SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  void _showAboutDialog(BuildContext context) {
-    showAboutDialog(
-      context: context,
-      applicationName: 'Piccture',
-      applicationVersion: '1.0.0',
-      applicationIcon: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: HomeScreenConstants.brandAccent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Icon(Icons.camera_alt, color: Colors.white),
-      ),
-      children: const [
-        Text('Share your world through pictures.'),
-        SizedBox(height: 8),
-        Text('© 2024 Piccture'),
-      ],
-    );
-  }
-
-  void _showVerificationDialog(
-    BuildContext context,
-    String uid,
-    String displayName,
-  ) {
-    final scheme = Theme.of(context).colorScheme;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.verified, color: Colors.blue.shade400),
-            const SizedBox(width: 8),
-            const Text('Request Verification'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Gazetteer badges are for:',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: scheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text('• Photographers & content creators'),
-            const Text('• Journalists & reporters'),
-            const Text('• Notable public figures'),
-            const SizedBox(height: 16),
-            Text(
-              'Requirements:',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: scheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text('• 30+ days account age'),
-            const Text('• 10+ original posts'),
-            const Text('• 100+ followers'),
-            const Text('• Clean record (no violations)'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.send, size: 18),
-            label: const Text('Submit Request'),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await _submitVerificationRequest(context, uid, displayName);
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _submitVerificationRequest(
-    BuildContext context,
-    String uid,
-    String displayName,
-  ) async {
-    try {
-      await FirebaseFirestore.instance.collection('verification_requests').add({
-        'userId': uid,
-        'userName': displayName,
-        'type': 'gazetteer',
-        'status': 'pending',
-        'requestedAt': FieldValue.serverTimestamp(),
-      });
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8),
-                Text('Verification request submitted!'),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
-      }
-    }
-  }
-} */
 
 class _ProfileBottomSheet extends StatelessWidget {
   const _ProfileBottomSheet();
@@ -2625,6 +2191,17 @@ class _ProfileBottomSheet extends StatelessWidget {
                   _buildSectionHeader('PREFERENCES', scheme),
                   const SizedBox(height: 8),
                   _buildMenuGroup(scheme, [
+                    // Settings
+                    _buildMenuTile(
+                      Icons.settings_outlined,
+                      'Settings',
+                      scheme,
+                      () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, '/settings');
+                      },
+                    ),
+                    // Theme Toggle
                     Consumer<ThemeController>(
                       builder: (_, controller, __) => _buildMenuTile(
                         controller.isDarkMode

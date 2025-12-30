@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../verification/gazetteer_widgets.dart';
+import 'package:e6piccturenew/features/common/widgets/gazetteer_badge.dart';
 
 /// ============================================================================
 /// PROFILE IDENTITY BANNER - v2 (With Gazetteer Badge)
@@ -368,14 +368,8 @@ class ProfileIdentityBanner extends StatelessWidget {
                     ),
                   ),
 
-                  // ✅ Verified Badge
-                  if (isVerified) ...[
-                    const SizedBox(width: 4),
-                    const Icon(Icons.verified, size: 18, color: Colors.blue),
-                  ],
-
                   // ✅ NEW: Gazetteer Badge
-                  if (isGazetteer) ...[
+                  if (isGazetteer && isVerified) ...[
                     const SizedBox(width: 6),
                     _GazetteerBadge(),
                   ],

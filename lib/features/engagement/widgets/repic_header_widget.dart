@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:e6piccturenew/features/profile/profile_entry.dart';
+import 'package:e6piccturenew/features/common/widgets/gazetteer_badge.dart';
 
 /// ============================================================================
 /// REPIC HEADER WIDGET
@@ -78,7 +79,9 @@ class RepicHeader extends StatelessWidget {
             // Verified badge
             if (repicAuthorIsVerified) ...[
               const SizedBox(width: 4),
-              Icon(Icons.verified, size: 14, color: scheme.primary),
+              GazetteerBadge.small(),
+
+              //Icon(Icons.verified, size: 14, color: scheme.primary),
             ],
 
             // "repicced" text

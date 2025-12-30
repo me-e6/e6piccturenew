@@ -1,18 +1,22 @@
+// ============================================================================
+// FILE: lib/features/profile/widgets/profile_identity_banner.dart
+// ============================================================================
+// Version: 2.0.0 - CLEANED
+// Features:
+// ✅ Twitter-style banner + avatar overlap
+// ✅ New circular Gazetteer stamp badge (matching official design)
+// ✅ Video DP support
+// ✅ Follow button
+// ✅ Clean visual hierarchy
+// ============================================================================
+
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
-import '../../verification/gazetteer_widgets.dart';
+import 'package:e6piccturenew/features/common/widgets/gazetteer_badge.dart';
+// ============================================================================
+// PROFILE IDENTITY BANNER
+// ============================================================================
 
-/// ============================================================================
-/// PROFILE IDENTITY BANNER - v3 (With Stamp-Style Gazetteer Badge)
-/// ============================================================================
-/// Features:
-/// - ✅ Twitter-style banner + avatar overlap
-/// - ✅ Verified badge (blue checkmark)
-/// - ✅ Gazetteer STAMP badge (ink stamp style) - NEW!
-/// - ✅ Video DP support
-/// - ✅ Edit profile actions
-/// - ✅ Follow button for non-owners
-/// ============================================================================
 class ProfileIdentityBanner extends StatelessWidget {
   final String displayName;
   final String? handle;
@@ -71,9 +75,12 @@ class ProfileIdentityBanner extends StatelessWidget {
     this.onVideoDpTap,
   });
 
-  // ------------------------------------------------------------
-  // VIDEO DP ACTION SHEET (OWNER ONLY)
-  // ------------------------------------------------------------
+  // Check if user should show Gazetteer badge
+  bool get _showGazetteerBadge => isVerified || isGazetteer;
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // VIDEO DP ACTION SHEET
+  // ──────────────────────────────────────────────────────────────────────────
   void _showVideoActions(BuildContext context) {
     if (!isOwner) return;
 
@@ -147,12 +154,14 @@ class ProfileIdentityBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        /// ------------------------------------------------------------
-        /// BANNER + OVERLAPPING AVATAR (TWITTER STYLE)
-        /// ------------------------------------------------------------
+        // ════════════════════════════════════════════════════════════════════
+        // BANNER + OVERLAPPING AVATAR (TWITTER STYLE)
+        // ════════════════════════════════════════════════════════════════════
         Stack(
           clipBehavior: Clip.none,
           children: [
@@ -161,7 +170,7 @@ class ProfileIdentityBanner extends StatelessWidget {
               height: 120,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: Colors.grey.shade200,
+                color: scheme.surfaceContainerHighest,
                 image: bannerUrl != null && bannerUrl!.isNotEmpty
                     ? DecorationImage(
                         image: NetworkImage(bannerUrl!),
@@ -176,100 +185,27 @@ class ProfileIdentityBanner extends StatelessWidget {
               Positioned(
                 top: 8,
                 right: 8,
-                child: InkWell(
+                child: _buildEditButton(
                   onTap: isUpdatingBanner ? null : onEditBanner,
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: isUpdatingBanner
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.edit, size: 16, color: Colors.white),
-                  ),
+                  isLoading: isUpdatingBanner,
                 ),
               ),
 
-            // Avatar (overlapping banner - Twitter style)
-            Positioned(
-              left: 16,
-              bottom: -40,
-              child: Stack(
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      if (!isOwner) return;
-
-                      if (hasVideoDp) {
-                        onVideoDpTap?.call();
-                      } else {
-                        _showInitialDpChooser(context);
-                      }
-                    },
-                    onLongPress: hasVideoDp && isOwner
-                        ? () => _showVideoActions(context)
-                        : null,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 4),
-                      ),
-                      child: CircleAvatar(
-                        radius: 40,
-                        backgroundColor: Colors.grey.shade300,
-                        backgroundImage:
-                            avatarUrl != null && avatarUrl!.isNotEmpty
-                            ? NetworkImage(avatarUrl!)
-                            : null,
-                        child: avatarUrl == null || avatarUrl!.isEmpty
-                            ? const Icon(Icons.person, size: 40)
-                            : null,
-                      ),
-                    ),
-                  ),
-
-                  /// VIDEO BADGE
-                  if (hasVideoDp)
-                    Positioned(
-                      right: 2,
-                      bottom: 2,
-                      child: Container(
-                        padding: const EdgeInsets.all(5),
-                        decoration: BoxDecoration(
-                          color: const Color.fromARGB(220, 15, 136, 49),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: const Icon(
-                          Icons.play_arrow,
-                          size: 12,
-                          color: Color.fromARGB(255, 255, 255, 222),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
+            // Avatar (overlapping banner)
+            Positioned(left: 16, bottom: -40, child: _buildAvatar(context)),
           ],
         ),
 
         const SizedBox(height: 8),
 
-        /// ------------------------------------------------------------
-        /// ACTION BUTTONS ROW (TOP RIGHT - TWITTER STYLE)
-        /// ------------------------------------------------------------
+        // ════════════════════════════════════════════════════════════════════
+        // ACTION BUTTONS ROW
+        // ════════════════════════════════════════════════════════════════════
         Padding(
-          padding: const EdgeInsets.only(right: 16, left: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
+
             children: [
               if (isOwner) ...[
                 OutlinedButton(
@@ -282,7 +218,7 @@ class ProfileIdentityBanner extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    side: BorderSide(color: Colors.grey.shade300),
+                    side: BorderSide(color: scheme.outline),
                   ),
                   child: const Text(
                     'Edit profile',
@@ -296,84 +232,54 @@ class ProfileIdentityBanner extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.all(8),
                       shape: const CircleBorder(),
-                      side: BorderSide(color: Colors.grey.shade300),
+                      side: BorderSide(color: scheme.outline),
                     ),
                     child: const Icon(Icons.videocam, size: 18),
                   ),
                 ],
               ] else
-                ElevatedButton(
-                  onPressed: onFollowToggle,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isFollowing
-                        ? Colors.transparent
-                        : const Color.fromARGB(220, 15, 136, 49),
-                    foregroundColor: isFollowing ? Colors.black : Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 2,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      side: isFollowing
-                          ? BorderSide(color: Colors.grey.shade300)
-                          : BorderSide.none,
-                    ),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    isFollowing ? 'Following' : 'Follow',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
+                _buildFollowButton(scheme),
+
+              // ════════════════════════════════════════════════════════════════
+              // GAZETTEER STAMP BADGE (Prominent, below handle)
+              // ════════════════════════════════════════════════════════════════
             ],
           ),
         ),
 
-        const SizedBox(height: 0),
+        const SizedBox(height: 8),
 
-        /// ------------------------------------------------------------
-        /// NAME + BADGES + HANDLE + BIO (LEFT ALIGNED - TWITTER STYLE)
-        /// ------------------------------------------------------------
+        // ════════════════════════════════════════════════════════════════════
+        // NAME + BADGES + HANDLE + BIO
+        // ════════════════════════════════════════════════════════════════════
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Display Name + Badges
+              // Display Name + Verified checkmark
               Row(
                 children: [
                   Flexible(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            displayName,
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (isVerified || isGazetteer) ...[
-                          const SizedBox(width: 6),
-                          const GazetteerBadge(size: 20),
-                        ],
-                      ],
+                    child: Text(
+                      displayName,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-
-                  // ✅ Verified Badge (Blue Checkmark)
-                  if (isVerified) ...[
+                  if (_showGazetteerBadge) ...[
                     const SizedBox(width: 6),
-                    Icon(Icons.verified, size: 20, color: Colors.blue.shade500),
+                    GazetteerBadge.small(),
+                    //const GazetteerStampBadge(size: 70),
                   ],
+                  /* if (_showGazetteerBadge) ...[
+                    const SizedBox(width: 6),
+                    Icon(Icons.verified, size: 22, color: Colors.blue.shade500),
+                  ], */
                 ],
               ),
 
@@ -383,21 +289,27 @@ class ProfileIdentityBanner extends StatelessWidget {
               if (handle != null && handle!.isNotEmpty)
                 Text(
                   '@$handle',
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
 
-              // ✅ GAZETTEER STAMP BADGE (Below handle, prominent)
-              if (isGazetteer || isVerified) ...[
-                const SizedBox(height: 10),
-                const GazetteerStampBadge(),
-              ],
+              /* // ════════════════════════════════════════════════════════════════
+              // GAZETTEER STAMP BADGE (Prominent, below handle)
+              // ════════════════════════════════════════════════════════════════
+              if (_showGazetteerBadge) ...[
+                const SizedBox(height: 12),
+                GazetteerBadge.medium()
+                //const GazetteerStampBadge(size: 70),
+              ], */
 
               // Bio
               if (bio != null && bio!.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Text(
                   bio!,
-                  style: const TextStyle(fontSize: 15),
+                  style: TextStyle(fontSize: 15, color: scheme.onSurface),
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -408,225 +320,424 @@ class ProfileIdentityBanner extends StatelessWidget {
       ],
     );
   }
-}
 
-/// ============================================================================
-/// GAZETTEER STAMP BADGE - BLUE INK STAMP STYLE
-/// ============================================================================
-/// Looks like an official rubber stamp with blue ink effect
-/// Features:
-/// - Double border (stamp effect)
-/// - Slightly rotated for authenticity
-/// - "GAZETTEER" text with stars
-/// - Distressed/ink bleed effect
-/// ============================================================================
-class GazetteerStampBadge extends StatelessWidget {
-  final double scale;
+  Widget _buildEditButton({VoidCallback? onTap, required bool isLoading}) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Colors.black54,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(Icons.edit, size: 16, color: Colors.white),
+      ),
+    );
+  }
 
-  const GazetteerStampBadge({super.key, this.scale = 1.0});
-
-  @override
-  Widget build(BuildContext context) {
-    // Stamp blue color (like ink)
-    const stampColor = Color(0xFF1565C0); // Deep blue ink
-
-    return Transform.rotate(
-      angle: -0.05, // Slight tilt like a real stamp
-      child: Transform.scale(
-        scale: scale,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: stampColor, width: 2.5),
-            boxShadow: [
-              // Ink bleed effect
-              BoxShadow(
-                color: stampColor.withValues(alpha: 0.15),
-                blurRadius: 2,
-                spreadRadius: 1,
+  Widget _buildAvatar(BuildContext context) {
+    return Stack(
+      children: [
+        GestureDetector(
+          onTap: () {
+            if (!isOwner) return;
+            if (hasVideoDp) {
+              onVideoDpTap?.call();
+            } else {
+              _showInitialDpChooser(context);
+            }
+          },
+          onLongPress: hasVideoDp && isOwner
+              ? () => _showVideoActions(context)
+              : null,
+          child: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                width: 4,
               ),
-            ],
-          ),
-          child: IntrinsicWidth(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Top decorative line
-                Container(
-                  height: 1.5,
-                  color: stampColor,
-                  margin: const EdgeInsets.only(bottom: 4),
-                ),
-
-                // Main text with stars
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Left star
-                    Icon(Icons.star, size: 10, color: stampColor),
-                    const SizedBox(width: 6),
-
-                    // GAZETTEER text
-                    Text(
-                      'GAZETTEER',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
-                        color: stampColor,
-                        letterSpacing: 2.0,
-                        fontFamily: 'monospace',
-                      ),
-                    ),
-
-                    const SizedBox(width: 6),
-                    // Right star
-                    Icon(Icons.star, size: 10, color: stampColor),
-                  ],
-                ),
-
-                // "VERIFIED" subtitle
-                Text(
-                  'VERIFIED',
-                  style: TextStyle(
-                    fontSize: 7,
-                    fontWeight: FontWeight.w700,
-                    color: stampColor,
-                    letterSpacing: 3.0,
-                  ),
-                ),
-
-                // Bottom decorative line
-                Container(
-                  height: 1.5,
-                  color: stampColor,
-                  margin: const EdgeInsets.only(top: 4),
-                ),
-              ],
+            ),
+            child: CircleAvatar(
+              radius: 40,
+              backgroundColor: Colors.grey.shade300,
+              backgroundImage: avatarUrl != null && avatarUrl!.isNotEmpty
+                  ? NetworkImage(avatarUrl!)
+                  : null,
+              child: avatarUrl == null || avatarUrl!.isEmpty
+                  ? const Icon(Icons.person, size: 40)
+                  : null,
             ),
           ),
         ),
+
+        // Video DP badge
+        if (hasVideoDp)
+          Positioned(
+            right: 2,
+            bottom: 2,
+            child: Container(
+              padding: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F8831),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              child: const Icon(
+                Icons.play_arrow,
+                size: 12,
+                color: Colors.white,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildFollowButton(ColorScheme scheme) {
+    return ElevatedButton(
+      onPressed: onFollowToggle,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: isFollowing
+            ? Colors.transparent
+            : const Color(0xFF0F8831),
+        foregroundColor: isFollowing ? scheme.onSurface : Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: isFollowing
+              ? BorderSide(color: scheme.outline)
+              : BorderSide.none,
+        ),
+        elevation: 0,
+      ),
+      child: Text(
+        isFollowing ? 'Following' : 'Follow',
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
       ),
     );
   }
 }
 
-/// ============================================================================
-/// CIRCULAR GAZETTEER STAMP - Alternative Style
-/// ============================================================================
-/// Round stamp like an official seal
-/// ============================================================================
-class GazetteerCircularStamp extends StatelessWidget {
+// ============================================================================
+// GAZETTEER STAMP BADGE - Circular Stamp (Matches Official Design)
+// ============================================================================
+// Based on the official Gazetteer stamp with:
+// - Circular design with multiple rings
+// - "GAZETTEER" text curved at top
+// - Large "G" in center
+// - Decorative stars
+// - Distressed ink effect
+// ============================================================================
+
+class GazetteerStampBadge extends StatelessWidget {
   final double size;
 
-  const GazetteerCircularStamp({super.key, this.size = 60});
+  const GazetteerStampBadge({super.key, this.size = 70});
 
   @override
   Widget build(BuildContext context) {
-    const stampColor = Color(0xFF1565C0);
-
-    return Transform.rotate(
-      angle: -0.1,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.transparent,
-          border: Border.all(color: stampColor, width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: stampColor.withValues(alpha: 0.2),
-              blurRadius: 3,
-              spreadRadius: 1,
-            ),
-          ],
-        ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Inner circle
-            Container(
-              width: size - 10,
-              height: size - 10,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: stampColor, width: 1.5),
-              ),
-            ),
-
-            // Center icon
-            Icon(Icons.verified, size: size * 0.4, color: stampColor),
-
-            // Curved text would go here (complex, using simple text instead)
-            Positioned(
-              bottom: 8,
-              child: Text(
-                'GAZETTEER',
-                style: TextStyle(
-                  fontSize: size * 0.12,
-                  fontWeight: FontWeight.w900,
-                  color: stampColor,
-                  letterSpacing: 1,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return CustomPaint(
+      size: Size(size, size),
+      painter: _GazetteerStampPainter(),
     );
   }
 }
 
-/// ============================================================================
-/// INLINE GAZETTEER BADGE - For use in post headers
-/// ============================================================================
-/// Compact stamp for use next to names in feeds
-/// ============================================================================
-class GazetteerInlineBadge extends StatelessWidget {
+class _GazetteerStampPainter extends CustomPainter {
+  static const _stampColor = Color(0xFF3B6DB5); // Royal blue from image
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+
+    final strokePaint = Paint()
+      ..color = _stampColor
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final fillPaint = Paint()
+      ..color = _stampColor
+      ..style = PaintingStyle.fill;
+
+    // ────────────────────────────────────────────────────────────────────────
+    // OUTER DISTRESSED RING
+    // ────────────────────────────────────────────────────────────────────────
+    _drawDistressedCircle(
+      canvas,
+      center,
+      radius * 0.95,
+      strokePaint..strokeWidth = size.width * 0.045,
+      distressLevel: 0.12,
+    );
+
+    // ────────────────────────────────────────────────────────────────────────
+    // SECOND RING
+    // ────────────────────────────────────────────────────────────────────────
+    _drawDistressedCircle(
+      canvas,
+      center,
+      radius * 0.80,
+      strokePaint..strokeWidth = size.width * 0.018,
+      distressLevel: 0.08,
+    );
+
+    // ────────────────────────────────────────────────────────────────────────
+    // THIRD RING
+    // ────────────────────────────────────────────────────────────────────────
+    _drawDistressedCircle(
+      canvas,
+      center,
+      radius * 0.72,
+      strokePaint..strokeWidth = size.width * 0.012,
+      distressLevel: 0.06,
+    );
+
+    // ────────────────────────────────────────────────────────────────────────
+    // INNER CIRCLE BORDER
+    // ────────────────────────────────────────────────────────────────────────
+    _drawDistressedCircle(
+      canvas,
+      center,
+      radius * 0.45,
+      strokePaint..strokeWidth = size.width * 0.025,
+      distressLevel: 0.04,
+    );
+
+    // ────────────────────────────────────────────────────────────────────────
+    // "GAZETTEER" CURVED TEXT
+    // ────────────────────────────────────────────────────────────────────────
+    _drawCurvedText(
+      canvas,
+      center,
+      radius * 0.62,
+      'GAZETTEER',
+      size.width * 0.11,
+    );
+
+    // ────────────────────────────────────────────────────────────────────────
+    // CENTER "G"
+    // ────────────────────────────────────────────────────────────────────────
+    _drawCenterG(canvas, center, size.width * 0.35);
+
+    // ────────────────────────────────────────────────────────────────────────
+    // DECORATIVE STARS
+    // ────────────────────────────────────────────────────────────────────────
+    _drawStar(
+      canvas,
+      Offset(center.dx - radius * 0.52, center.dy + radius * 0.28),
+      size.width * 0.045,
+      fillPaint,
+    );
+    _drawStar(
+      canvas,
+      Offset(center.dx + radius * 0.52, center.dy + radius * 0.28),
+      size.width * 0.045,
+      fillPaint,
+    );
+
+    // ────────────────────────────────────────────────────────────────────────
+    // DISTRESS SPOTS (authentic stamp look)
+    // ────────────────────────────────────────────────────────────────────────
+    _drawDistressSpots(canvas, center, radius, fillPaint);
+  }
+
+  void _drawDistressedCircle(
+    Canvas canvas,
+    Offset center,
+    double radius,
+    Paint paint, {
+    double distressLevel = 0.1,
+  }) {
+    final path = Path();
+    final random = math.Random(42);
+
+    for (int i = 0; i <= 360; i += 2) {
+      final angle = i * math.pi / 180;
+      final distress = 1 + (random.nextDouble() - 0.5) * distressLevel;
+      final r = radius * distress;
+      final x = center.dx + r * math.cos(angle);
+      final y = center.dy + r * math.sin(angle);
+
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  void _drawCurvedText(
+    Canvas canvas,
+    Offset center,
+    double radius,
+    String text,
+    double fontSize,
+  ) {
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+    const startAngle = -math.pi * 0.78;
+    const sweepAngle = math.pi * 0.56;
+    final anglePerChar = sweepAngle / (text.length - 1);
+
+    for (int i = 0; i < text.length; i++) {
+      final char = text[i];
+      final angle = startAngle + (anglePerChar * i);
+
+      textPainter.text = TextSpan(
+        text: char,
+        style: TextStyle(
+          color: _stampColor,
+          fontSize: fontSize,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 2,
+        ),
+      );
+      textPainter.layout();
+
+      canvas.save();
+      final x = center.dx + radius * math.cos(angle);
+      final y = center.dy + radius * math.sin(angle);
+      canvas.translate(x, y);
+      canvas.rotate(angle + math.pi / 2);
+      textPainter.paint(
+        canvas,
+        Offset(-textPainter.width / 2, -textPainter.height / 2),
+      );
+      canvas.restore();
+    }
+  }
+
+  void _drawCenterG(Canvas canvas, Offset center, double fontSize) {
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: 'G',
+        style: TextStyle(
+          color: _stampColor,
+          fontSize: fontSize,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        center.dx - textPainter.width / 2,
+        center.dy - textPainter.height / 2 + fontSize * 0.05,
+      ),
+    );
+  }
+
+  void _drawStar(Canvas canvas, Offset center, double size, Paint paint) {
+    final path = Path();
+    const points = 4;
+    final outerRadius = size;
+    final innerRadius = size * 0.4;
+
+    for (int i = 0; i < points * 2; i++) {
+      final radius = i.isEven ? outerRadius : innerRadius;
+      final angle = (i * math.pi / points) - math.pi / 2;
+      final x = center.dx + radius * math.cos(angle);
+      final y = center.dy + radius * math.sin(angle);
+
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  void _drawDistressSpots(
+    Canvas canvas,
+    Offset center,
+    double radius,
+    Paint paint,
+  ) {
+    final random = math.Random(123);
+    final spots = [
+      Offset(center.dx + radius * 0.85, center.dy - radius * 0.3),
+      Offset(center.dx - radius * 0.8, center.dy - radius * 0.5),
+      Offset(center.dx + radius * 0.7, center.dy + radius * 0.7),
+      Offset(center.dx - radius * 0.9, center.dy + radius * 0.1),
+    ];
+
+    for (final spot in spots) {
+      final spotRadius = radius * 0.02 * (0.5 + random.nextDouble());
+      canvas.drawCircle(
+        spot,
+        spotRadius,
+        paint..color = _stampColor.withValues(alpha: 0.5),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ============================================================================
+// INLINE GAZETTEER BADGE - For post headers
+// ============================================================================
+
+class GazetteerBadgeInline extends StatelessWidget {
   final double height;
 
-  const GazetteerInlineBadge({super.key, this.height = 16});
+  const GazetteerBadgeInline({super.key, this.height = 16});
 
   @override
   Widget build(BuildContext context) {
-    const stampColor = Color(0xFF1565C0);
+    const stampColor = Color(0xFF3B6DB5);
 
-    return Transform.rotate(
-      angle: -0.03,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: stampColor.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(3),
-          border: Border.all(color: stampColor, width: 1.5),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.verified, size: height * 0.7, color: stampColor),
-            const SizedBox(width: 3),
-            Text(
-              'GAZETTEER',
-              style: TextStyle(
-                fontSize: height * 0.55,
-                fontWeight: FontWeight.w800,
-                color: stampColor,
-                letterSpacing: 0.5,
-              ),
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: height * 0.4,
+        vertical: height * 0.15,
+      ),
+      decoration: BoxDecoration(
+        color: stampColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(height * 0.25),
+        border: Border.all(color: stampColor.withValues(alpha: 0.6), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.verified, size: height * 0.7, color: stampColor),
+          SizedBox(width: height * 0.15),
+          Text(
+            'GAZETTEER',
+            style: TextStyle(
+              color: stampColor,
+              fontSize: height * 0.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.5,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// ============================================================================
-/// COMPACT VERIFIED BADGE - Just the checkmark for tight spaces
-/// ============================================================================
+// ============================================================================
+// SIMPLE VERIFIED BADGE - Blue checkmark
+// ============================================================================
+
 class VerifiedBadge extends StatelessWidget {
   final double size;
 
@@ -634,6 +745,6 @@ class VerifiedBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Icon(Icons.verified, size: size, color: Colors.blue.shade500);
+    return Icon(Icons.verified, size: size, color: const Color(0xFF1DA1F2));
   }
 }

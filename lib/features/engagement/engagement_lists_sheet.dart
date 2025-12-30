@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:e6piccturenew/features/common/widgets/gazetteer_badge.dart';
 
 import '../profile/profile_entry.dart';
 import 'repic_service.dart';
@@ -178,10 +179,7 @@ class _EngagementListsSheetState extends State<EngagementListsSheet>
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: [
-                _buildRepicsTab(scheme),
-                _buildQuotesTab(scheme),
-              ],
+              children: [_buildRepicsTab(scheme), _buildQuotesTab(scheme)],
             ),
           ),
         ],
@@ -285,9 +283,7 @@ class _EngagementListsSheetState extends State<EngagementListsSheet>
     Navigator.pop(context); // Close sheet
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => ProfileEntry(userId: userId),
-      ),
+      MaterialPageRoute(builder: (_) => ProfileEntry(userId: userId)),
     );
   }
 }
@@ -339,10 +335,7 @@ class _UserListTile extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (isVerified) ...[
-            const SizedBox(width: 4),
-            Icon(Icons.verified, size: 16, color: scheme.primary),
-          ],
+          if (isVerified) ...[const SizedBox(width: 4), GazetteerBadge.small()],
         ],
       ),
       subtitle: handle != null
@@ -351,15 +344,12 @@ class _UserListTile extends StatelessWidget {
               style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
             )
           : subtitle != null
-              ? Text(
-                  subtitle!,
-                  style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
-                )
-              : null,
-      trailing: Icon(
-        Icons.chevron_right,
-        color: scheme.onSurfaceVariant,
-      ),
+          ? Text(
+              subtitle!,
+              style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
+            )
+          : null,
+      trailing: Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
     );
   }
 }
@@ -401,7 +391,8 @@ class _QuoteListTile extends StatelessWidget {
             CircleAvatar(
               radius: 22,
               backgroundColor: scheme.surfaceContainerHighest,
-              backgroundImage: authorAvatarUrl != null && authorAvatarUrl!.isNotEmpty
+              backgroundImage:
+                  authorAvatarUrl != null && authorAvatarUrl!.isNotEmpty
                   ? CachedNetworkImageProvider(authorAvatarUrl!)
                   : null,
               child: authorAvatarUrl == null || authorAvatarUrl!.isEmpty
@@ -448,10 +439,7 @@ class _QuoteListTile extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       commentary!,
-                      style: TextStyle(
-                        color: scheme.onSurface,
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: scheme.onSurface, fontSize: 14),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -481,10 +469,7 @@ class _QuoteListTile extends StatelessWidget {
             ),
 
             // Chevron
-            Icon(
-              Icons.chevron_right,
-              color: scheme.onSurfaceVariant,
-            ),
+            Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
           ],
         ),
       ),

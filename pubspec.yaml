@@ -111,6 +111,8 @@ flutter:
      - assets/profile_placeholder.png
      - assets/logo/company_logo.png
      - assets/logo/google.jpg
+     - assets/images/gazetteer_badge.png
+
   #   - images/a_dot_ham.jpeg
   
 
